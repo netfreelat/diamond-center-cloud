@@ -459,6 +459,48 @@ setInterval(() => {
 // ------------------------------------------------------
 
 const server = http.createServer(async (req, res) => {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const searchParams = parsedUrl.searchParams;
+    console.log(`[DEBUG] Recibida petición: ${req.method} ${parsedUrl.pathname}`);
+
+    if (parsedUrl.pathname === '/test-telegram') {
+        console.log('[DEBUG] Intentando entrar en test-telegram...');
+        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+        const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+        
+        if (!BOT_TOKEN || !CHAT_ID) {
+            console.error('[DEBUG] Faltan variables de entorno para Telegram');
+            res.writeHead(400);
+            return res.end(`ERROR: Faltan variables de entorno. TOKEN: ${BOT_TOKEN ? 'OK' : 'FALTA'}, CHAT_ID: ${CHAT_ID ? 'OK' : 'FALTA'}`);
+        }
+
+        const msg = "✅ Prueba de conexión desde Render exitosa.";
+        const payload = JSON.stringify({ chat_id: CHAT_ID, text: msg });
+
+        const testReq = https.request({
+            hostname: 'api.telegram.org',
+            path: `/bot${BOT_TOKEN}/sendMessage`,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+        }, (testRes) => {
+            let body = '';
+            testRes.on('data', chunk => body += chunk);
+            testRes.on('end', () => {
+                console.log('[DEBUG] Respuesta de Telegram recibida');
+                res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end(`Respuesta de Telegram: ${body}`);
+            });
+        });
+        testReq.on('error', e => {
+            console.error('[DEBUG] Error de red en test-telegram:', e.message);
+            res.writeHead(500);
+            res.end(`Error de red: ${e.message}`);
+        });
+        testReq.write(payload);
+        testReq.end();
+        return; 
+    }
+
     // Permisos CORS para que el panel admin y la web funcionen
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -472,8 +514,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
-
+    // parsedUrl ya está definida al inicio del handler
     if (parsedUrl.pathname === '/verificar') {
         const uid = parsedUrl.searchParams.get('uid');
 
@@ -1303,7 +1344,7 @@ if (process.env.VERCEL) {
 } else {
     server.listen(PORT, async () => {
         console.log('=========================================');
-        console.log('  Diamond Center FF - Servidor');
+        console.log('  Diamond Center FF - Servidor (V3.1)');
         console.log(`  Corriendo en: http://localhost:${PORT}`);
         console.log('  Cargando datos desde Supabase...');
         console.log('=========================================');
