@@ -135,8 +135,9 @@ async function sendMessage(item) {
         // Marcar como enviado en el servidor
         markAsSent(item.id);
         
-        // Pausa pequeña para no saturar a WhatsApp (3 segundos)
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Pausa aleatoria para parecer más humano y evitar bloqueos (entre 4 y 8 segundos)
+        const delay = Math.floor(Math.random() * (8000 - 4000 + 1)) + 4000;
+        await new Promise(resolve => setTimeout(resolve, delay));
     } catch (error) {
         console.error(`[WHATSAPP] ❌ Error enviando a ${item.number}:`, error.message);
         // Si el error es crítico, podríamos intentar reiniciar el intervalo después

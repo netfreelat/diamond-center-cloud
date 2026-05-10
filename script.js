@@ -780,31 +780,31 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FREE F<span>I</span>RE</div>
                             <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">DIAMOND CENTER CLOUD</div>
                             
-                            <div class="receipt-info">
-                                <p><strong>Plan:</strong> <span class="val">${selectedPackage.amount} diamantes</span></p>
-                                <p><strong>Bonus:</strong> <span class="val">${selectedPackage.bonus} diamantes</span></p>
-                                <p><strong>ID jugador:</strong> <span class="val">${playerInput.value}</span></p>
-                                <p><strong>Jugador:</strong> <span class="val">${name}</span></p>
-                                <p><strong>N° Control:</strong> <span class="val" style="color: var(--secondary); font-weight: 800;">${controlNum}</span></p>
-                                <p><strong>N° Aprobación:</strong> <span class="val">${approvalNum}</span></p>
-                                <p><strong>Fecha:</strong> <span class="val">${fullDateTime}</span></p>
-                                <p><strong>Estado:</strong> <span class="val status-pending" id="order-status">VERIFICANDO PAGO...</span></p>
-                                <div id="pin-display-container" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0, 240, 255, 0.1); border: 1px dashed var(--secondary); border-radius: 10px;">
-                                    <p style="margin: 0; font-size: 0.8rem; color: var(--secondary); font-weight: 700;">🔑 TU PIN DE DIAMANTES:</p>
-                                    <p id="assigned-pin" style="margin: 5px 0 0 0; font-size: 1.5rem; font-family: monospace; letter-spacing: 2px; color: #fff; font-weight: 800;"></p>
-                                    <button onclick="copyPin()" style="margin-top: 10px; background: transparent; border: 1px solid var(--secondary); color: var(--secondary); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem;"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
-                                    
-                                    <div style="margin-top: 15px; text-align: left; font-size: 0.7rem; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                                        <p style="color: var(--secondary); font-weight: 700; margin-bottom: 5px;">💡 ¿CÓMO CANJEAR?</p>
-                                        <p>1. Ve a <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none; font-weight: bold;">redeempins.com</a></p>
-                                        <p>2. Ingresa este PIN y tu ID.</p>
-                                        <p>3. ¡Diamantes al instante! 💎</p>
-                                    </div>
+                            <div class="receipt-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; text-align: left; font-size: 0.75rem;">
+                                <p style="margin:0"><strong>ID:</strong> <span class="val">${playerInput.value}</span></p>
+                                <p style="margin:0"><strong>Plan:</strong> <span class="val">${selectedPackage.amount}</span></p>
+                                <p style="margin:0"><strong>Jugador:</strong> <span class="val">${name}</span></p>
+                                <p style="margin:0"><strong>Bonus:</strong> <span class="val">${selectedPackage.bonus}</span></p>
+                                <p style="margin:0"><strong>Aprobación:</strong> <span class="val">${approvalNum}</span></p>
+                                <p style="margin:0"><strong>Fecha:</strong> <span class="val">${fullDateTime.split(' ')[0]}</span></p>
+                                <p style="margin:0; grid-column: span 2;"><strong>Control:</strong> <span class="val" style="color: var(--secondary); font-weight: 800;">${controlNum}</span></p>
+                                <p style="margin:0; grid-column: span 2;"><strong>Estado:</strong> <span class="val status-pending" id="order-status">VERIFICANDO PAGO...</span></p>
+                            </div>
+
+                            <div id="pin-display-container" style="display: none; margin-top: 10px; padding: 10px; background: rgba(0, 240, 255, 0.05); border: 1px dashed var(--secondary); border-radius: 10px;">
+                                <p style="margin: 0; font-size: 0.7rem; color: var(--secondary); font-weight: 700;">🔑 TU PIN:</p>
+                                <p id="assigned-pin" style="margin: 2px 0; font-size: 1.2rem; font-family: monospace; color: #fff; font-weight: 800;"></p>
+                                <button onclick="copyPin()" style="background: transparent; border: 1px solid var(--secondary); color: var(--secondary); padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 0.65rem;"><i class="fa-solid fa-copy"></i> Copiar</button>
+                                
+                                <div style="margin-top: 8px; text-align: left; font-size: 0.65rem; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                                    <span style="color: var(--secondary); font-weight: 700;">CANJE:</span> 
+                                    1. <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a> 
+                                    2. PIN + ID. 3. ¡Listo!
                                 </div>
                             </div>
                             
-                            <div class="receipt-ticket">
-                                <i class="fa-solid fa-ticket"></i> Ticket comprobante de pago.
+                            <div class="receipt-ticket" style="margin-top: 10px; padding: 5px;">
+                                <i class="fa-solid fa-ticket"></i> Comprobante oficial.
                             </div>
                         </div>
                         
