@@ -1031,20 +1031,28 @@ const server = http.createServer(async (req, res) => {
             try {
                 if (!body) throw new Error('Cuerpo de petición vacío');
                 const { amount, codes } = JSON.parse(body);
-                if (!amount || !codes) throw new Error('Faltan datos (amount o codes)');
-                
-                if (!pines[amount]) pines[amount] = [];
-                
-                const inserts = codes.map(code => ({ amount, code, used: false }));
+                if (!amount || !codes || !Array.isArray(codes)) throw new Error('Faltan datos (monto o lista de códigos)');
+
+                // Limpiar códigos antes de insertar
+                const cleanCodes = codes.map(c => c.trim()).filter(c => c.length > 0);
+                if (cleanCodes.length === 0) throw new Error('No hay códigos válidos para cargar');
+
+                console.log(`[ALMACEN] Intentando cargar ${cleanCodes.length} pines para paquete ${amount}`);
+
+                const inserts = cleanCodes.map(code => ({ amount: amount.toString(), code, used: false }));
                 const { error } = await supabase.from('ff_pines').insert(inserts);
                 
                 if (error) throw error;
 
-                codes.forEach(code => pines[amount].push(code));
+                // Actualizar memoria
+                if (!pines[amount]) pines[amount] = [];
+                cleanCodes.forEach(code => pines[amount].push(code));
+
+                console.log(`[ALMACEN] ✅ ÉXITO: ${cleanCodes.length} pines cargados.`);
                 res.writeHead(200);
                 res.end(JSON.stringify({ success: true }));
             } catch (e) { 
-                console.error('[PIN_ADD] Error:', e.message);
+                console.error('[ALMACEN] ❌ ERROR:', e.message);
                 res.writeHead(400); 
                 res.end(JSON.stringify({ success: false, message: e.message })); 
             }
