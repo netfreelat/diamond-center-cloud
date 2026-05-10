@@ -52,12 +52,10 @@ async function verifyBDVPayment(montoReportado, referencia4) {
 }
 
 // --- Helper de Hora Venezuela (UTC-4) ---
-function getVETime() {
-    return new Date(new Date().toLocaleString("en-US", {timeZone: "America/Caracas"}));
-}
-
 function getVEISO() {
-    return getVETime().toISOString();
+    // Almacenar el timestamp real estándar (UTC). El frontend (navegador) 
+    // se encarga de convertir esto a la hora local de Venezuela automáticamente.
+    return new Date().toISOString();
 }
 
 function getVEString() {
@@ -496,7 +494,7 @@ function processPendingOrder(inputFullRef, inputShortRef) {
 
 // --- LIMPIADOR AUTOMÁTICO DE PEDIDOS (Cada 1 minuto) ---
 setInterval(() => {
-    const NOW = getVETime();
+    const NOW = new Date();
     let changed = false;
 
     for (let ref in orders) {
