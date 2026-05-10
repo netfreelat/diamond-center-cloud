@@ -632,13 +632,15 @@ const server = http.createServer(async (req, res) => {
             ref, uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa, control_num
         }).then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando pedido:', error.message); });
 
-        // Intentar auto-aprobar si el pago ya llegó previamente
+        /* 
+        // Auto-aprobación desactivada por seguridad a petición del usuario
         const autoApproved = processPendingOrder(null, ref);
         if (autoApproved) {
             console.log(`[NOTIFICACIÓN] Pedido ${ref} fue AUTO-APROBADO por correo.`);
             res.writeHead(200);
             return res.end(JSON.stringify({ success: true, info: 'Pedido auto-aprobado instantáneamente', control_num }));
         }
+        */
 
         // --- CONFIGURACIÓN DE TELEGRAM ---
         const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN; 
@@ -911,7 +913,7 @@ const server = http.createServer(async (req, res) => {
                         pagosValidados[ref] = { amount, time: new Date().toISOString(), used: false };
                         savePagos();
                     }
-                    processPendingOrder(ref, null);
+                    // processPendingOrder(ref, null); // Desactivado por seguridad
                 }
             } catch (e) {
                 console.error('[DEBUG-WEBHOOK] ❌ Error:', e.message);
