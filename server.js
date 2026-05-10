@@ -1145,6 +1145,23 @@ const server = http.createServer(async (req, res) => {
                 }
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
+    } else if (parsedUrl.pathname === '/admin/usuarios/delete' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid } = JSON.parse(body);
+                if (users[uid]) {
+                    delete users[uid];
+                    await supabase.from('ff_users').delete().eq('uid', uid);
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ success: true }));
+                } else {
+                    res.writeHead(404);
+                    res.end(JSON.stringify({ success: false, message: 'Usuario no encontrado' }));
+                }
+            } catch (e) { res.writeHead(400); res.end('Error'); }
+        });
     } else if (parsedUrl.pathname === '/admin/pines' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(pines));

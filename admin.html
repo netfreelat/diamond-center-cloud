@@ -781,6 +781,7 @@ PIN789012
                     <td>
                         <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar Puntos"><i class="fa-solid fa-edit"></i></button>
                         <button onclick="editPassword('${uid}')" class="btn-action" style="background:#1a0a2e;" title="Cambiar Contraseña"><i class="fa-solid fa-key"></i></button>
+                        <button onclick="deleteUser('${uid}')" class="btn-action" style="background:rgba(255, 75, 43, 0.2); color:#ff4b2b; border:1px solid #ff4b2b;" title="Eliminar Usuario"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -838,6 +839,38 @@ PIN789012
                         loadUsers();
                     }
                 } catch (e) { Swal.fire('Error', 'No se pudo actualizar.', 'error'); }
+            }
+        }
+
+        async function deleteUser(uid) {
+            const { isConfirmed } = await Swal.fire({
+                title: '¿Eliminar usuario?',
+                text: `Vas a borrar al usuario con ID: ${uid}. Esta acción no se puede deshacer y perderá sus puntos.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4b2b',
+                cancelButtonColor: '#333',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+
+            if (isConfirmed) {
+                try {
+                    const res = await fetch(`${SERVER_URL}/admin/usuarios/delete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Usuario eliminado', timer: 1500, showConfirmButton: false });
+                        loadUsers();
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo eliminar', 'error');
+                    }
+                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
             }
         }
 
