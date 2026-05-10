@@ -461,6 +461,7 @@ setInterval(() => {
 const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const searchParams = parsedUrl.searchParams;
+    console.log(`[DEBUG] Petición: ${req.method} ${parsedUrl.pathname}`);
 
     // Permisos CORS para que el panel admin y la web funcionen
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -570,6 +571,7 @@ const server = http.createServer(async (req, res) => {
         attemptRequest(hosts[currentHostIndex]);
 
     } else if (parsedUrl.pathname === '/notificar') {
+        console.log('[DEBUG] Entrando en /notificar...');
         const uid = parsedUrl.searchParams.get('uid');
         const login_uid = parsedUrl.searchParams.get('login_uid') || uid;
         const name = parsedUrl.searchParams.get('name');
@@ -578,6 +580,8 @@ const server = http.createServer(async (req, res) => {
         const ref = parsedUrl.searchParams.get('ref');
         const price = parsedUrl.searchParams.get('price') || 'N/A';
         const wa = parsedUrl.searchParams.get('wa') || 'No provisto';
+
+        console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}`);
 
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
