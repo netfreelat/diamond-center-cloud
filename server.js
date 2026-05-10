@@ -672,14 +672,17 @@ const server = http.createServer(async (req, res) => {
         tgReq.end();
 
     } else if (parsedUrl.pathname === '/webhook' && req.method === 'POST') {
-        console.log('\n=========================================');
-        console.log('[WEBHOOK] SE RECIBIÓ UNA PETICIÓN DE TELEGRAM');
-        console.log('=========================================\n');
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
+            // Responder 200 OK inmediatamente a Telegram
+            res.writeHead(200);
+            res.end('OK');
+
             try {
                 const update = JSON.parse(body);
+                console.log('[WEBHOOK] Recibido update_id:', update.update_id);
+                
                 if (update.callback_query) {
                     const callbackQuery = update.callback_query;
                     const data = callbackQuery.data;
