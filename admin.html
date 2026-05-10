@@ -422,6 +422,39 @@ PIN789012
                     </div>
                 </div>
 
+                </div>
+
+                <div class="action-card" style="margin-top: 20px;">
+                    <h3><i class="fa-solid fa-list-check"></i> Gestión de Pines Disponibles</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <select id="manage-pin-amount" style="flex: 1; background: rgba(20, 10, 35, 0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px;">
+                            <option value="100">100 Diamantes</option>
+                            <option value="310">310 Diamantes</option>
+                            <option value="520">520 Diamantes</option>
+                            <option value="1060">1060 Diamantes</option>
+                            <option value="2180">2180 Diamantes</option>
+                            <option value="5600">5600 Diamantes</option>
+                        </select>
+                        <button class="btn-main" onclick="loadAvailablePines()" style="width: auto; padding: 0 20px;">
+                            <i class="fa-solid fa-sync"></i> Ver Pines
+                        </button>
+                    </div>
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Código PIN</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="available-pines-table-body">
+                                <tr><td colspan="3" style="text-align:center; opacity:0.5;">Selecciona un paquete y pulsa "Ver Pines"</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="action-card" style="margin-top: 20px;">
                     <h3><i class="fa-solid fa-history"></i> Últimos 50 Pines Entregados</h3>
                     <div class="table-container">
@@ -718,6 +751,99 @@ PIN789012
                     }
                 }
             } catch (e) { console.error('Error cargando estadísticas de pines:', e); }
+        }
+
+        async function loadAvailablePines() {
+            const amount = document.getElementById('manage-pin-amount').value;
+            const tbody = document.getElementById('available-pines-table-body');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Cargando...</td></tr>';
+            
+            try {
+                const res = await fetch(`${SERVER_URL}/admin/pines/available?amount=${amount}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; opacity:0.5;">No hay pines disponibles para este paquete.</td></tr>';
+                    return;
+                }
+
+                data.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${p.id}</td>
+                        <td><code style="color:var(--secondary); font-weight:700;">${p.code}</code></td>
+                        <td>
+                            <button onclick="editPin(${p.id}, '${p.code}')" class="btn-action" style="background:#333;" title="Editar PIN"><i class="fa-solid fa-edit"></i></button>
+                            <button onclick="deletePin(${p.id})" class="btn-action" style="background:rgba(255,75,43,0.1); color:#ff4b2b; border:1px solid #ff4b2b;" title="Eliminar PIN"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { 
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--danger);">Error al cargar.</td></tr>';
+            }
+        }
+
+        async function editPin(id, oldCode) {
+            const { value: newCode } = await Swal.fire({
+                title: 'Editar PIN',
+                input: 'text',
+                inputValue: oldCode,
+                showCancelButton: true,
+                confirmButtonText: 'Actualizar',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+
+            if (newCode && newCode !== oldCode) {
+                try {
+                    const res = await fetch(`${SERVER_URL}/admin/pines/update`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, code: newCode.trim() })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'PIN actualizado', timer: 1500, showConfirmButton: false });
+                        loadAvailablePines();
+                        loadPinStats();
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo actualizar', 'error');
+                    }
+                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+            }
+        }
+
+        async function deletePin(id) {
+            const { isConfirmed } = await Swal.fire({
+                title: '¿Eliminar PIN?',
+                text: 'Esta acción eliminará el PIN del inventario permanentemente.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4b2b',
+                confirmButtonText: 'Sí, eliminar',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+
+            if (isConfirmed) {
+                try {
+                    const res = await fetch(`${SERVER_URL}/admin/pines/delete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'PIN eliminado', timer: 1500, showConfirmButton: false });
+                        loadAvailablePines();
+                        loadPinStats();
+                    }
+                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+            }
         }
 
         async function addPines() {

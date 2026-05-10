@@ -100,25 +100,52 @@ let settings = {
 };
 
 // --- Carga inicial desde Supabase ---
-async function loadFromSupabase() {
+async function reloadPines() {
     try {
+        const { data: pinesData, error } = await supabase.from('ff_pines').select('*').eq('used', false);
+        if (error) throw error;
+        
+        // Reiniciar objeto en memoria
+        Object.keys(pines).forEach(k => pines[k] = []);
+        
+        if (pinesData) {
+            pinesData.forEach(p => {
+                if (pines[p.amount]) pines[p.amount].push(p.code);
+            });
+        }
+        console.log('[SUPABASE] 📥 Inventario de pines sincronizado.');
+    } catch (e) {
+        console.error('[SUPABASE] ❌ Error recargando pines:', e.message);
+    }
+}
+
+async function loadInitialData() {
+    try {
+        // Cargar Pines
+        await reloadPines();
+        
         // Usuarios
         const { data: usersData } = await supabase.from('ff_users').select('*');
         if (usersData) {
             usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by, referral_claimed: u.referral_claimed }; });
         }
 
-        // Pedidos
-        const { data: ordersData } = await supabase.from('ff_orders').select('*');
+        // Pedidos Pendientes
+        const { data: ordersData } = await supabase.from('ff_orders').select('*').eq('status', 'pending');
         if (ordersData) {
-            ordersData.forEach(o => { orders[o.ref] = { uid: o.uid, login_uid: o.login_uid, name: o.name, pack: o.pack, method: o.method, price: o.price, status: o.status, time: o.time, wa: o.wa, pin: o.pin, telegram_msg_id: o.telegram_msg_id }; });
+            ordersData.forEach(o => { orders[o.ref] = { ...o, time: o.time }; });
         }
-
-        // Pines
-        const { data: pinesData } = await supabase.from('ff_pines').select('*').eq('used', false);
-        if (pinesData) {
-            pines = { "100": [], "310": [], "520": [], "1060": [], "2180": [], "5600": [] };
-            pinesData.forEach(p => { if (pines[p.amount]) pines[p.amount].push(p.code); });
+        
+        // Configuración
+        const { data: settingsData } = await supabase.from('ff_settings').select('*').eq('id', 1).single();
+        if (settingsData) {
+            settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
+            settings.barra_informativa = settingsData.barra_informativa;
+            settings.admin.username = settingsData.admin_username;
+            settings.admin.password = settingsData.admin_password;
+            settings.metodos_pago = settingsData.metodos_pago;
+            settings.whatsapp = settingsData.whatsapp_config;
+            settings.precios = settingsData.precios;
         }
 
         // Recientes
@@ -133,28 +160,11 @@ async function loadFromSupabase() {
         const { data: pagosData } = await supabase.from('ff_pagos_recibidos').select('*');
         if (pagosData) pagosData.forEach(p => { pagosValidados[p.ref] = { amount: p.amount, date: p.date, used: p.used }; });
 
-        // Settings
-        const { data: settData } = await supabase.from('ff_settings').select('*').eq('id', 1).single();
-        if (settData) {
-            settings = {
-                tasa_del_dia: settData.tasa_del_dia,
-                barra_informativa: settData.barra_informativa,
-                precios: settData.precios || settings.precios,
-                admin: { username: settData.admin_username, password: settData.admin_password },
-                metodos_pago: settData.metodos_pago || settings.metodos_pago,
-                whatsapp: settData.whatsapp_config || settings.whatsapp
-            };
-        }
-
-        console.log('[SUPABASE] ✅ Datos cargados:', Object.keys(users).length, 'usuarios,', Object.keys(orders).length, 'pedidos');
+        console.log('[SUPABASE] ✅ Datos cargados:', Object.keys(users).length, 'usuarios,', Object.keys(orders).length, 'pedidos pendientes.');
     } catch (e) {
         console.error('[SUPABASE] ❌ Error cargando datos:', e.message);
     }
 }
-
-
-
-
 
 function savePagos() {
     supabase.from('ff_pagos_recibidos').upsert(
@@ -1169,6 +1179,48 @@ const server = http.createServer(async (req, res) => {
                 res.writeHead(200);
                 res.end(JSON.stringify(data || []));
             });
+    } else if (parsedUrl.pathname === '/admin/pines/available' && req.method === 'GET') {
+        const amount = parsedUrl.searchParams.get('amount');
+        let query = supabase.from('ff_pines').select('*').eq('used', false);
+        if (amount) query = query.eq('amount', amount);
+        
+        query.order('created_at', { ascending: false })
+            .then(({ data, error }) => {
+                res.writeHead(200);
+                res.end(JSON.stringify(data || []));
+            });
+    } else if (parsedUrl.pathname === '/admin/pines/update' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { id, code } = JSON.parse(body);
+                const { error } = await supabase.from('ff_pines').update({ code }).eq('id', id);
+                if (error) throw error;
+                await reloadPines();
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+    } else if (parsedUrl.pathname === '/admin/pines/delete' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { id } = JSON.parse(body);
+                const { error } = await supabase.from('ff_pines').delete().eq('id', id);
+                if (error) throw error;
+                await reloadPines();
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/pines/add' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
