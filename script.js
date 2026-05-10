@@ -509,11 +509,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (r.type === 'canje') {
                         return `🎁 ${r.name} CANJEÓ ${r.pack} diamantes con sus puntos!`;
                     }
-                    return `✅ ${r.name} recargó ${r.pack} diamantes`;
+                    return `✅ ${r.name} compró PIN de ${r.pack} diamantes`;
                 }).join(' | ');
-                marquee.innerText = ` ÚLTIMAS ACTIVIDADES: ${text} | ¡Únete a los miles de jugadores que confían en nosotros! `;
+                marquee.innerText = ` ÚLTIMAS COMPRAS: ${text} | ¡Únete a los miles de jugadores que confían en nosotros! `;
             } else {
-                marquee.innerText = " ¡BIENVENIDOS A RECARGAS FREE FIRE! – Verifica tu ID y selecciona tu paquete de diamantes preferido. ";
+                marquee.innerText = " ¡BIENVENIDOS A LA TIENDA DE PINES! – Selecciona tu paquete y recibe tu código al instante. ";
             }
         } catch (e) {
             console.error('Error cargando recientes:', e);
