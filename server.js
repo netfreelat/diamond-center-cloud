@@ -675,14 +675,24 @@ const server = http.createServer(async (req, res) => {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
-            // Responder 200 OK inmediatamente a Telegram
+            // Responder 200 OK inmediatamente
             res.writeHead(200);
             res.end('OK');
 
             try {
                 const update = JSON.parse(body);
-                console.log('[WEBHOOK] Recibido update_id:', update.update_id);
-                
+                const updateId = update.update_id;
+
+                // Cache para evitar duplicados (memoria temporal)
+                if (!global.processedUpdates) global.processedUpdates = new Set();
+                if (global.processedUpdates.has(updateId)) {
+                    console.log(`[WEBHOOK] Ignorando update_id duplicado: ${updateId}`);
+                    return;
+                }
+                global.processedUpdates.add(updateId);
+                // Limpiar cache cada 10 min
+                setTimeout(() => global.processedUpdates.delete(updateId), 600000);
+
                 if (update.callback_query) {
                     const callbackQuery = update.callback_query;
                     const data = callbackQuery.data;
