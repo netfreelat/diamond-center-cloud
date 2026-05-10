@@ -727,7 +727,7 @@ PIN789012
                     document.getElementById('pin-codes').value = '';
                     loadPinStats();
                 } else {
-                    Swal.fire('Error', data.message || 'No se pudieron cargar los pines.', 'error');
+                    Swal.fire('Error', data.message || 'Error al cargar pines (V2)', 'error');
                 }
             } catch (e) { 
                 console.error(e);
