@@ -74,14 +74,14 @@
                     <h2 id="player-name-display" style="font-size: 1.4rem;">Nombre del Jugador</h2>
                 </div>
 
-                <div class="input-group" style="margin-bottom: 10px;">
+                <div class="input-group" style="margin-bottom: 10px; display: none;">
                     <label style="display: block; font-size: 0.75rem; color: var(--text-gray); margin-bottom: 5px; text-align: left;">PORTAL DE CANJE:</label>
                     <div style="display: flex; gap: 5px;">
-                        <button id="region-auto" class="region-btn active" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--secondary); background: rgba(0, 191, 255, 0.1); color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+                        <button id="region-auto" class="region-btn" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #aaa; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
                             <i class="fa-solid fa-bolt"></i> AUTOMÁTICO
                         </button>
-                        <button id="region-chile" class="region-btn" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #aaa; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
-                            🇨🇱 CHILE (HYPE)
+                        <button id="region-chile" class="region-btn active" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--secondary); background: rgba(0, 191, 255, 0.1); color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+                            CANJE LATAM
                         </button>
                     </div>
                 </div>
@@ -90,9 +90,9 @@
                     <input type="text" id="pin-input" placeholder="Ingresa el código del PIN" autocomplete="off" style="text-transform: uppercase; font-family: monospace; letter-spacing: 2px; text-align: center;">
                 </div>
 
-                <div id="hype-helper" style="display: none; background: rgba(255, 183, 0, 0.1); border: 1px solid rgba(255, 183, 0, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: left;">
-                    <p style="color: #ffb700; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;"><i class="fa-solid fa-circle-info"></i> MODO ASISTIDO HYPE GAMES</p>
-                    <p style="color: #ccc; font-size: 0.75rem; line-height: 1.4;">Te redirigiremos a Hype Games con el PIN escrito. Copia tu ID de aquí abajo para pegarlo allá:</p>
+                <div id="hype-helper" style="display: block; background: rgba(0, 191, 255, 0.05); border: 1px solid rgba(0, 191, 255, 0.2); border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: left;">
+                    <p style="color: var(--secondary); font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;"><i class="fa-solid fa-circle-info"></i> MODO ASISTIDO LATAM</p>
+                    <p style="color: #ccc; font-size: 0.75rem; line-height: 1.4;">Te redirigiremos al portal de canje con el PIN escrito. Copia tu ID de aquí abajo para pegarlo allá:</p>
                     <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                         <span id="copy-id-text" style="color: white; font-family: monospace; font-weight: 700; font-size: 1rem;"></span>
                         <button onclick="copyCurrentId()" style="background: var(--secondary); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">COPIAR</button>
@@ -134,41 +134,11 @@
             const hypeHelper = document.getElementById('hype-helper');
             const copyIdText = document.getElementById('copy-id-text');
             
-            let selectedRegion = 'auto';
+            let selectedRegion = 'chile'; // Modo LATAM por defecto
 
-            // Manejo de regiones
-            regionAuto.addEventListener('click', () => {
-                selectedRegion = 'auto';
-                regionAuto.classList.add('active');
-                regionAuto.style.borderColor = 'var(--secondary)';
-                regionAuto.style.background = 'rgba(0, 191, 255, 0.1)';
-                regionAuto.style.color = 'white';
-                
-                regionChile.classList.remove('active');
-                regionChile.style.borderColor = 'rgba(255,255,255,0.1)';
-                regionChile.style.background = 'rgba(255,255,255,0.05)';
-                regionChile.style.color = '#aaa';
-                
-                hypeHelper.style.display = 'none';
-                redeemPinBtn.innerHTML = '<i class="fa-solid fa-gift"></i> Canjear Diamantes';
-            });
-
-            regionChile.addEventListener('click', () => {
-                selectedRegion = 'chile';
-                regionChile.classList.add('active');
-                regionChile.style.borderColor = '#ffb700';
-                regionChile.style.background = 'rgba(255, 183, 0, 0.1)';
-                regionChile.style.color = 'white';
-                
-                regionAuto.classList.remove('active');
-                regionAuto.style.borderColor = 'rgba(255,255,255,0.1)';
-                regionAuto.style.background = 'rgba(255,255,255,0.05)';
-                regionAuto.style.color = '#aaa';
-                
-                hypeHelper.style.display = 'block';
-                copyIdText.innerText = playerIdInput.value.trim();
-                redeemPinBtn.innerHTML = '<i class="fa-solid fa-external-link"></i> Abrir Hype Games';
-            });
+            // Forzar interfaz de modo asistido
+            redeemPinBtn.innerHTML = '<i class="fa-solid fa-external-link"></i> Abrir Portal de Canje';
+            hypeHelper.style.display = 'block';
 
             window.copyCurrentId = () => {
                 const id = playerIdInput.value.trim();
@@ -288,19 +258,19 @@
                     
                     Swal.fire({
                         icon: 'info',
-                        title: 'PORTAL HYPE ABIERTO',
+                        title: 'PORTAL DE CANJE ABIERTO',
                         html: `
-                            <p style="color: #fff; margin-bottom: 15px;">Hemos abierto Hype Games con tu PIN pre-llenado.</p>
+                            <p style="color: #fff; margin-bottom: 15px;">Hemos abierto el portal con tu PIN pre-llenado.</p>
                             <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
                                 <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Tu ID para pegar:</p>
                                 <h3 style="color: var(--secondary); font-family: monospace; letter-spacing: 2px;">${uid}</h3>
                             </div>
-                            <p style="color: #ffb700; font-size: 0.7rem; margin-top: 15px;">⚠️ Recuerda que Hype pide RUT y Email.</p>
+                            <p style="color: var(--secondary); font-size: 0.7rem; margin-top: 15px;">⚠️ Recuerda que el portal puede solicitar RUT y Email.</p>
                         `,
                         background: 'rgba(20, 10, 35, 0.95)',
                         color: '#fff',
                         confirmButtonText: 'ENTENDIDO',
-                        confirmButtonColor: '#ffb700'
+                        confirmButtonColor: 'var(--secondary)'
                     });
                     return;
                 }
