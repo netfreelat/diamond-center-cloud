@@ -306,7 +306,7 @@
         <nav class="tabs-nav">
             <button class="tab-btn active" onclick="showTab('dashboard', this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
             <button class="tab-btn" onclick="showTab('pedidos', this)"><i class="fa-solid fa-shopping-cart"></i> Pedidos</button>
-            <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Almacén</button>
+            <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Inventario de Pines</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
@@ -424,8 +424,11 @@ PIN789012
 
                 <!-- Fin de Grid de Carga y Stock -->
 
-                <div class="action-card" style="margin-top: 20px;">
-                    <h3><i class="fa-solid fa-list-check"></i> Gestión de Pines Disponibles</h3>
+                <div class="action-card" style="margin-top: 20px; border: 1px solid var(--secondary);">
+                    <h3>
+                        <i class="fa-solid fa-list-check" style="color: var(--secondary);"></i> Gestión de Pines Disponibles 
+                        <span style="background: var(--secondary); color: var(--dark); font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: 800; vertical-align: middle;">NUEVO</span>
+                    </h3>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <select id="manage-pin-amount" style="flex: 1; background: rgba(20, 10, 35, 0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px;">
                             <option value="100">100 Diamantes</option>
