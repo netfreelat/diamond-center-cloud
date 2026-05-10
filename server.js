@@ -817,12 +817,9 @@ const server = http.createServer(async (req, res) => {
                     editReq.write(editPayload);
                     editReq.end();
                 }
-                res.writeHead(200);
-                res.end('OK');
             } catch (e) {
                 console.error('[WEBHOOK] Error procesando body:', e);
-                res.writeHead(400);
-                res.end('Error');
+                // No respondemos aquí porque ya se envió el 200 OK arriba
             }
         });
     } else if (req.method === 'OPTIONS') {
