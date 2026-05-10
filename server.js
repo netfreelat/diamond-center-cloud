@@ -160,12 +160,27 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `━━━━━━━━━━━━━━━\n\n` +
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
         if (pin) {
-            msg += `\n\n🔑 *Tu Código PIN:* \`${pin}\`\n\n` +
-                   `💡 *Instrucciones para canjear:* \n` +
+            msg += `\n\n💡 *Instrucciones para canjear:* \n` +
                    `1. Dirígete a: https://redeempins.com/\n` +
                    `2. Ingresa el PIN solicitado.\n` +
                    `3. Rellena los datos e ingresa el ID del jugador.\n` +
-                   `4. ¡Canjea y listo! ✨`;
+                   `4. ¡Canjea y listo! ✨\n\n` +
+                   `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
+            
+            // Mensaje 1: El ticket sin el PIN (el PIN irá en el siguiente mensaje)
+            const waTicket = { id: Date.now().toString(), number: order.wa, message: msg };
+            whatsappQueue.push(waTicket);
+            supabase.from('ff_wa_queue').insert(waTicket);
+
+            // Mensaje 2: EL PIN SOLO (para copiar fácil)
+            const waPin = { 
+                id: (Date.now() + 1).toString(), 
+                number: order.wa, 
+                message: `🔑 *PIN PARA COPIAR:*\n\n${pin}` 
+            };
+            whatsappQueue.push(waPin);
+            supabase.from('ff_wa_queue').insert(waPin);
+            return;
         }
         msg += `\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
     } else {

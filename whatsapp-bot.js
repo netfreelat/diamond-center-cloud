@@ -33,8 +33,12 @@ function updateStatus(status, qr = '') {
             'Content-Length': Buffer.byteLength(data)
         }
     };
-    const req = httpMod.request(options);
-    req.on('error', () => {}); // Silenciar error si no conecta
+    const req = httpMod.request(options, (res) => {
+        console.log(`[WA-STATUS] Notificado al servidor: ${status} (Respuesta: ${res.statusCode})`);
+    });
+    req.on('error', (e) => {
+        console.error(`[WA-STATUS] ❌ Error notificando al servidor:`, e.message);
+    });
     req.write(data);
     req.end();
 }
