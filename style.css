@@ -816,9 +816,9 @@ body::before {
     width: 100%;
     background: var(--card-bg);
     backdrop-filter: blur(20px);
-    padding: 30px 20px;
+    padding: 20px 15px;
     border-radius: 20px;
-    border: 1px solid rgba(157, 0, 255, 0.3);
+    border: 1px solid rgba(0, 240, 255, 0.3);
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -839,9 +839,9 @@ body::before {
 
 .receipt-title {
     color: #fff;
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     font-weight: 800;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
     font-family: 'Montserrat', sans-serif;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
@@ -851,11 +851,11 @@ body::before {
     color: #fff;
     width: 100%;
     border-radius: 12px;
-    padding: 25px;
+    padding: 15px;
     text-align: left;
     font-family: 'Inter', sans-serif;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 25px;
+    margin-bottom: 15px;
     box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
 }
 
@@ -901,7 +901,7 @@ body::before {
 
 .receipt-info span.val {
     color: #fff;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .status-pending {
@@ -1179,3 +1179,42 @@ body::before {
         margin-bottom: 15px;
     }
 }`n/* === STOCK BADGES === */`n.stock-badge {`n    position: absolute;`n    top: 10px;`n    left: 10px;`n    padding: 4px 8px;`n    border-radius: 6px;`n    font-size: 0.65rem;`n    font-weight: 800;`n    text-transform: uppercase;`n    letter-spacing: 0.5px;`n    z-index: 5;`n}`n.stock-badge.available {`n    background: rgba(37, 211, 102, 0.15);`n    color: #25D366;`n    border: 1px solid rgba(37, 211, 102, 0.3);`n}`n.stock-badge.out {`n    background: rgba(255, 75, 43, 0.15);`n    color: #ff4b2b;`n    border: 1px solid rgba(255, 75, 43, 0.3);`n}`n.package-card.out-of-stock {`n    cursor: not-allowed;`n    filter: grayscale(0.8);`n}`n.package-card.out-of-stock:hover {`n    transform: none;`n    box-shadow: none;`n}`n`n/* === PREMIUM RECEIPT ENHANCEMENTS === */`n.receipt-card {`n    position: relative;`n    overflow: hidden;`n    border: 1px solid var(--glass-border);`n    background: linear-gradient(145deg, rgba(20, 10, 35, 0.9), rgba(10, 5, 20, 0.95));`n}`n.receipt-card::before {`n    content: "";`n    position: absolute;`n    top: -50%;`n    right: -50%;`n    width: 100%;`n    height: 100%;`n    background: radial-gradient(circle, rgba(157, 0, 255, 0.1) 0%, transparent 70%);`n    pointer-events: none;`n}
+/* PIN DISPLAY STYLES */
+#pin-display-container {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(157, 0, 255, 0.1));
+    border: 1px dashed var(--secondary);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 10px;
+    text-align: center;
+    width: 100%;
+}
+
+#assigned-pin {
+    font-size: 1.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: #fff;
+    letter-spacing: 3px;
+    margin: 5px 0;
+    display: block;
+    text-shadow: 0 0 10px var(--secondary);
+}
+
+.btn-copy-pin {
+    background: var(--secondary);
+    color: #000;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.btn-copy-pin:hover {
+    background: #fff;
+    transform: scale(1.05);
+}

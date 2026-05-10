@@ -51,6 +51,28 @@ async function verifyBDVPayment(montoReportado, referencia4) {
     }
 }
 
+// --- Helper de Hora Venezuela (UTC-4) ---
+function getVETime() {
+    return new Date(new Date().toLocaleString("en-US", {timeZone: "America/Caracas"}));
+}
+
+function getVEISO() {
+    return getVETime().toISOString();
+}
+
+function getVEString() {
+    return new Date().toLocaleString("es-VE", { 
+        timeZone: "America/Caracas",
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+}
+
 // --- Estado en memoria (cache) ---
 let recentReloads = [];
 let orders = {};
@@ -236,7 +258,7 @@ function addPoints(uid, amountUsdt, name = null) {
 }
 
 function saveRecent(name, pack, type = 'recarga') {
-    const entry = { name, pack, type, time: new Date().toLocaleTimeString() };
+    const entry = { name, pack, type, time: getVEString().split(' ')[1] + ' ' + getVEString().split(' ')[2] };
     recentReloads.unshift(entry);
     if (recentReloads.length > 10) recentReloads.pop();
     supabase.from('ff_recientes').insert(entry)
@@ -459,7 +481,7 @@ function processPendingOrder(inputFullRef, inputShortRef) {
 
 // --- LIMPIADOR AUTOMÁTICO DE PEDIDOS (Cada 1 minuto) ---
 setInterval(() => {
-    const NOW = new Date();
+    const NOW = getVETime();
     let changed = false;
 
     for (let ref in orders) {
@@ -487,8 +509,10 @@ const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const searchParams = parsedUrl.searchParams;
     
-    // LOG GLOBAL DE TRÁFICO
-    console.log(`[TRAFICO] ${req.method} ${parsedUrl.pathname}`);
+    // LOG GLOBAL DE TRÁFICO (Filtrado para no saturar con WhatsApp)
+    if (parsedUrl.pathname !== '/api/whatsapp_queue' && parsedUrl.pathname !== '/api/wa_status') {
+        console.log(`[TRAFICO] ${req.method} ${parsedUrl.pathname}`);
+    }
 
     // Permisos CORS para que el panel admin y la web funcionen
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -627,9 +651,10 @@ const server = http.createServer(async (req, res) => {
         const control_num = `DC-${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
 
         // Guardar pedido como pendiente
-        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa: wa, control_num };
+        const currentTime = getVEISO();
+        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num };
         supabase.from('ff_orders').insert({
-            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa, control_num
+            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num
         }).then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando pedido:', error.message); });
 
         /* 
@@ -1170,7 +1195,7 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: false }));
         } else if (uid) {
             // Registrar si no existe (Balance inicial 0 para priorizar compras)
-            users[uid] = { name: 'Jugador', points: 0, registered: new Date().toISOString() };
+            users[uid] = { name: 'Jugador', points: 0, registered: getVEISO() };
             saveUser(uid);
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));

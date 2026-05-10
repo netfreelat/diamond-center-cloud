@@ -758,7 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ref: ref,
                 control_num: controlNum,
                 pack: selectedPackage.amount,
-                date: new Date().toLocaleString(),
+                date: new Date().toLocaleString("es-VE", { timeZone: "America/Caracas" }),
                 status: 'pending'
             };
             myOrders.push(newOrder);
@@ -766,8 +766,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const approvalNum = Math.floor(Math.random() * 90000) + 10000;
             const now = new Date();
-            const dateStr = now.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const dateStr = now.toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+            const timeStr = now.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: true });
             const fullDateTime = `${dateStr} ${timeStr}`;
 
             Swal.fire({
@@ -781,30 +781,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">DIAMOND CENTER CLOUD</div>
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
-                                <p style="margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
-                                    <strong>PLAN:</strong> <span class="val">${selectedPackage.amount} + ${selectedPackage.bonus} Bonus</span>
-                                </p>
-                                <p style="margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
-                                    <strong>ID / JUGADOR:</strong> <span class="val">${playerInput.value} (${name})</span>
-                                </p>
-                                <p style="margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px;">
-                                    <strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${approvalNum}</span>
-                                </p>
-                                <p style="margin: 4px 0;">
-                                    <strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span>
-                                </p>
+                                <p><strong>PLAN:</strong> <span class="val">${selectedPackage.amount} + ${selectedPackage.bonus} Bonus</span></p>
+                                <p><strong>ID / JUGADOR:</strong> <span class="val">${playerInput.value} (${name})</span></p>
+                                <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
+                                <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
+                                <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
                             </div>
 
-                            <div id="pin-display-container" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0, 240, 255, 0.05); border: 1px dashed var(--secondary); border-radius: 8px;">
-                                <p id="assigned-pin" style="margin: 0; font-size: 1.3rem; font-family: monospace; color: #fff; font-weight: 800;"></p>
-                                <button onclick="copyPin()" style="background: transparent; border: 1px solid var(--secondary); color: var(--secondary); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem; margin: 5px 0;"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
-                                <div style="font-size: 0.65rem; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
-                                    Canje: <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a> (PIN + ID)
+                            <div id="pin-display-container" style="display: none;">
+                                <p id="assigned-pin"></p>
+                                <button class="btn-copy-pin" onclick="copyPin()"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
+                                <div style="font-size: 0.65rem; color: #aaa; margin-top: 8px;">
+                                    Canje: <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a>
                                 </div>
                             </div>
                             
-                            <div class="receipt-ticket" style="margin-top: 8px; font-size: 0.75rem;">
-                                <i class="fa-solid fa-ticket"></i> Comprobante Oficial
+                            <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
+                                <i class="fa-solid fa-shield-halved"></i> Diamond Center Cloud - Transacción Segura
                             </div>
                         </div>
                         
@@ -1137,5 +1130,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
+    };
+
+    window.copyPin = () => {
+        const pinEl = document.getElementById('assigned-pin');
+        if (!pinEl) return;
+        const pin = pinEl.innerText;
+        if (!pin) return;
+        navigator.clipboard.writeText(pin).then(() => {
+            const btn = document.querySelector('.btn-copy-pin');
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Copiado!';
+                btn.style.background = '#25D366';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }
+        });
     };
 });
