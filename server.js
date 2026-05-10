@@ -119,7 +119,7 @@ async function reloadPines() {
     }
 }
 
-async function loadInitialData() {
+async function loadFromSupabase() {
     try {
         // Cargar Pines
         await reloadPines();
