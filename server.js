@@ -206,6 +206,8 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             msg += `\n\n⚡ *CANJE DIRECTO:* \n` +
                    `Presiona el link de abajo para recibir tus diamantes al instante:\n` +
                    `🔗 https://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}\n\n` +
+                   `🇨🇱 *SI TU PIN ES DE CHILE:* \n` +
+                   `🔗 https://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}&region=chile\n\n` +
                    `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
             
             // Mensaje 1: Ticket con instrucciones (ID único por ref)

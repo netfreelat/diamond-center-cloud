@@ -78,8 +78,13 @@ client.on('disconnected', (reason) => {
 
 client.initialize();
 
+let isProcessingQueue = false;
+
 async function checkQueue() {
+    if (isProcessingQueue) return; // ⚠️ Evitar llamadas superpuestas
+    
     try {
+        isProcessingQueue = true;
         const req = httpMod.get(`${SERVER_URL}/api/whatsapp_queue`, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
@@ -93,6 +98,7 @@ async function checkQueue() {
                             client.destroy().then(() => {
                                 console.log('Client destroyed. Re-initializing...');
                                 client.initialize();
+                                isProcessingQueue = false;
                             });
                             return;
                         }
@@ -105,15 +111,21 @@ async function checkQueue() {
                         }
                     } catch(e) {
                         console.error('[WHATSAPP] Error parseando JSON de cola:', e.message);
+                    } finally {
+                        isProcessingQueue = false; // Liberar lock al terminar el lote
                     }
+                } else {
+                    isProcessingQueue = false;
                 }
             });
         });
         req.on('error', (e) => {
             console.error('[WHATSAPP] Error conectando al servidor web:', e.message);
+            isProcessingQueue = false;
         });
     } catch (e) {
         console.error('[WHATSAPP] Error en checkQueue:', e.message);
+        isProcessingQueue = false;
     }
 }
 
