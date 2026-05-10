@@ -612,8 +612,8 @@ PIN789012
             ordersList.forEach(order => {
                 const tr = document.createElement('tr');
                 const dateObj = new Date(order.time);
-                const dateStr = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-                const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const dateStr = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', timeZone: 'America/Caracas' });
+                const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' });
                 
                 tr.innerHTML = `
                     <td><small>${dateStr}</small><br><strong>${timeStr}</strong></td>
@@ -707,7 +707,7 @@ PIN789012
                         usedPines.forEach(p => {
                             usedTbody.innerHTML += `
                                 <tr>
-                                    <td><small>${new Date(p.created_at).toLocaleString()}</small></td>
+                                    <td><small>${new Date(p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' })}</small></td>
                                     <td>${p.amount} 💎</td>
                                     <td><code style="color:var(--secondary)">${p.code}</code></td>
                                 </tr>
