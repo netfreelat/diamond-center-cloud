@@ -13,7 +13,7 @@ echo 2. Creando punto de restauracion...
 git commit -m "Actualizacion de precios/datos %date% %time%"
 
 echo 3. Subiendo a la nube (GitHub/Render)...
-git push origin master
+git push origin main
 
 echo.
 echo =========================================

@@ -997,7 +997,11 @@ const server = http.createServer(async (req, res) => {
                 const inserts = cleanCodes.map(code => ({ amount: amount.toString(), code, used: false }));
                 const { error } = await supabase.from('ff_pines').insert(inserts);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('[ALMACEN] ❌ Supabase Error:', error);
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: error.message || 'Error en la base de datos de Supabase' }));
+                }
 
                 // Actualizar memoria
                 if (!pines[amount]) pines[amount] = [];
@@ -1009,7 +1013,7 @@ const server = http.createServer(async (req, res) => {
             } catch (e) { 
                 console.error('[ALMACEN] ❌ ERROR:', e.message);
                 res.writeHead(400); 
-                res.end(JSON.stringify({ success: false, message: e.message })); 
+                res.end(JSON.stringify({ success: false, message: e.message || 'Error interno del servidor' })); 
             }
         });
     } else if (parsedUrl.pathname === '/api/check_password') {
