@@ -200,6 +200,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                    `2. Ingresa el PIN solicitado.\n` +
                    `3. Rellena los datos e ingresa el ID del jugador.\n` +
                    `4. ¡Canjea y listo! ✨\n\n` +
+                   `👇 *A CONTINUACIÓN EL PIN PARA COPIAR:* 👇\n\n` +
                    `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
             
             // Mensaje 1: Ticket con instrucciones (ID único por ref)
@@ -208,8 +209,8 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             supabase.from('ff_wa_queue').insert(waTicket)
                 .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error ticket:', error.message); });
 
-            // Mensaje 2: El PIN solo (ID único por ref)
-            const waPin = { id: pinId, number: order.wa, message: `🔑 *PIN PARA COPIAR:*\n\n${pin}` };
+            // Mensaje 2: El PIN solo (ID único por ref) - 100% copiable
+            const waPin = { id: pinId, number: order.wa, message: pin };
             whatsappQueue.push(waPin);
             supabase.from('ff_wa_queue').insert(waPin)
                 .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error pin:', error.message); });
