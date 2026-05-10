@@ -170,6 +170,19 @@ function saveWaQueue() {
 
 function queueWhatsAppMessage(order, isAccepted, pin = null) {
     if (!order.wa || order.wa === 'No provisto') return;
+
+    // ⚠️ ANTI-DUPLICADO: IDs basados en ref del pedido (únicos por orden)
+    const orderRef = order.ref || Date.now().toString();
+    const ticketId = `wa_${orderRef}_ticket`;
+    const pinId    = `wa_${orderRef}_pin`;
+    const singleId = `wa_${orderRef}_msg`;
+
+    // Verificar si ya hay mensajes de este pedido en la cola
+    const yaEncolado = whatsappQueue.some(item => item.id && item.id.startsWith(`wa_${orderRef}_`));
+    if (yaEncolado) {
+        console.log(`[WA-QUEUE] ⚠️ Duplicado ignorado para ref ${orderRef}`);
+        return;
+    }
     
     let msg = '';
     if (isAccepted) {
@@ -189,19 +202,19 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                    `4. ¡Canjea y listo! ✨\n\n` +
                    `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
             
-            // Mensaje 1: El ticket sin el PIN (el PIN irá en el siguiente mensaje)
-            const waTicket = { id: Date.now().toString(), number: order.wa, message: msg };
+            // Mensaje 1: Ticket con instrucciones (ID único por ref)
+            const waTicket = { id: ticketId, number: order.wa, message: msg };
             whatsappQueue.push(waTicket);
-            supabase.from('ff_wa_queue').insert(waTicket);
+            supabase.from('ff_wa_queue').insert(waTicket)
+                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error ticket:', error.message); });
 
-            // Mensaje 2: EL PIN SOLO (para copiar fácil)
-            const waPin = { 
-                id: (Date.now() + 1).toString(), 
-                number: order.wa, 
-                message: `🔑 *PIN PARA COPIAR:*\n\n${pin}` 
-            };
+            // Mensaje 2: El PIN solo (ID único por ref)
+            const waPin = { id: pinId, number: order.wa, message: `🔑 *PIN PARA COPIAR:*\n\n${pin}` };
             whatsappQueue.push(waPin);
-            supabase.from('ff_wa_queue').insert(waPin);
+            supabase.from('ff_wa_queue').insert(waPin)
+                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error pin:', error.message); });
+
+            console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
             return;
         }
         msg += `\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
@@ -212,10 +225,11 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `Envía captura de tu pago a soporte. 🛠️\n🆔 *ID:* ${order.uid}\n\n¡Estamos aquí para ayudarte! 🤝`;
     }
 
-    const waItem = { id: Date.now().toString(), number: order.wa, message: msg };
+    const waItem = { id: singleId, number: order.wa, message: msg };
     whatsappQueue.push(waItem);
     supabase.from('ff_wa_queue').insert(waItem)
-        .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando WA queue:', error.message); });
+        .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error msg:', error.message); });
+    console.log(`[WA-QUEUE] ✅ 1 mensaje encolado para ${order.wa} (ref: ${orderRef})`);
 }
 
 function saveUsers() {
@@ -911,10 +925,11 @@ const server = http.createServer(async (req, res) => {
                     }
 
                     // Encolar mensaje de WhatsApp si corresponde (éxito o rechazo final)
+                    const orderWithRef = { ...order, ref };
                     if (action === 'reject') {
-                        queueWhatsAppMessage(order, false);
+                        queueWhatsAppMessage(orderWithRef, false);
                     } else if (action === 'accept' && orders[ref].status === 'approved') {
-                        queueWhatsAppMessage(order, true, orders[ref].pin);
+                        queueWhatsAppMessage(orderWithRef, true, orders[ref].pin);
                     }
 
                     // 2. Editar el mensaje original con el resultado
@@ -1056,7 +1071,7 @@ const server = http.createServer(async (req, res) => {
                         saveRecent(order.name, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                        queueWhatsAppMessage(order, true, pin);
+                        queueWhatsAppMessage({ ...order, ref }, true, pin);
                         updateTelegramStatus(ref);
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, message: 'Aprobado vía PIN' }));
@@ -1090,7 +1105,7 @@ const server = http.createServer(async (req, res) => {
                 if (orders[ref]) {
                     orders[ref].status = 'rejected';
                     updateOrderStatus(ref, 'rejected');
-                    queueWhatsAppMessage(orders[ref], false);
+                    queueWhatsAppMessage({ ...orders[ref], ref }, false);
                     updateTelegramStatus(ref);
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true }));
