@@ -7,8 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     
     // URL del servidor en Render (TU URL REAL)
-    const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
-    const SERVER_URL = isLocal ? 'http://localhost:3500' : RENDER_URL;
+    const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
 
     async function loadConfig() {
         try {
@@ -67,8 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         Object.entries(precios).forEach(([amount, data]) => {
             const priceBs = (data.usdt * tasa).toFixed(2).replace('.', ',');
+            const isAvailable = APP_CONFIG.stock && APP_CONFIG.stock[amount] !== false;
+            const stockLabel = isAvailable ? '<span class="stock-badge available">Disponible</span>' : '<span class="stock-badge out">Agotado</span>';
+            const disabledClass = isAvailable ? '' : 'out-of-stock';
+            
             grid.innerHTML += `
-                <div class="package-card" data-amount="${amount}" data-bonus="${parseInt(amount)*0.1}" data-price="${data.usdt}">
+                <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${parseInt(amount)*0.1}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
+                    ${stockLabel}
                     <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                     <div class="pack-info">
                         <span class="amount">${data.label}</span>
@@ -745,13 +749,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const notifyRes = await fetch(notifyUrl);
             if (!notifyRes.ok) throw new Error('Error al notificar');
-
-            if (!notifyRes.ok) throw new Error('Error al notificar');
+            const notifyData = await notifyRes.json();
+            const controlNum = notifyData.control_num || 'N/A';
 
             // Guardar en historial local
             const myOrders = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
             const newOrder = {
                 ref: ref,
+                control_num: controlNum,
                 pack: selectedPackage.amount,
                 date: new Date().toLocaleString(),
                 status: 'pending'
@@ -780,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p><strong>Bonus:</strong> <span class="val">${selectedPackage.bonus} diamantes</span></p>
                                 <p><strong>ID jugador:</strong> <span class="val">${playerInput.value}</span></p>
                                 <p><strong>Jugador:</strong> <span class="val">${name}</span></p>
+                                <p><strong>N° Control:</strong> <span class="val" style="color: var(--secondary); font-weight: 800;">${controlNum}</span></p>
                                 <p><strong>N° Aprobación:</strong> <span class="val">${approvalNum}</span></p>
                                 <p><strong>Fecha:</strong> <span class="val">${fullDateTime}</span></p>
                                 <p><strong>Estado:</strong> <span class="val status-pending" id="order-status">VERIFICANDO PAGO...</span></p>
@@ -787,6 +793,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <p style="margin: 0; font-size: 0.8rem; color: var(--secondary); font-weight: 700;">🔑 TU PIN DE DIAMANTES:</p>
                                     <p id="assigned-pin" style="margin: 5px 0 0 0; font-size: 1.5rem; font-family: monospace; letter-spacing: 2px; color: #fff; font-weight: 800;"></p>
                                     <button onclick="copyPin()" style="margin-top: 10px; background: transparent; border: 1px solid var(--secondary); color: var(--secondary); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem;"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
+                                    
+                                    <div style="margin-top: 15px; text-align: left; font-size: 0.7rem; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                                        <p style="color: var(--secondary); font-weight: 700; margin-bottom: 5px;">💡 ¿CÓMO CANJEAR?</p>
+                                        <p>1. Ve a <strong>redeempins.com</strong></p>
+                                        <p>2. Ingresa este PIN y tu ID.</p>
+                                        <p>3. ¡Diamantes al instante! 💎</p>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -886,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                          `🆔 *ID:* ${playerInput.value}\n` +
                                          `📦 *Plan:* ${selectedPackage.amount} diamantes\n` +
                                          `✨ *Bonus:* ${selectedPackage.bonus} diamantes\n` +
+                                         `🔢 *N° Control:* ${controlNum}\n` +
                                          `🔢 *Ref:* ${approvalNum}\n` +
                                          `📅 *Fecha:* ${fullDateTime}\n` +
                                          `✅ *Estado:* ${statusText}\n` +
@@ -1102,4 +1116,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (changeIdBtn) changeIdBtn.addEventListener('click', resetUI);
     if (resetUiBtn) resetUiBtn.addEventListener('click', resetUI);
+
+    // Función global para copiar PIN
+    window.copyPin = () => {
+        const pinText = document.getElementById('assigned-pin').innerText;
+        if (pinText) {
+            navigator.clipboard.writeText(pinText).then(() => {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'PIN Copiado al portapapeles'
+                });
+            });
+        }
+    };
 });

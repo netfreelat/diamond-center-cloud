@@ -71,7 +71,10 @@ let settings = {
         "2180": { "usdt": 21.80, "label": "2180 + 218 Diamantes" },
         "5600": { "usdt": 56.00, "label": "5600 + 560 Diamantes" }
     },
-    admin: { username: "admin", password: "123" },
+    admin: { 
+        username: process.env.ADMIN_USER || "admin", 
+        password: process.env.ADMIN_PASS || "123" 
+    },
     metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
     whatsapp: { soporte: "", canal: "" }
 };
@@ -156,7 +159,14 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `💎 *Paquete:* ${order.pack}\n` +
               `━━━━━━━━━━━━━━━\n\n` +
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
-        if (pin) msg += `\n\n🔑 *Tu Código PIN:* \`${pin}\`\n_(Canjéalo en el juego o nuestra web)_`;
+        if (pin) {
+            msg += `\n\n🔑 *Tu Código PIN:* \`${pin}\`\n\n` +
+                   `💡 *Instrucciones para canjear:* \n` +
+                   `1. Dirígete a: https://redeempins.com/\n` +
+                   `2. Ingresa el PIN solicitado.\n` +
+                   `3. Rellena los datos e ingresa el ID del jugador.\n` +
+                   `4. ¡Canjea y listo! ✨`;
+        }
         msg += `\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
     } else {
         msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
@@ -588,10 +598,13 @@ const server = http.createServer(async (req, res) => {
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
 
+        // Generar número de control único
+        const control_num = `DC-${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
+
         // Guardar pedido como pendiente
-        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa: wa };
+        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa: wa, control_num };
         supabase.from('ff_orders').insert({
-            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa
+            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: new Date().toISOString(), wa, control_num
         }).then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando pedido:', error.message); });
 
         // Intentar auto-aprobar si el pago ya llegó previamente
@@ -599,7 +612,7 @@ const server = http.createServer(async (req, res) => {
         if (autoApproved) {
             console.log(`[NOTIFICACIÓN] Pedido ${ref} fue AUTO-APROBADO por correo.`);
             res.writeHead(200);
-            return res.end(JSON.stringify({ success: true, info: 'Pedido auto-aprobado instantáneamente' }));
+            return res.end(JSON.stringify({ success: true, info: 'Pedido auto-aprobado instantáneamente', control_num }));
         }
 
         // --- CONFIGURACIÓN DE TELEGRAM ---
@@ -616,6 +629,7 @@ const server = http.createServer(async (req, res) => {
 💰 *Total:* ${price}
 💳 *Método:* ${method === 'pagomovil' ? 'Pago Móvil' : 'Binance Pay'}
 📝 *Referencia:* \`${ref}\`
+🔢 *N° Control:* \`${control_num}\`
 📱 *WhatsApp:* \`+${wa}\`
 -------------------------------
 ⏰ _Verifica el pago y presiona un botón:_
@@ -660,7 +674,7 @@ const server = http.createServer(async (req, res) => {
                     console.error('[TG-NOTIF] Error guardando ID de mensaje:', e.message);
                 }
                 res.writeHead(200);
-                res.end(JSON.stringify({ success: true, info: 'Notificación enviada' }));
+                res.end(JSON.stringify({ success: true, info: 'Notificación enviada', control_num }));
             });
         });
         
@@ -826,6 +840,11 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(204);
         res.end();
         return;
+    } else if (parsedUrl.pathname === '/admin/restart-wa' && req.method === 'POST') {
+        global.waRestartRequested = true;
+        console.log('[ADMIN] 🔄 REINICIO DE WHATSAPP SOLICITADO');
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, message: 'Solicitud de reinicio enviada al bot' }));
     } else if (parsedUrl.pathname === '/webhook/notificacion' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
@@ -1108,7 +1127,11 @@ const server = http.createServer(async (req, res) => {
             barra_informativa: settings.barra_informativa,
             precios: settings.precios,
             metodos_pago: settings.metodos_pago,
-            whatsapp: settings.whatsapp
+            whatsapp: settings.whatsapp,
+            stock: Object.keys(pines).reduce((acc, amount) => {
+                acc[amount] = pines[amount].length > 0;
+                return acc;
+            }, {})
         };
         res.writeHead(200);
         res.end(JSON.stringify(publicConfig));
@@ -1251,7 +1274,12 @@ const server = http.createServer(async (req, res) => {
         });
     } else if (parsedUrl.pathname === '/api/whatsapp_queue') {
         res.writeHead(200);
-        res.end(JSON.stringify({ success: true, queue: whatsappQueue }));
+        res.end(JSON.stringify({ 
+            success: true, 
+            queue: whatsappQueue,
+            restart: global.waRestartRequested || false
+        }));
+        if (global.waRestartRequested) global.waRestartRequested = false; // Resetear flag
     } else if (parsedUrl.pathname === '/api/whatsapp_sent' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);

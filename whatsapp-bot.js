@@ -64,6 +64,12 @@ client.on('auth_failure', msg => {
 client.on('disconnected', (reason) => {
     console.log('❌ Bot desconectado:', reason);
     updateStatus('Desconectado');
+    
+    // Intentar reiniciar el cliente después de 5 segundos
+    setTimeout(() => {
+        console.log('🔄 Intentando reiniciar el bot de WhatsApp...');
+        client.initialize();
+    }, 5000);
 });
 
 client.initialize();
@@ -77,6 +83,16 @@ async function checkQueue() {
                 if (res.statusCode === 200) {
                     try {
                         const data = JSON.parse(body);
+                        
+                        if (data.restart) {
+                            console.log('🔄 [WHATSAPP] Reinicio remoto solicitado desde el servidor.');
+                            client.destroy().then(() => {
+                                console.log('Client destroyed. Re-initializing...');
+                                client.initialize();
+                            });
+                            return;
+                        }
+
                         if (data.success && data.queue && data.queue.length > 0) {
                             console.log(`[WHATSAPP] Hay ${data.queue.length} mensajes pendientes.`);
                             for (const item of data.queue) {

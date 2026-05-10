@@ -51,6 +51,19 @@
                 <button id="verify-btn" class="btn-primary">
                     <i class="fa-solid fa-magnifying-glass"></i> Consultar ID
                 </button>
+
+                <!-- Instrucciones -->
+                <div style="margin-top: 25px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; text-align: left;">
+                    <h4 style="color: var(--secondary); font-size: 0.85rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-lightbulb"></i> INSTRUCCIONES DE CANJE
+                    </h4>
+                    <ul style="font-size: 0.8rem; color: #aaa; list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;">1. Dirígete a la página: <a href="https://redeempins.com/" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a></li>
+                        <li style="margin-bottom: 8px;">2. Ingresa el PIN que solicitaste.</li>
+                        <li style="margin-bottom: 8px;">3. Rellena los datos e ingresa el ID del jugador.</li>
+                        <li>4. ¡Canjea y listo! Los diamantes se acreditarán de inmediato.</li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Paso 2: Canjear PIN -->
@@ -84,7 +97,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const hostname = window.location.hostname;
-            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || !hostname;
+            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
             const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
 
             const playerIdInput = document.getElementById('player-id');
