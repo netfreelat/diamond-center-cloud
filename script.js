@@ -806,8 +806,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div id="pin-display-container" style="display: none;">
                                 <p id="assigned-pin"></p>
                                 <button class="btn-copy-pin" onclick="copyPin()"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
-                                <div style="font-size: 0.65rem; color: #aaa; margin-top: 8px;">
-                                    Canje: <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a>
+                                <div style="font-size: 0.7rem; color: #fff; margin-top: 10px; background: rgba(0,200,83,0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,200,83,0.3);">
+                                    <i class="fa-solid fa-bolt"></i> <a href="canjear.html?uid=${playerInput.value}&pin=${pin}" target="_blank" style="color: #00c853; text-decoration: none; font-weight: 800;">CANJEAR DIAMANTES AQUÍ</a>
                                 </div>
                             </div>
                             

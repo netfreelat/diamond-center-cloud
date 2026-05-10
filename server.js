@@ -193,12 +193,9 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `━━━━━━━━━━━━━━━\n\n` +
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
         if (pin) {
-            msg += `\n\n💡 *Instrucciones para canjear:* \n` +
-                   `1. Dirígete a: https://redeempins.com/\n` +
-                   `2. Ingresa el PIN solicitado.\n` +
-                   `3. Rellena los datos e ingresa el ID del jugador.\n` +
-                   `4. ¡Canjea y listo! ✨\n\n` +
-                   `👇 *A CONTINUACIÓN EL PIN PARA COPIAR:* 👇\n\n` +
+            msg += `\n\n⚡ *CANJE DIRECTO:* \n` +
+                   `Presiona el link de abajo para recibir tus diamantes al instante:\n` +
+                   `🔗 https://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}\n\n` +
                    `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
             
             // Mensaje 1: Ticket con instrucciones (ID único por ref)
@@ -902,7 +899,7 @@ const server = http.createServer(async (req, res) => {
                     if (action === 'accept') {
                         const pin = await getFallbackPin(order.pack);
                         if (pin) {
-                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔑 *PIN:* \`${pin}\`\n\n✅ _Entrega automática exitosa._`;
+                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔑 *PIN:* \`${pin}\`\n\n⚡ *LINK DE CANJE DIRECTO:* \nhttps://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}\n\n✅ _Entrega automática exitosa._`;
                             
                             orders[ref].status = 'approved';
                             orders[ref].pin = pin;

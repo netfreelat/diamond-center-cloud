@@ -58,10 +58,10 @@
                         <i class="fa-solid fa-lightbulb"></i> INSTRUCCIONES DE CANJE
                     </h4>
                     <ul style="font-size: 0.8rem; color: #aaa; list-style: none; padding: 0;">
-                        <li style="margin-bottom: 8px;">1. Dirígete a la página: <a href="https://redeempins.com/" target="_blank" style="color: var(--secondary); text-decoration: none;">redeempins.com</a></li>
-                        <li style="margin-bottom: 8px;">2. Ingresa el PIN que solicitaste.</li>
-                        <li style="margin-bottom: 8px;">3. Rellena los datos e ingresa el ID del jugador.</li>
-                        <li>4. ¡Canjea y listo! Los diamantes se acreditarán de inmediato.</li>
+                        <li style="margin-bottom: 8px;">1. Ingresa el ID del jugador y consulta su validez.</li>
+                        <li style="margin-bottom: 8px;">2. Pega el código PIN que recibiste en tu compra.</li>
+                        <li style="margin-bottom: 8px;">3. Presiona "Canjear Diamantes" y ¡listo!</li>
+                        <li>4. Los diamantes se acreditan al instante en tu cuenta de Free Fire.</li>
                     </ul>
                 </div>
             </div>
@@ -108,6 +108,21 @@
             const pinInput = document.getElementById('pin-input');
             const redeemPinBtn = document.getElementById('redeem-pin-btn');
             const changeIdBtn = document.getElementById('change-id-btn');
+
+            // Leer parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlUid = urlParams.get('uid');
+            const urlPin = urlParams.get('pin');
+
+            if (urlUid) {
+                playerIdInput.value = urlUid;
+                // Si viene PIN también, lo llenamos
+                if (urlPin) {
+                    pinInput.value = urlPin;
+                }
+                // Intentar verificar automáticamente
+                setTimeout(() => verifyBtn.click(), 500);
+            }
 
             // Formato de inputs
             playerIdInput.addEventListener('input', function() {
