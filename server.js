@@ -1102,7 +1102,7 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: false }));
         } else if (uid) {
             // Registrar si no existe (con bono de bienvenida)
-            users[uid] = { name: 'Jugador', points: 50, registered: new Date().toISOString() };
+            users[uid] = { name: 'Jugador', points: 10, registered: new Date().toISOString() };
             saveUser(uid);
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));
