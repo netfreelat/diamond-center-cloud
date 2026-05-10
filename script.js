@@ -796,7 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     
                                     <div style="margin-top: 15px; text-align: left; font-size: 0.7rem; color: #aaa; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                                         <p style="color: var(--secondary); font-weight: 700; margin-bottom: 5px;">💡 ¿CÓMO CANJEAR?</p>
-                                        <p>1. Ve a <strong>redeempins.com</strong></p>
+                                        <p>1. Ve a <a href="https://redeempins.com" target="_blank" style="color: var(--secondary); text-decoration: none; font-weight: bold;">redeempins.com</a></p>
                                         <p>2. Ingresa este PIN y tu ID.</p>
                                         <p>3. ¡Diamantes al instante! 💎</p>
                                     </div>
