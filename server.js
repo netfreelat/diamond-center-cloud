@@ -1030,10 +1030,12 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 if (!body) throw new Error('Cuerpo de petición vacío');
-                const { amount, codes } = JSON.parse(body);
+                const parsed = JSON.parse(body);
+                const { amount, codes } = parsed;
+                
                 if (!amount || !codes || !Array.isArray(codes)) throw new Error('Faltan datos (monto o lista de códigos)');
 
-                // Limpiar códigos antes de insertar
+                // Limpiar códigos después de extraerlos
                 const cleanCodes = codes.map(c => c.trim()).filter(c => c.length > 0);
                 if (cleanCodes.length === 0) throw new Error('No hay códigos válidos para cargar');
 
