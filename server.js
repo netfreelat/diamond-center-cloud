@@ -393,7 +393,7 @@ function processPendingOrder(inputFullRef, inputShortRef) {
                 rechargeViaNetfreelat(order, targetShortRef).then(result => {
                     if (result.success) {
                         orders[targetShortRef].status = 'approved';
-                        fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                        
                         saveRecent(order.name, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) {
@@ -407,7 +407,7 @@ function processPendingOrder(inputFullRef, inputShortRef) {
                         if (pin) {
                             orders[targetShortRef].status = 'approved';
                             orders[targetShortRef].pin = pin;
-                            fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                            
                             saveRecent(order.name, order.pack);
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) {
@@ -646,7 +646,7 @@ const server = http.createServer(async (req, res) => {
                     if (result.ok && result.result) {
                         orders[ref].tg_message_id = result.result.message_id;
                         orders[ref].tg_chat_id = result.result.chat.id;
-                        fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                        
                     }
                 } catch (e) {
                     console.error('[TG-NOTIF] Error guardando ID de mensaje:', e.message);
@@ -761,7 +761,7 @@ const server = http.createServer(async (req, res) => {
                     } else {
                         newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n\n⚠️ _El pago no fue aprobado._`;
                         orders[ref].status = 'rejected';
-                        fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                        
                     }
 
                     // Encolar mensaje de WhatsApp si corresponde (éxito o rechazo final)
