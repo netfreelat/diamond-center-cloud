@@ -1,5 +1,5 @@
 require('dotenv').config();
-// DEPLOYMENT TIMESTAMP: 2026-05-09T21:52:00
+// DEPLOYMENT TIMESTAMP: 2026-05-10T12:15:00
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -800,30 +800,67 @@ const server = http.createServer(async (req, res) => {
 
                     // Si Render se durmió, orders[ref] estará vacío. Lo recuperamos del texto del mensaje.
                     if (!order) {
-                        console.log(`[WEBHOOK] Pedido no encontrado en memoria. Intentando recuperar del texto del mensaje...`);
-                        const text = callbackQuery.message.text || '';
+                        console.log(`[WEBHOOK] Pedido no encontrado en memoria. Consultando Supabase antes de recuperar...`);
                         
-                        const uidMatch = text.match(/ID:\s*(\d+)/);
-                        const nameMatch = text.match(/Jugador:\s*(.+)/);
-                        const packMatch = text.match(/Paquete:\s*(.+)/);
-                        const priceMatch = text.match(/Total:\s*(.+)/);
-                        const waMatch = text.match(/WhatsApp:\s*\+?(\d+)/);
-                        
-                        if (uidMatch && packMatch) {
-                            orders[ref] = {
-                                uid: uidMatch[1].trim(),
-                                name: nameMatch ? nameMatch[1].trim() : 'Desconocido',
-                                pack: packMatch[1].trim(),
-                                price: priceMatch ? priceMatch[1].trim() : '0USDT',
-                                wa: waMatch ? waMatch[1].trim() : 'No provisto',
-                                status: 'pending'
-                            };
-                            order = orders[ref];
-                            console.log(`[WEBHOOK] Pedido recuperado con éxito:`, order);
-                        } else {
-                            console.error(`[WEBHOOK] No se pudo recuperar el pedido para ref: ${ref}`);
-                            return res.end('Order not found');
+                        // ⚠️ SEGURIDAD CRÍTICA: Verificar en Supabase si ya fue procesado
+                        const { data: dbOrder } = await supabase.from('ff_orders').select('*').eq('ref', ref).single();
+                        if (dbOrder && (dbOrder.status === 'approved' || dbOrder.status === 'rejected')) {
+                            console.log(`[WEBHOOK] 🛑 BLOQUEADO: El pedido ${ref} ya fue procesado (${dbOrder.status}) en Supabase. Ignorando clic duplicado.`);
+                            // Notificar al admin en Telegram que este pedido ya fue procesado
+                            const warnPayload = JSON.stringify({
+                                chat_id: chatId,
+                                message_id: messageId,
+                                text: `⚠️ *PEDIDO YA PROCESADO*\n\nEste pedido (Ref: \`${ref}\`) ya fue *${dbOrder.status === 'approved' ? '✅ APROBADO' : '❌ RECHAZADO'}* anteriormente.\n\n_Clic ignorado por seguridad._`,
+                                parse_mode: 'Markdown'
+                            });
+                            const warnReq = https.request({
+                                hostname: 'api.telegram.org',
+                                path: `/bot${BOT_TOKEN}/editMessageText`,
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(warnPayload) }
+                            });
+                            warnReq.on('error', () => {});
+                            warnReq.write(warnPayload);
+                            warnReq.end();
+                            return;
                         }
+                        
+                        // Si existe en Supabase como pending, restaurar en memoria
+                        if (dbOrder) {
+                            orders[ref] = { uid: dbOrder.uid, login_uid: dbOrder.login_uid, name: dbOrder.name, pack: dbOrder.pack, method: dbOrder.method, price: dbOrder.price, status: dbOrder.status, time: dbOrder.time, wa: dbOrder.wa, pin: dbOrder.pin };
+                            order = orders[ref];
+                            console.log(`[WEBHOOK] Pedido restaurado desde Supabase: ${ref}`);
+                        } else {
+                            // Último recurso: recuperar desde el texto del mensaje de Telegram
+                            const text = callbackQuery.message.text || '';
+                            const uidMatch = text.match(/ID:\s*(\d+)/);
+                            const nameMatch = text.match(/Jugador:\s*(.+)/);
+                            const packMatch = text.match(/Paquete:\s*(.+)/);
+                            const priceMatch = text.match(/Total:\s*(.+)/);
+                            const waMatch = text.match(/WhatsApp:\s*\+?(\d+)/);
+                            
+                            if (uidMatch && packMatch) {
+                                orders[ref] = {
+                                    uid: uidMatch[1].trim(),
+                                    name: nameMatch ? nameMatch[1].trim() : 'Desconocido',
+                                    pack: packMatch[1].trim(),
+                                    price: priceMatch ? priceMatch[1].trim() : '0USDT',
+                                    wa: waMatch ? waMatch[1].trim() : 'No provisto',
+                                    status: 'pending'
+                                };
+                                order = orders[ref];
+                                console.log(`[WEBHOOK] Pedido recuperado desde texto de Telegram (sin Supabase):`, order);
+                            } else {
+                                console.error(`[WEBHOOK] No se pudo recuperar el pedido para ref: ${ref}`);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // ⚠️ GUARDA FINAL: Nunca procesar un pedido que ya no esté en 'pending'
+                    if (order.status && order.status !== 'pending') {
+                        console.log(`[WEBHOOK] 🛑 GUARDA FINAL: pedido ${ref} ya está en estado '${order.status}'. Abortando.`);
+                        return;
                     }
 
                     let newText = '';
