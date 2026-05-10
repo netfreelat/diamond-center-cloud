@@ -461,7 +461,9 @@ setInterval(() => {
 const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const searchParams = parsedUrl.searchParams;
-    console.log(`[DEBUG] Petición: ${req.method} ${parsedUrl.pathname}`);
+    
+    // LOG GLOBAL DE TRÁFICO
+    console.log(`[TRAFICO] ${req.method} ${parsedUrl.pathname}`);
 
     // Permisos CORS para que el panel admin y la web funcionen
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -541,7 +541,8 @@ PIN789012
 
     <script>
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
+        const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
+        const SERVER_URL = isLocal ? 'http://localhost:3500' : RENDER_URL;
 
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));

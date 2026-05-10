@@ -4,10 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Detectar si estamos en local, en el túnel o en la nube
     const hostname = window.location.hostname;
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || !hostname;
-    const isTunnel = hostname.includes('loca.lt');
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     
-    const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
+    // URL del servidor en Render (TU URL REAL)
+    const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
+    const SERVER_URL = isLocal ? 'http://localhost:3500' : RENDER_URL;
 
     async function loadConfig() {
         try {
