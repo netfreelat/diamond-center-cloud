@@ -910,6 +910,14 @@ const server = http.createServer(async (req, res) => {
             try {
                 const { ref } = JSON.parse(body);
                 const order = orders[ref];
+                
+                // --- SEGURIDAD: NO APROBAR DOS VECES ---
+                if (order && order.status !== 'pending') {
+                    console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${ref}`);
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({ success: false, message: 'Este pedido ya fue procesado.' }));
+                }
+
                 if (order && order.status === 'pending') {
                     const pin = await getFallbackPin(order.pack);
                     if (pin) {
@@ -929,13 +937,21 @@ const server = http.createServer(async (req, res) => {
                     }
                 } else {
                     res.writeHead(404);
-                    res.end(JSON.stringify({ error: 'Pedido no encontrado' }));
+                    res.end(JSON.stringify({ success: false, message: 'Pedido no encontrado.' }));
                 }
             } catch (e) {
                 res.writeHead(400);
-                res.end(JSON.stringify({ error: 'Error' }));
+                res.end(JSON.stringify({ error: e.message }));
             }
         });
+    } else if (parsedUrl.pathname === '/admin/clear-wa-queue' && req.method === 'POST') {
+        whatsappQueue = [];
+        supabase.from('ff_wa_queue').delete().neq('id', '0')
+            .then(() => {
+                console.log('[WA-QUEUE] Cola vaciada con éxito.');
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
+            });
     } else if (parsedUrl.pathname === '/admin/rechazar' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
