@@ -1029,21 +1029,25 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
+                if (!body) throw new Error('Cuerpo de petición vacío');
                 const { amount, codes } = JSON.parse(body);
+                if (!amount || !codes) throw new Error('Faltan datos (amount o codes)');
+                
                 if (!pines[amount]) pines[amount] = [];
                 
                 const inserts = codes.map(code => ({ amount, code, used: false }));
                 const { error } = await supabase.from('ff_pines').insert(inserts);
                 
-                if (error) {
-                    res.writeHead(500);
-                    return res.end(JSON.stringify({ success: false, message: error.message }));
-                }
+                if (error) throw error;
 
                 codes.forEach(code => pines[amount].push(code));
                 res.writeHead(200);
                 res.end(JSON.stringify({ success: true }));
-            } catch (e) { res.writeHead(400); res.end('Error'); }
+            } catch (e) { 
+                console.error('[PIN_ADD] Error:', e.message);
+                res.writeHead(400); 
+                res.end(JSON.stringify({ success: false, message: e.message })); 
+            }
         });
     } else if (parsedUrl.pathname === '/api/check_password') {
         const uid = parsedUrl.searchParams.get('uid');
