@@ -613,6 +613,16 @@ const server = http.createServer(async (req, res) => {
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
 
+        // --- SEGURIDAD: EVITAR DUPLICADOS ---
+        if (orders[ref]) {
+            console.log(`[NOTIFICACIÓN] 🛑 Intento de duplicado bloqueado: Ref ${ref}`);
+            res.writeHead(200);
+            return res.end(JSON.stringify({ 
+                success: false, 
+                message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
+            }));
+        }
+
         // Generar número de control único
         const control_num = `DC-${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
 
