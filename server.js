@@ -902,7 +902,7 @@ const server = http.createServer(async (req, res) => {
                     if (action === 'accept') {
                         const pin = await getFallbackPin(order.pack);
                         if (pin) {
-                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n🔑 *PIN:* \`${pin}\`\n\n✅ _Entrega automática exitosa._`;
+                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔑 *PIN:* \`${pin}\`\n\n✅ _Entrega automática exitosa._`;
                             
                             orders[ref].status = 'approved';
                             orders[ref].pin = pin;
@@ -918,7 +918,7 @@ const server = http.createServer(async (req, res) => {
                             newText = `⚠️ *NO HAY STOCK DE PINES*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Error:* El almacén está vacío para este paquete.\n\n_Por favor, carga pines y aprueba manualmente._`;
                         }
                     } else {
-                        newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n\n⚠️ _El pago no fue aprobado._`;
+                        newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n\n⚠️ _El pago no fue aprobado._`;
                         orders[ref].status = 'rejected';
                         
                     }
