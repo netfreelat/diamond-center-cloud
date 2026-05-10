@@ -1259,7 +1259,14 @@ const server = http.createServer(async (req, res) => {
             try {
                 const { id } = JSON.parse(body);
                 whatsappQueue = whatsappQueue.filter(item => item.id !== id);
-                saveWaQueue();
+                
+                // BORRADO REAL EN SUPABASE
+                supabase.from('ff_wa_queue').delete().eq('id', id)
+                    .then(({ error }) => {
+                        if (error) console.error('[SUPABASE] Error borrando mensaje enviado:', error.message);
+                        else console.log(`[WHATSAPP] ✅ Mensaje ${id} borrado de la base de datos.`);
+                    });
+
                 res.writeHead(200);
                 res.end(JSON.stringify({ success: true }));
             } catch (e) {

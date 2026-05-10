@@ -1,7 +1,8 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3500';
+const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
+const SERVER_URL = process.env.SERVER_URL || RENDER_URL;
 const isHttps = SERVER_URL.startsWith('https');
 const httpMod = isHttps ? require('https') : require('http');
 
