@@ -1287,12 +1287,16 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-server.listen(PORT, async () => {
-    console.log('=========================================');
-    console.log('  Diamond Center FF - Servidor');
-    console.log(`  Corriendo en: http://localhost:${PORT}`);
-    console.log('  Cargando datos desde Supabase...');
-    console.log('=========================================');
-    await loadFromSupabase();
-    console.log('[SERVER] ✅ Listo para recibir solicitudes.');
-});
+if (process.env.VERCEL) {
+    module.exports = server;
+} else {
+    server.listen(PORT, async () => {
+        console.log('=========================================');
+        console.log('  Diamond Center FF - Servidor');
+        console.log(`  Corriendo en: http://localhost:${PORT}`);
+        console.log('  Cargando datos desde Supabase...');
+        console.log('=========================================');
+        await loadFromSupabase();
+        console.log('[SERVER] ✅ Listo para recibir solicitudes.');
+    });
+}
