@@ -485,8 +485,8 @@
     </div>
 
     <script>
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname;
-        const SERVER_URL = window.location.hostname.includes('loca.lt') ? window.location.origin : (isLocal ? 'http://localhost:3500' : '');
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
 
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -621,20 +621,41 @@
 
         async function addPines() {
             const amount = document.getElementById('pin-amount').value;
-            const codes = document.getElementById('pin-codes').value.split('\n').map(c => c.trim()).filter(c => c.length > 0);
-            if (codes.length === 0) return;
+            const codesVal = document.getElementById('pin-codes').value.trim();
+            const codes = codesVal.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+            
+            if (codes.length === 0) {
+                return Swal.fire('Atención', 'Por favor, ingresa al menos un código.', 'warning');
+            }
+
+            const btn = document.querySelector('#pines .btn-main');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Cargando...';
+
             try {
                 const res = await fetch(`${SERVER_URL}/admin/pines/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount, codes })
                 });
-                if ((await res.json()).success) {
-                    Swal.fire('¡Listo!', 'Pines cargados.', 'success');
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    await Swal.fire('¡Listo!', `${codes.length} pines cargados correctamente.`, 'success');
                     document.getElementById('pin-codes').value = '';
                     loadPinStats();
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudieron cargar los pines.', 'error');
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e);
+                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor en la nube. Revisa tu conexión o refresca la página.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
         }
 
         let allUsers = {};

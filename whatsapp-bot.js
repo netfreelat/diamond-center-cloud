@@ -1,9 +1,9 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const http = require('http');
-
-const SERVER_URL = 'http://localhost:3500';
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3500';
+const isHttps = SERVER_URL.startsWith('https');
+const httpMod = isHttps ? require('https') : require('http');
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -24,7 +24,7 @@ function updateStatus(status, qr = '') {
     const url = new URL(SERVER_URL);
     const options = {
         hostname: url.hostname,
-        port: url.port || 80,
+        port: url.port || (isHttps ? 443 : 80),
         path: '/api/wa_status_update',
         method: 'POST',
         headers: {
@@ -32,7 +32,7 @@ function updateStatus(status, qr = '') {
             'Content-Length': Buffer.byteLength(data)
         }
     };
-    const req = http.request(options);
+    const req = httpMod.request(options);
     req.on('error', () => {}); // Silenciar error si no conecta
     req.write(data);
     req.end();
@@ -69,7 +69,7 @@ client.initialize();
 
 async function checkQueue() {
     try {
-        const req = http.get(`${SERVER_URL}/api/whatsapp_queue`, (res) => {
+        const req = httpMod.get(`${SERVER_URL}/api/whatsapp_queue`, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
             res.on('end', async () => {
@@ -128,7 +128,7 @@ function markAsSent(id) {
     
     const options = {
         hostname: url.hostname,
-        port: url.port || 80,
+        port: url.port || (isHttps ? 443 : 80),
         path: '/api/whatsapp_sent',
         method: 'POST',
         headers: {
@@ -137,7 +137,7 @@ function markAsSent(id) {
         }
     };
     
-    const req = http.request(options, (res) => {
+    const req = httpMod.request(options, (res) => {
         // OK
     });
     

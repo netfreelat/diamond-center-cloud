@@ -267,11 +267,13 @@ async function rechargeViaNetfreelat(order, ref) {
     });
 }
 
-function getFallbackPin(amount) {
+async function getFallbackPin(amount) {
     const amountKey = amount.toString().split(' ')[0].replace(',', '').replace('.', '');
     if (pines[amountKey] && pines[amountKey].length > 0) {
         const pin = pines[amountKey].shift();
-        fs.writeFileSync(PINES_FILE, JSON.stringify(pines), 'utf8');
+        // Marcar como usado en Supabase
+        const { error } = await supabase.from('ff_pines').update({ used: true }).eq('code', pin);
+        if (error) console.error('[SUPABASE] Error marcando PIN como usado:', error.message);
         return pin;
     }
     return null;
@@ -921,7 +923,7 @@ const server = http.createServer(async (req, res) => {
                     const result = await rechargeViaNetfreelat(order, ref);
                     if (result.success) {
                         orders[ref].status = 'approved';
-                        fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                        updateOrderStatus(ref, 'approved');
                         saveRecent(order.name, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
@@ -934,7 +936,7 @@ const server = http.createServer(async (req, res) => {
                         if (pin) {
                             orders[ref].status = 'approved';
                             orders[ref].pin = pin;
-                            fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                            updateOrderStatus(ref, 'approved', pin);
                             saveRecent(order.name, order.pack);
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
@@ -964,7 +966,7 @@ const server = http.createServer(async (req, res) => {
                 const { ref } = JSON.parse(body);
                 if (orders[ref]) {
                     orders[ref].status = 'rejected';
-                    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                    updateOrderStatus(ref, 'rejected');
                     queueWhatsAppMessage(orders[ref], false);
                     updateTelegramStatus(ref);
                     res.writeHead(200);
@@ -1004,6 +1006,30 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(404);
                     res.end(JSON.stringify({ success: false, message: 'Usuario no encontrado' }));
                 }
+            } catch (e) { res.writeHead(400); res.end('Error'); }
+        });
+    } else if (parsedUrl.pathname === '/admin/pines' && req.method === 'GET') {
+        res.writeHead(200);
+        res.end(JSON.stringify(pines));
+    } else if (parsedUrl.pathname === '/admin/pines/add' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { amount, codes } = JSON.parse(body);
+                if (!pines[amount]) pines[amount] = [];
+                
+                const inserts = codes.map(code => ({ amount, code, used: false }));
+                const { error } = await supabase.from('ff_pines').insert(inserts);
+                
+                if (error) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, message: error.message }));
+                }
+
+                codes.forEach(code => pines[amount].push(code));
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
     } else if (parsedUrl.pathname === '/api/check_password') {
@@ -1077,7 +1103,7 @@ const server = http.createServer(async (req, res) => {
         } else if (uid) {
             // Registrar si no existe (con bono de bienvenida)
             users[uid] = { name: 'Jugador', points: 50, registered: new Date().toISOString() };
-            saveUsers();
+            saveUser(uid);
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));
         } else {
@@ -1108,7 +1134,8 @@ const server = http.createServer(async (req, res) => {
                 // Acreditar 10 puntos al referidor
                 users[referrer_uid].points = (users[referrer_uid].points || 0) + 10;
                 users[new_uid].referred_by = referrer_uid;
-                saveUsers();
+                saveUser(referrer_uid);
+                saveUser(new_uid);
                 console.log(`[REFERRAL] ${referrer_uid} gana 10 pts por referir a ${new_uid}`);
                 res.writeHead(200);
                 res.end(JSON.stringify({ success: true, message: '10 puntos acreditados al referidor' }));
