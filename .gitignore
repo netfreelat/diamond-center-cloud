@@ -9,9 +9,10 @@ wa_queue.json
 pagos.json
 .wwebjs_auth/
 .wwebjs_cache/
-*.json
+# No ignorar archivos JSON necesarios para el despliegue
 !package.json
 !package-lock.json
+!vercel.json
 *.sql
 *.log
 .DS_Store

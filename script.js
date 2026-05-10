@@ -394,10 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     Swal.close();
                     await navigator.clipboard.writeText(refLink);
                     Swal.fire({
-                        icon: 'success',
-                        title: '¡Link copiado!',
                         html: `<p style="font-size:0.8rem;color:#aaa;word-break:break-all;">${refLink}</p>
-                               <p style="font-size:0.85rem;margin-top:10px;">Compártelo con tus amigos. Ganas <strong>+10 puntos</strong> por cada nuevo usuario.</p>`,
+                               <p style="font-size:0.85rem;margin-top:10px;">Compártelo con tus amigos. Ganas <strong>+15 puntos</strong> por cada nuevo usuario que haga su primera compra.</p>`,
                         timer: 4000,
                         showConfirmButton: false,
                         background: 'rgba(20, 10, 35, 0.98)',
@@ -773,7 +771,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h2 class="receipt-title" id="receipt-title">Procesando Pago...</h2>
                         
                         <div class="receipt-card">
-                            <div class="receipt-logo">FREE F<span>I</span>RE</div>
+                            <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FREE F<span>I</span>RE</div>
+                            <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">DIAMOND CENTER CLOUD</div>
                             
                             <div class="receipt-info">
                                 <p><strong>Plan:</strong> <span class="val">${selectedPackage.amount} diamantes</span></p>
@@ -853,7 +852,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
 
                                     const titleEl = document.getElementById('receipt-title');
-                                    if (titleEl) titleEl.innerText = '¡Operación exitosa!';
+                                    if (titleEl) {
+                                        titleEl.innerHTML = '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>';
+                                        titleEl.style.animation = 'pulse 1s infinite alternate';
+                                    }
                                 } else {
                                     // Sonido de error (Buzzer corto y limpio)
                                     new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
@@ -997,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             const points = (data.success && data.user) ? (data.user.points || 0) : 0;
 
-            // Si es usuario NUEVO y hay un referido pendiente, acreditar puntos
+            // Si es usuario NUEVO y hay un referido pendiente, vincularlo
             if (data.isNew && pendingRef && pendingRef !== uid) {
                 localStorage.removeItem('ff_pending_ref');
                 try {
@@ -1006,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ referrer_uid: pendingRef, new_uid: uid })
                     });
-                    console.log(`[REFERRAL] Acreditados 10 pts a ${pendingRef} por referir a ${uid}`);
+                    console.log(`[REFERRAL] Vinculación pendiente: ${pendingRef} refirió a ${uid}`);
                 } catch (e) { console.error('Error procesando referido:', e); }
             } else if (!data.isNew && pendingRef) {
                 // Usuario ya existía, no aplica referido

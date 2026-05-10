@@ -11,15 +11,19 @@
     <style>
         :root {
             --primary: #9D00FF;
-            --primary-hover: #7B00CC;
+            --primary-hover: #B845FF;
             --secondary: #00F0FF;
-            --dark: #0A0512;
-            --dark-card: rgba(20, 10, 35, 0.95);
+            --accent: #FF00E5;
+            --dark: #07030D;
+            --dark-card: rgba(20, 10, 35, 0.7);
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text: #ffffff;
-            --text-gray: #aaa;
-            --success: #25D366;
-            --danger: #ff4b2b;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --text-gray: #b0a8c0;
+            --success: #00FF94;
+            --danger: #FF3D71;
+            --warning: #FFD93D;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -116,33 +120,56 @@
 
         .stat-card {
             background: var(--dark-card);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 20px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px;
             text-align: center;
             transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+            pointer-events: none;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--secondary);
-            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.1);
+            transform: translateY(-8px) scale(1.02);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(157, 0, 255, 0.15);
         }
 
         .stat-card .label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-gray);
-            font-weight: 600;
+            font-weight: 700;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .stat-card .value {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-family: 'Montserrat', sans-serif;
             font-weight: 800;
-            color: var(--secondary);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.2);
         }
+
+        .stat-card.alert {
+            border-color: rgba(255, 61, 113, 0.3);
+            background: rgba(255, 61, 113, 0.05);
+        }
+        .stat-card.alert .value { color: var(--danger); text-shadow: 0 0 15px rgba(255, 61, 113, 0.4); }
+
+        .stat-card.success .value { color: var(--success); text-shadow: 0 0 15px rgba(0, 255, 148, 0.4); }
 
         .action-card {
             background: var(--dark-card);
@@ -330,34 +357,7 @@
             </div>
         </div>
 
-        <!-- ALMACEN TAB -->
-        <div id="pines" class="tab-content">
-            <div class="stats-grid" id="pines-stats">
-                <!-- Cargado por JS -->
-            </div>
 
-            <div class="action-card">
-                <h2><i class="fa-solid fa-plus-circle" style="color: var(--primary);"></i> Cargar Nuevos Pines</h2>
-                <div class="form-group">
-                    <label>Paquete:</label>
-                    <select id="pin-amount">
-                        <option value="100">100 + 10 Diamantes</option>
-                        <option value="310">310 + 31 Diamantes</option>
-                        <option value="520">520 + 52 Diamantes</option>
-                        <option value="1060">1060 + 106 Diamantes</option>
-                        <option value="2180">2180 + 218 Diamantes</option>
-                        <option value="5600">5600 + 560 Diamantes</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Pega los códigos aquí (uno por línea):</label>
-                    <textarea id="pin-codes" placeholder="CÓDIGO1&#10;CÓDIGO2"></textarea>
-                </div>
-                <button onclick="addPines()" class="btn-main">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Cargar al Almacén
-                </button>
-            </div>
-        </div>
 
         <!-- USUARIOS TAB -->
         <div id="usuarios" class="tab-content">
@@ -383,6 +383,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- PINES TAB -->
+        <div id="pines" class="tab-content">
+                <div class="grid">
+                    <div class="action-card">
+                        <h3><i class="fa-solid fa-plus-circle"></i> Cargar Nuevos Pines</h3>
+                        <div class="input-group">
+                            <label>Monto del Paquete</label>
+                            <select id="pin-amount">
+                                <option value="100">100 + 10 Diamantes</option>
+                                <option value="310">310 + 31 Diamantes</option>
+                                <option value="520">520 + 52 Diamantes</option>
+                                <option value="1060">1060 + 106 Diamantes</option>
+                                <option value="2180">2180 + 218 Diamantes</option>
+                                <option value="5600">5600 + 560 Diamantes</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Pegar Códigos (Uno por línea)</label>
+                            <textarea id="pin-codes" rows="10" placeholder="Ej:
+PIN123456
+PIN789012
+..."></textarea>
+                        </div>
+                        <button class="btn-main" onclick="addPines()">
+                            <i class="fa-solid fa-cloud-upload"></i> Cargar al Inventario
+                        </button>
+                    </div>
+                    <div class="action-card">
+                        <h3><i class="fa-solid fa-boxes-stacked"></i> Stock por Paquete</h3>
+                        <div id="pines-stats" class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <!-- Pines por monto -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-card" style="margin-top: 20px;">
+                    <h3><i class="fa-solid fa-history"></i> Últimos 50 Pines Entregados</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Código PIN</th>
+                                </tr>
+                            </thead>
+                            <tbody id="used-pines-table-body">
+                                <!-- Pines usados -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
         <!-- SETTINGS TAB -->
         <div id="settings" class="tab-content">
@@ -438,6 +492,7 @@
                             <input type="text" id="bin-nombre" placeholder="Ej: Juan Perez">
                         </div>
                     </div>
+                </div>
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enlaces de WhatsApp</h3>
                 
@@ -609,14 +664,39 @@
                 container.innerHTML = '';
                 Object.keys(pines).forEach(amount => {
                     const count = pines[amount].length;
+                    const isLow = count < 5;
+                    const isEmpty = count === 0;
+                    
                     container.innerHTML += `
-                        <div class="stat-card">
+                        <div class="stat-card ${isEmpty ? 'alert' : (isLow ? 'warning' : 'success')}">
                             <span class="label">${amount} DIAMANTES</span>
-                            <span class="value ${count === 0 ? 'empty' : ''}">${count}</span>
+                            <span class="value">${count}</span>
+                            <div style="font-size: 0.7rem; margin-top: 5px; color: ${isEmpty ? 'var(--danger)' : (isLow ? 'var(--warning)' : 'var(--success)')}">
+                                ${isEmpty ? '⚠️ SIN STOCK' : (isLow ? '⏳ STOCK BAJO' : '✅ DISPONIBLE')}
+                            </div>
                         </div>
                     `;
                 });
-            } catch (e) { console.error(e); }
+
+                // Cargar pines usados
+                const usedRes = await fetch(`${SERVER_URL}/admin/pines/used`);
+                if (usedRes.ok) {
+                    const usedPines = await usedRes.json();
+                    const usedTbody = document.getElementById('used-pines-table-body');
+                    usedTbody.innerHTML = '';
+                    if (Array.isArray(usedPines)) {
+                        usedPines.forEach(p => {
+                            usedTbody.innerHTML += `
+                                <tr>
+                                    <td><small>${new Date(p.created_at).toLocaleString()}</small></td>
+                                    <td>${p.amount} 💎</td>
+                                    <td><code style="color:var(--secondary)">${p.code}</code></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }
+            } catch (e) { console.error('Error cargando estadísticas de pines:', e); }
         }
 
         async function addPines() {
@@ -766,6 +846,7 @@
 
                 const pricesEditor = document.getElementById('prices-editor');
                 pricesEditor.innerHTML = '';
+                
                 Object.entries(allSettings.precios).forEach(([amount, data]) => {
                     pricesEditor.innerHTML += `
                         <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">

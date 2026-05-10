@@ -7,15 +7,19 @@
 
 :root {
     --primary: #9D00FF;
-    --primary-hover: #B533FF;
+    --primary-hover: #B845FF;
     --secondary: #00F0FF;
-    --bg-dark: #0A0514;
-    --card-bg: rgba(20, 10, 35, 0.65);
+    --accent: #FF00E5;
+    --bg-dark: #07030D;
+    --card-bg: rgba(20, 10, 35, 0.7);
+    --glass: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
     --text-white: #FFFFFF;
-    --text-gray: #B0B0B0;
-    --glow: 0 0 20px rgba(157, 0, 255, 0.5);
-    --border-radius: 16px;
-    --transition: all 0.3s ease;
+    --text-gray: #b0a8c0;
+    --glow: 0 0 30px rgba(157, 0, 255, 0.4);
+    --glow-secondary: 0 0 30px rgba(0, 240, 255, 0.3);
+    --border-radius: 24px;
+    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -129,12 +133,27 @@ body::before {
 
 .card {
     background: var(--card-bg);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--glass-border);
     border-radius: var(--border-radius);
-    padding: 40px 30px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    padding: 45px 35px;
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(157, 0, 255, 0.05) 0%, transparent 70%);
+    pointer-events: none;
 }
 
 .header-actions {
@@ -529,10 +548,10 @@ body::before {
 }
 
 .package-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 20px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 24px 15px;
     cursor: pointer;
     transition: var(--transition);
     display: flex;
@@ -543,15 +562,16 @@ body::before {
 }
 
 .package-card:hover {
-    background: rgba(157, 0, 255, 0.1);
-    border-color: rgba(157, 0, 255, 0.4);
-    transform: scale(1.02);
+    background: rgba(157, 0, 255, 0.05);
+    border-color: rgba(157, 0, 255, 0.3);
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: var(--glow);
 }
 
 .package-card.selected {
-    background: rgba(157, 0, 255, 0.15);
+    background: rgba(157, 0, 255, 0.12);
     border-color: var(--primary);
-    box-shadow: 0 0 20px rgba(157, 0, 255, 0.3);
+    box-shadow: 0 0 40px rgba(157, 0, 255, 0.25);
 }
 
 .package-card.selected::after {
@@ -559,17 +579,24 @@ body::before {
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 12px;
     color: var(--primary);
-    font-size: 1.2rem;
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 5px rgba(157, 0, 255, 0.5));
 }
 
 .diamond-icon {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     color: var(--secondary);
-    margin-bottom: 15px;
-    filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.5));
+    margin-bottom: 18px;
+    filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.4));
+    transition: var(--transition);
+}
+
+.package-card:hover .diamond-icon {
+    transform: scale(1.1) rotate(5deg);
+    filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.7));
 }
 
 .pack-info {
@@ -579,16 +606,19 @@ body::before {
 }
 
 .pack-info .amount {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     font-weight: 800;
     font-family: 'Montserrat', sans-serif;
+    color: #fff;
+    margin-bottom: 4px;
 }
 
 .pack-info .bonus {
-    font-size: 0.8rem;
-    color: #4CAF50;
-    font-weight: 600;
-    margin-top: 5px;
+    font-size: 0.85rem;
+    color: var(--success);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .section-header {

@@ -1,0 +1,8 @@
+[
+    { "id": "100", "amount": 100, "bonus": 10, "price": 1.10 },
+    { "id": "310", "amount": 310, "bonus": 31, "price": 3.30 },
+    { "id": "520", "amount": 520, "bonus": 52, "price": 5.50 },
+    { "id": "1060", "amount": 1060, "bonus": 106, "price": 11.00 },
+    { "id": "2180", "amount": 2180, "bonus": 218, "price": 22.00 },
+    { "id": "5600", "amount": 5600, "bonus": 560, "price": 55.00 }
+]

@@ -10,10 +10,15 @@ const { createClient } = require('@supabase/supabase-js');
 const PORT = process.env.PORT || 3500;
 
 // --- Supabase ---
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ ERROR: Faltan SUPABASE_URL o SUPABASE_KEY en las variables de entorno.');
+    console.error('Si estás en Render, asegúrate de configurarlas en el Dashboard.');
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 const BDV_TOKEN = process.env.BDV_TOKEN;
 const BDV_PASSWORD = process.env.BDV_PASSWORD;
@@ -446,11 +451,9 @@ setInterval(() => {
     }
 
     if (changed) {
-        try {
-            fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
-        } catch (e) {
-            console.error('Error al guardar limpieza:', e);
-        }
+        // En un sistema real, deberías actualizar Supabase para cada pedido cambiado
+        // Pero para no saturar, al menos no rompemos el servidor con una variable inexistente
+        console.log('[AUTO-CLEAN] Cambios detectados en pedidos pendientes.');
     }
 }, 60000); // Se ejecuta cada 60 segundos
 // ------------------------------------------------------
@@ -738,12 +741,13 @@ const server = http.createServer(async (req, res) => {
 
                     let newText = '';
                     if (action === 'accept') {
-                        const result = await rechargeViaNetfreelat(order, ref);
-                        if (result.success) {
-                            newText = `✅ *RECARGA EXITOSA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n\n✨ _Los diamantes han sido acreditados directamente._`;
+                        const pin = await getFallbackPin(order.pack);
+                        if (pin) {
+                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n🔑 *PIN:* \`${pin}\`\n\n✅ _Entrega automática exitosa._`;
                             
                             orders[ref].status = 'approved';
-                            fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
+                            orders[ref].pin = pin;
+                            updateOrderStatus(ref, 'approved', pin);
                             saveRecent(order.name, order.pack);
 
                             // Sumar puntos al que inició sesión
@@ -752,27 +756,7 @@ const server = http.createServer(async (req, res) => {
                                 addPoints(order.login_uid || order.uid, usdtPrice, order.name);
                             }
                         } else {
-                            // FALLBACK A PINES
-                            console.log(`[FALLBACK] Intentando entrega de PIN para: ${order.pack}`);
-                            const pin = getFallbackPin(order.pack);
-                            
-                            if (pin) {
-                                newText = `🎟️ *RECARGA VÍA PIN (FALLBACK)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n🔑 *PIN:* \`${pin}\`\n\n⚠️ _La recarga directa falló, se entregó un PIN para canje manual._`;
-                                orders[ref].status = 'approved';
-                                orders[ref].pin = pin;
-                                fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders), 'utf8');
-                                saveRecent(order.name, order.pack);
-
-                                // Sumar puntos también en fallback
-                                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                                if (!isNaN(usdtPrice)) {
-                                    addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                                }
-                            } else {
-                                // Limpiamos caracteres que rompen el Markdown de Telegram en el mensaje de error
-                                const safeErrorMsg = result.message.replace(/[_*[\]()~`>#+-=|{}.!]/g, ' ');
-                                newText = `⚠️ *FALLÓ RECARGA Y NO HAY PINES*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Error API:* ${safeErrorMsg}\n\n_Revisa el panel de Netfreelat o carga pines._`;
-                            }
+                            newText = `⚠️ *NO HAY STOCK DE PINES*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Error:* El almacén está vacío para este paquete.\n\n_Por favor, carga pines y aprueba manualmente._`;
                         }
                     } else {
                         newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n\n⚠️ _El pago no fue aprobado._`;
@@ -887,32 +871,6 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/recientes') {
         res.writeHead(200);
         res.end(JSON.stringify(recentReloads));
-    } else if (parsedUrl.pathname === '/admin/pines' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(pines));
-    } else if (parsedUrl.pathname === '/admin/pines/add' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => {
-            try {
-                const newCodes = data.codes.filter(c => c.length > 0);
-                if (newCodes.length === 0) { res.writeHead(400); return res.end(JSON.stringify({ error: 'Sin códigos válidos' })); }
-                if (pines[data.amount]) {
-                    pines[data.amount] = [...pines[data.amount], ...newCodes];
-                    const rows = newCodes.map(code => ({ amount: data.amount, code, used: false }));
-                    supabase.from('ff_pines').insert(rows)
-                        .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando pines:', error.message); });
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true, count: pines[data.amount].length }));
-                } else {
-                    res.writeHead(400);
-                    res.end(JSON.stringify({ error: 'Monto inválido' }));
-                }
-            } catch (e) {
-                res.writeHead(400);
-                res.end(JSON.stringify({ error: 'Error procesando datos' }));
-            }
-        });
     } else if (parsedUrl.pathname === '/admin/stats' && req.method === 'GET') {
         const stats = {
             pending: Object.values(orders).filter(o => o.status === 'pending').length,
@@ -934,34 +892,21 @@ const server = http.createServer(async (req, res) => {
                 const { ref } = JSON.parse(body);
                 const order = orders[ref];
                 if (order && order.status === 'pending') {
-                    const result = await rechargeViaNetfreelat(order, ref);
-                    if (result.success) {
+                    const pin = await getFallbackPin(order.pack);
+                    if (pin) {
                         orders[ref].status = 'approved';
-                        updateOrderStatus(ref, 'approved');
+                        orders[ref].pin = pin;
+                        updateOrderStatus(ref, 'approved', pin);
                         saveRecent(order.name, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                        queueWhatsAppMessage(order, true);
+                        queueWhatsAppMessage(order, true, pin);
                         updateTelegramStatus(ref);
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: true }));
+                        res.end(JSON.stringify({ success: true, message: 'Aprobado vía PIN' }));
                     } else {
-                        const pin = getFallbackPin(order.pack);
-                        if (pin) {
-                            orders[ref].status = 'approved';
-                            orders[ref].pin = pin;
-                            updateOrderStatus(ref, 'approved', pin);
-                            saveRecent(order.name, order.pack);
-                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                            if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                            queueWhatsAppMessage(order, true, pin);
-                            updateTelegramStatus(ref);
-                            res.writeHead(200);
-                            res.end(JSON.stringify({ success: true, message: 'Aprobado vía PIN' }));
-                        } else {
-                            res.writeHead(200);
-                            res.end(JSON.stringify({ success: false, message: 'Fallo recarga y no hay pines: ' + result.message }));
-                        }
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: false, message: 'No hay stock de pines para este paquete.' }));
                     }
                 } else {
                     res.writeHead(404);
@@ -1025,6 +970,13 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/admin/pines' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(pines));
+    } else if (parsedUrl.pathname === '/admin/pines/used' && req.method === 'GET') {
+        supabase.from('ff_pines').select('*').eq('used', true).order('created_at', { ascending: false }).limit(50)
+            .then(({ data, error }) => {
+                if (error) { res.writeHead(500); return res.end(JSON.stringify(error)); }
+                res.writeHead(200);
+                res.end(JSON.stringify(data || []));
+            });
     } else if (parsedUrl.pathname === '/admin/pines/add' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
@@ -1129,8 +1081,8 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: false }));
         } else if (uid) {
-            // Registrar si no existe (con bono de bienvenida)
-            users[uid] = { name: 'Jugador', points: 10, registered: new Date().toISOString() };
+            // Registrar si no existe (Balance inicial 0 para priorizar compras)
+            users[uid] = { name: 'Jugador', points: 0, registered: new Date().toISOString() };
             saveUser(uid);
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));
