@@ -76,7 +76,7 @@ async function loadFromSupabase() {
         // Usuarios
         const { data: usersData } = await supabase.from('ff_users').select('*');
         if (usersData) {
-            usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by }; });
+            usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by, referral_claimed: u.referral_claimed }; });
         }
 
         // Pedidos
@@ -174,7 +174,8 @@ async function saveUser(uid) {
     if (!u) return;
     const { error } = await supabase.from('ff_users').upsert({
         uid, name: u.name, points: u.points, password: u.password || null,
-        registered: u.registered, referred_by: u.referred_by || null
+        registered: u.registered, referred_by: u.referred_by || null,
+        referral_claimed: u.referral_claimed || false
     });
     if (error) console.error('[SUPABASE] Error guardando usuario:', error.message);
 }
@@ -186,6 +187,18 @@ function addPoints(uid, amountUsdt, name = null) {
     const pointsToAdd = Math.floor(amountUsdt * 10);
     users[uid].points += pointsToAdd;
     if (name) users[uid].name = name;
+
+    // Lógica de Referidos: 15 pts al referrer en la PRIMERA recarga
+    if (users[uid].referred_by && !users[uid].referral_claimed) {
+        const referrerUid = users[uid].referred_by;
+        if (users[referrerUid]) {
+            users[referrerUid].points = (users[referrerUid].points || 0) + 15;
+            users[uid].referral_claimed = true;
+            saveUser(referrerUid);
+            console.log(`[REFERRAL_REWARD] ${referrerUid} gana 15 pts por la 1ra recarga de ${uid}`);
+        }
+    }
+
     saveUser(uid);
     console.log(`[PUNTOS] Se añadieron ${pointsToAdd} puntos a ID: ${uid}. Total: ${users[uid].points}`);
     return pointsToAdd;
@@ -1131,14 +1144,14 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(200);
                     return res.end(JSON.stringify({ success: false, message: 'Ya fue referido anteriormente' }));
                 }
-                // Acreditar 10 puntos al referidor
-                users[referrer_uid].points = (users[referrer_uid].points || 0) + 10;
+                // Guardar quién lo refirió, pero NO dar puntos todavía
                 users[new_uid].referred_by = referrer_uid;
-                saveUser(referrer_uid);
+                users[new_uid].referral_claimed = false;
                 saveUser(new_uid);
-                console.log(`[REFERRAL] ${referrer_uid} gana 10 pts por referir a ${new_uid}`);
+                
+                console.log(`[REFERRAL] ${new_uid} vinculado a ${referrer_uid} (Pendiente de 1ra recarga)`);
                 res.writeHead(200);
-                res.end(JSON.stringify({ success: true, message: '10 puntos acreditados al referidor' }));
+                res.end(JSON.stringify({ success: true, message: 'Vinculado correctamente' }));
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
     } else if (parsedUrl.pathname === '/canjear' && req.method === 'POST') {
