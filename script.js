@@ -750,6 +750,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const notifyRes = await fetch(notifyUrl);
             if (!notifyRes.ok) throw new Error('Error al notificar');
             const notifyData = await notifyRes.json();
+
+            // ⚠️ SEGURIDAD: Si el servidor rechazó la referencia (duplicada / ya aprobada), mostrar error y detener
+            if (notifyData.success === false) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '⚠️ Referencia Inválida',
+                    html: `<b>${notifyData.message || 'Esta referencia de pago ya fue utilizada.'}</b><br><br>Por favor, verifica tu comprobante de pago y comunícate con soporte si crees que es un error.`,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
+                return; // ← Detiene completamente el flujo. NO abre el recibo.
+            }
+
             const controlNum = notifyData.control_num || 'N/A';
 
             // Guardar en historial local

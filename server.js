@@ -1,5 +1,5 @@
 require('dotenv').config();
-// DEPLOYMENT TIMESTAMP: 2026-05-10T12:15:00
+// DEPLOYMENT TIMESTAMP: 2026-05-10T12:20:00
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -637,9 +637,21 @@ const server = http.createServer(async (req, res) => {
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
 
-        // --- SEGURIDAD: EVITAR DUPLICADOS ---
+        // --- SEGURIDAD DOBLE: EVITAR DUPLICADOS (memoria + Supabase) ---
         if (orders[ref]) {
-            console.log(`[NOTIFICACIÓN] 🛑 Intento de duplicado bloqueado: Ref ${ref}`);
+            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en memoria: Ref ${ref} (status: ${orders[ref].status})`);
+            res.writeHead(200);
+            return res.end(JSON.stringify({ 
+                success: false, 
+                message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
+            }));
+        }
+        // Verificación secundaria en Supabase (cubre reinicios de Render)
+        const { data: existingOrder } = await supabase.from('ff_orders').select('ref, status').eq('ref', ref).single();
+        if (existingOrder) {
+            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en Supabase: Ref ${ref} (status: ${existingOrder.status})`);
+            // Restaurar en memoria para futuros chequeos
+            orders[ref] = { status: existingOrder.status };
             res.writeHead(200);
             return res.end(JSON.stringify({ 
                 success: false, 
@@ -653,9 +665,19 @@ const server = http.createServer(async (req, res) => {
         // Guardar pedido como pendiente
         const currentTime = getVEISO();
         orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num };
-        supabase.from('ff_orders').insert({
+        const { error: insertError } = await supabase.from('ff_orders').insert({
             ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num
-        }).then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando pedido:', error.message); });
+        });
+        if (insertError) {
+            // Si Supabase rechaza por restricción de unicidad, también bloqueamos
+            if (insertError.code === '23505') {
+                console.log(`[NOTIFICACIÓN] 🛑 Duplicado rechazado por Supabase (unique constraint): Ref ${ref}`);
+                delete orders[ref]; // Revertir en memoria
+                res.writeHead(200);
+                return res.end(JSON.stringify({ success: false, message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' }));
+            }
+            console.error('[SUPABASE] Error guardando pedido:', insertError.message);
+        }
 
         /* 
         // Auto-aprobación desactivada por seguridad a petición del usuario
