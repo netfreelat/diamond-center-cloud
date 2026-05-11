@@ -488,6 +488,7 @@ PIN789012
                             <thead>
                                 <tr>
                                     <th>Fecha</th>
+                                    <th>Control</th>
                                     <th>Jugador</th>
                                     <th>Monto</th>
                                     <th>Referencia</th>
@@ -771,9 +772,16 @@ PIN789012
                     usedTbody.innerHTML = '';
                     if (Array.isArray(usedPines)) {
                         usedPines.forEach(p => {
+                            let dateStr = 'N/A';
+                            try {
+                                if (p.time) dateStr = new Date(p.time).toLocaleString('es-ES', { timeZone: 'America/Caracas' });
+                                else if (p.created_at) dateStr = new Date(p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' });
+                            } catch (e) { dateStr = 'Error'; }
+
                             usedTbody.innerHTML += `
                                 <tr>
-                                    <td><small>${new Date(p.time || p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' })}</small></td>
+                                    <td><small>${dateStr}</small></td>
+                                    <td><span style="color:var(--secondary); font-weight:700;">${p.control_num || '-'}</span></td>
                                     <td>${p.name || '-'}<br><small>ID: ${p.uid || '-'}</small></td>
                                     <td>${p.pack || p.amount || '-'}</td>
                                     <td><code>${p.ref || '-'}</code></td>

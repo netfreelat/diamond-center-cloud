@@ -1190,7 +1190,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200);
         res.end(JSON.stringify(pines));
     } else if (parsedUrl.pathname === '/admin/pines/used' && req.method === 'GET') {
-        supabase.from('ff_orders').select('time, pack, pin, name, uid, ref').not('pin', 'is', null).order('time', { ascending: false }).limit(50)
+        supabase.from('ff_orders').select('time, pack, pin, name, uid, ref, control_num').not('pin', 'is', null).order('time', { ascending: false }).limit(50)
             .then(({ data, error }) => {
                 if (error) { 
                     console.error('[PIN-HISTORY] Error:', error);
