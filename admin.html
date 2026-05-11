@@ -439,7 +439,7 @@ PIN789012
                     </div>
                     <div class="action-card">
                         <h3><i class="fa-solid fa-boxes-stacked"></i> Stock por Paquete</h3>
-                        <div id="pines-stats" class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        <div id="pines-stats" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
                             <!-- Pines por monto -->
                         </div>
                     </div>
@@ -751,11 +751,11 @@ PIN789012
                     const isEmpty = count === 0;
                     
                     container.innerHTML += `
-                        <div class="stat-card ${isEmpty ? 'alert' : (isLow ? 'warning' : 'success')}">
-                            <span class="label">${amount} DIAMANTES</span>
-                            <span class="value">${count}</span>
-                            <div style="font-size: 0.7rem; margin-top: 5px; color: ${isEmpty ? 'var(--danger)' : (isLow ? 'var(--warning)' : 'var(--success)')}">
-                                ${isEmpty ? '⚠️ SIN STOCK' : (isLow ? '⏳ STOCK BAJO' : '✅ DISPONIBLE')}
+                        <div class="stat-card ${isEmpty ? 'alert' : (isLow ? 'warning' : 'success')}" style="padding: 10px; min-height: 80px;">
+                            <span class="label" style="font-size: 0.6rem;">${amount} DIAMS</span>
+                            <span class="value" style="font-size: 1.5rem;">${count}</span>
+                            <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: ${isEmpty ? '#FF3D71' : (isLow ? '#FFD93D' : '#00FF94')}">
+                                ${isEmpty ? 'SIN STOCK' : (isLow ? 'BAJO' : 'OK')}
                             </div>
                         </div>
                     `;
