@@ -152,7 +152,19 @@ async function sendMessage(item) {
         await new Promise(resolve => setTimeout(resolve, delay));
     } catch (error) {
         console.error(`[WHATSAPP] ❌ Error enviando a ${item.number}:`, error.message);
-        // Si el error es crítico, podríamos intentar reiniciar el intervalo después
+        
+        // 🛡️ RECOUPERACIÓN: Si el error es un frame desconectado, el navegador está en un estado corrupto
+        if (error.message.includes('detached Frame') || error.message.includes('Execution context was destroyed')) {
+            console.log('🔄 [WHATSAPP] Detectado error de frame/contexto. Intentando refrescar el navegador...');
+            if (client && client.pupPage) {
+                try {
+                    await client.pupPage.reload();
+                    console.log('✅ [WHATSAPP] Navegador refrescado. Reintentando en la próxima vuelta.');
+                } catch (reloadErr) {
+                    console.error('❌ [WHATSAPP] No se pudo refrescar el navegador:', reloadErr.message);
+                }
+            }
+        }
     }
 }
 
