@@ -1333,9 +1333,9 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: false }));
         } else if (uid) {
-            // Registrar si no existe (Balance inicial 0 para priorizar compras)
+            // Mantener en memoria temporalmente, pero NO guardar en Supabase todavía
+            // Solo se guardará si realiza una compra (vía addPoints)
             users[uid] = { name: 'Jugador', points: 0, registered: getVEISO() };
-            saveUser(uid);
             res.writeHead(200);
             res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));
         } else {
@@ -1365,10 +1365,8 @@ const server = http.createServer(async (req, res) => {
                 }
                 // Guardar quién lo refirió, pero NO dar puntos todavía
                 users[new_uid].referred_by = referrer_uid;
-                users[new_uid].referral_claimed = false;
-                saveUser(new_uid);
-                
-                console.log(`[REFERRAL] ${new_uid} vinculado a ${referrer_uid} (Pendiente de 1ra recarga)`);
+                // No guardamos en Supabase todavía, solo en memoria
+                console.log(`[REFERRAL] ${new_uid} vinculado a ${referrer_uid} (Pendiente de 1ra compra)`);
                 res.writeHead(200);
                 res.end(JSON.stringify({ success: true, message: 'Vinculado correctamente' }));
             } catch (e) { res.writeHead(400); res.end('Error'); }
