@@ -488,7 +488,9 @@ PIN789012
                             <thead>
                                 <tr>
                                     <th>Fecha</th>
+                                    <th>Jugador</th>
                                     <th>Monto</th>
+                                    <th>Referencia</th>
                                     <th>Código PIN</th>
                                 </tr>
                             </thead>
@@ -772,8 +774,10 @@ PIN789012
                             usedTbody.innerHTML += `
                                 <tr>
                                     <td><small>${new Date(p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' })}</small></td>
-                                    <td>${p.amount} 💎</td>
-                                    <td><code style="color:var(--secondary)">${p.code}</code></td>
+                                    <td>${p.name || '-'}<br><small>ID: ${p.uid || '-'}</small></td>
+                                    <td>${p.pack || p.amount || '-'}</td>
+                                    <td><code>${p.ref || '-'}</code></td>
+                                    <td><code style="color:var(--secondary)">${p.pin || p.code}</code></td>
                                 </tr>
                             `;
                         });

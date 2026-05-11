@@ -1190,9 +1190,10 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200);
         res.end(JSON.stringify(pines));
     } else if (parsedUrl.pathname === '/admin/pines/used' && req.method === 'GET') {
-        supabase.from('ff_pines').select('*').eq('used', true).order('created_at', { ascending: false }).limit(50)
+        supabase.from('ff_orders').select('created_at, pack, pin, name, uid, ref').not('pin', 'is', null).order('created_at', { ascending: false }).limit(50)
             .then(({ data, error }) => {
                 if (error) { res.writeHead(500); return res.end(JSON.stringify(error)); }
+                // Mapear campos para que el frontend los reciba como espera o ajustar el frontend
                 res.writeHead(200);
                 res.end(JSON.stringify(data || []));
             });
