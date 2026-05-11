@@ -773,7 +773,7 @@ PIN789012
                         usedPines.forEach(p => {
                             usedTbody.innerHTML += `
                                 <tr>
-                                    <td><small>${new Date(p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' })}</small></td>
+                                    <td><small>${new Date(p.time || p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' })}</small></td>
                                     <td>${p.name || '-'}<br><small>ID: ${p.uid || '-'}</small></td>
                                     <td>${p.pack || p.amount || '-'}</td>
                                     <td><code>${p.ref || '-'}</code></td>
