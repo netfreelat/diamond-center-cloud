@@ -194,7 +194,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
     
     let msg = '';
     if (isAccepted) {
-        msg = `🔥 *¡BOOYAH! RECARGA EXITOSA* 🔥\n\n` +
+        msg = `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥\n\n` +
               `¡Hola, *${order.name}*! Tu pedido de diamantes ha sido procesado con éxito. 🚀\n\n` +
               `━━━━━━━━━━━━━━━\n` +
               `👤 *Jugador:* ${order.name}\n` +
