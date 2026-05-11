@@ -92,7 +92,7 @@
 
                 <div id="hype-helper" style="display: block; background: rgba(0, 191, 255, 0.05); border: 1px solid rgba(0, 191, 255, 0.2); border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: left;">
                     <p style="color: var(--secondary); font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;"><i class="fa-solid fa-circle-info"></i> MODO ASISTIDO LATAM</p>
-                    <p style="color: #ccc; font-size: 0.75rem; line-height: 1.4;">Te redirigiremos al portal de canje con el PIN escrito. Copia tu ID de aquí abajo para pegarlo allá:</p>
+                    <p style="color: #ccc; font-size: 0.75rem; line-height: 1.4;">Te redirigiremos al portal de canje oficial. Copia tu ID y tu PIN de aquí abajo para pegarlos allá:</p>
                     <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                         <span id="copy-id-text" style="color: white; font-family: monospace; font-weight: 700; font-size: 1rem;"></span>
                         <button onclick="copyCurrentId()" style="background: var(--secondary); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">COPIAR</button>
@@ -253,19 +253,25 @@
                 });
 
                 if (selectedRegion === 'chile') {
-                    const hypeUrl = `https://redeem.hype.games/freefire/${pin}`;
-                    window.open(hypeUrl, '_blank');
+                    const redeemUrl = `https://redeempins.com/`;
+                    window.open(redeemUrl, '_blank');
                     
                     Swal.fire({
                         icon: 'info',
                         title: 'PORTAL DE CANJE ABIERTO',
                         html: `
-                            <p style="color: #fff; margin-bottom: 15px;">Hemos abierto el portal con tu PIN pre-llenado.</p>
-                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                            <p style="color: #fff; margin-bottom: 15px;">Hemos abierto <b>RedeemPins</b> para tu canje.</p>
+                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
                                 <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Tu ID para pegar:</p>
                                 <h3 style="color: var(--secondary); font-family: monospace; letter-spacing: 2px;">${uid}</h3>
+                                <button onclick="copyCurrentId()" style="background: var(--secondary); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">COPIAR ID</button>
                             </div>
-                            <p style="color: var(--secondary); font-size: 0.7rem; margin-top: 15px;">⚠️ Recuerda que el portal puede solicitar RUT y Email.</p>
+                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Tu PIN para pegar:</p>
+                                <h3 style="color: #00ff88; font-family: monospace; font-size: 0.9rem;">${pin}</h3>
+                                <button onclick="navigator.clipboard.writeText('${pin}'); Swal.fire({icon:'success', title:'PIN Copiado', timer:800, showConfirmButton:false, background: 'rgba(20, 10, 35, 0.95)', color: '#fff'});" style="background: #00c853; border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">COPIAR PIN</button>
+                            </div>
+                            <p style="color: var(--secondary); font-size: 0.7rem; margin-top: 15px;">⚠️ Selecciona Free Fire, pega tu ID y el PIN que acabas de copiar.</p>
                         `,
                         background: 'rgba(20, 10, 35, 0.95)',
                         color: '#fff',
