@@ -206,7 +206,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             msg += `\n\n⚡ *CANJE SU PIN AQUÍ:* \n` +
                    `Presiona el link de abajo para recibir tus diamantes al instante:\n` +
                    `🔗 https://redeempins.com/\n\n` +
-                   `¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
+                   `*Tu PIN está abajo, cópialo y ve a canjearlo* 👇👇`;
             
             // Mensaje 1: Ticket con instrucciones (ID único por ref)
             const waTicket = { id: ticketId, number: order.wa, message: msg };
