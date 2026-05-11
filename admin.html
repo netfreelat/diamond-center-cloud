@@ -97,6 +97,26 @@
             box-shadow: 0 4px 15px rgba(157, 0, 255, 0.3);
         }
 
+        .badge {
+            background: var(--danger);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 10px;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            box-shadow: 0 0 10px rgba(255, 61, 113, 0.5);
+            display: none;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
         .tab-content {
             display: none;
             animation: fadeIn 0.4s ease-out;
@@ -305,7 +325,10 @@
 
         <nav class="tabs-nav">
             <button class="tab-btn active" onclick="showTab('dashboard', this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
-            <button class="tab-btn" onclick="showTab('pedidos', this)"><i class="fa-solid fa-shopping-cart"></i> Pedidos</button>
+            <button class="tab-btn" onclick="showTab('pedidos', this)" style="position: relative;">
+                <i class="fa-solid fa-shopping-cart"></i> Pedidos
+                <span id="pending-badge" class="badge">0</span>
+            </button>
             <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Inventario de Pines</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
@@ -612,6 +635,9 @@ PIN789012
             try {
                 const res = await fetch(`${SERVER_URL}/admin/stats`);
                 const stats = await res.json();
+                
+                updatePendingBadge(stats.pending);
+                
                 document.getElementById('dashboard-stats').innerHTML = `
                     <div class="stat-card">
                         <span class="label">P. PENDIENTES</span>
@@ -1154,6 +1180,70 @@ PIN789012
             } catch (e) { Swal.fire('Error', 'No se pudo enviar la orden.', 'error'); }
         }
 
+        // --- NOTIFICACIONES ---
+        let lastPendingCount = -1;
+        let titleFlashInterval = null;
+
+        function updatePendingBadge(count) {
+            const badge = document.getElementById('pending-badge');
+            if (count > 0) {
+                badge.innerText = count;
+                badge.style.display = 'block';
+                
+                // Si el número aumentó, notificar
+                if (lastPendingCount !== -1 && count > lastPendingCount) {
+                    notifyNewOrder();
+                }
+            } else {
+                badge.style.display = 'none';
+                stopTitleFlash();
+            }
+            lastPendingCount = count;
+        }
+
+        function notifyNewOrder() {
+            // Sonido de notificación
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1361/1361-preview.mp3');
+            audio.play().catch(e => console.log('Audio blocked'));
+            
+            // Flash en el título de la pestaña
+            startTitleFlash();
+            
+            // Alerta visual
+            Swal.fire({
+                title: '¡NUEVO PEDIDO!',
+                text: 'Hay un nuevo pedido pendiente por aprobar.',
+                icon: 'warning',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 5000,
+                background: 'rgba(20, 10, 35, 0.95)',
+                color: '#fff'
+            });
+        }
+
+        function startTitleFlash() {
+            if (titleFlashInterval) return;
+            const originalTitle = document.title;
+            let isFlash = false;
+            titleFlashInterval = setInterval(() => {
+                document.title = isFlash ? '🚨 NUEVO PEDIDO 🚨' : originalTitle;
+                isFlash = !isFlash;
+            }, 1000);
+            
+            // Detener el flash al hacer clic en cualquier parte de la página
+            window.addEventListener('click', stopTitleFlash, { once: true });
+        }
+
+        function stopTitleFlash() {
+            if (titleFlashInterval) {
+                clearInterval(titleFlashInterval);
+                titleFlashInterval = null;
+                document.title = 'Panel Administrativo | Diamond Center';
+            }
+        }
+
         // Init
         loadDashboardStats();
 
@@ -1164,9 +1254,17 @@ PIN789012
             
             if (activeTabText.includes('Dashboard')) loadDashboardStats();
             if (activeTabText.includes('Pedidos')) loadOrders();
-            if (activeTabText.includes('Almacén')) loadPinStats();
+            if (activeTabText.includes('Almacén') || activeTabText.includes('Pines')) loadPinStats();
             if (activeTabText.includes('Usuarios')) loadUsers();
             
+            // Siempre actualizar el badge de pendientes, sin importar el tab
+            if (!activeTabText.includes('Dashboard')) {
+                fetch(`${SERVER_URL}/admin/stats`)
+                    .then(r => r.json())
+                    .then(stats => updatePendingBadge(stats.pending))
+                    .catch(e => {});
+            }
+
             checkWaStatus();
         }, 5000);
     </script>
