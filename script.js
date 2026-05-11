@@ -356,12 +356,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (newPass) {
             try {
-                await fetch(`${SERVER_URL}/admin/usuarios/set_password`, {
+                const res = await fetch(`${SERVER_URL}/api/set_password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ uid, password: newPass })
                 });
-                Swal.fire({ icon: 'success', title: '¡Contraseña creada!', text: 'Tu cuenta está protegida.', timer: 2000, showConfirmButton: false });
+                const result = await res.json();
+                if (result.success) {
+                    Swal.fire({ icon: 'success', title: '¡Contraseña creada!', text: 'Tu cuenta está protegida.', timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar la contraseña.' });
+                }
             } catch (e) {
                 Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar la contraseña.' });
             }
@@ -538,6 +543,44 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        Swal.fire({ title: 'Validando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        // 1. Verificar si el usuario tiene contraseña en nuestra DB
+        let passCheck = null;
+        try {
+            const chkRes = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}`);
+            passCheck = await chkRes.json();
+        } catch (e) { passCheck = { success: false }; }
+
+        // 2. Si tiene contraseña, pedirla antes de seguir
+        if (passCheck && passCheck.hasPassword) {
+            const { value: pass } = await Swal.fire({
+                title: '🔒 Cuenta Protegida',
+                html: `<p style="font-size:0.85rem;color:#aaa;margin-bottom:10px;">ID: <strong>${uid}</strong> tiene contraseña.</p>
+                       <input id="swal-verify-pass" type="password" class="swal2-input" placeholder="Ingresa tu contraseña">`,
+                showCancelButton: true,
+                confirmButtonText: 'Ingresar',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                preConfirm: () => document.getElementById('swal-verify-pass').value
+            });
+
+            if (!pass) return;
+
+            Swal.fire({ title: 'Autenticando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            let authRes = null;
+            try {
+                const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}&pass=${encodeURIComponent(pass)}`);
+                authRes = await authCheck.json();
+            } catch (e) { authRes = { success: false }; }
+
+            if (!authRes || !authRes.success) {
+                return Swal.fire({ icon: 'error', title: 'Contraseña incorrecta', text: 'No puedes acceder a este ID.' });
+            }
+        }
+
+        // 3. Verificación normal con Garena (si pasó el password o no tiene)
         Swal.fire({
             title: 'Validando ID...',
             html: `
@@ -562,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Guardar como último ID usado
                 localStorage.setItem('ff_last_id', uid);
+                localStorage.setItem('ff_user_id', uid); // Auto-login
                 loadLastIdBtn.style.display = 'block';
 
                 // Mostrar sección de paquetes
@@ -574,14 +618,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const welcomeSection = document.getElementById('welcome-section');
                 document.getElementById('player-name-display').innerText = playerName;
-                // Auto-login si no estaba logueado
-            localStorage.setItem('ff_user_id', playerInput.value);
-            updateAccountUI(playerInput.value);
-
-            welcomeSection.style.display = 'block';
+                
+                updateAccountUI(uid);
+                welcomeSection.style.display = 'block';
 
                 // Cargar puntos del usuario
                 loadUserPoints(uid);
+
+                // Si no tenía contraseña, ofrecer crear una
+                if (passCheck && !passCheck.hasPassword) {
+                    setTimeout(async () => {
+                        const { isConfirmed } = await Swal.fire({
+                            icon: 'info',
+                            title: '¡Protege tu ID!',
+                            html: `<p style="font-size:0.9rem;color:#aaa;">¿Quieres crear una <strong>contraseña</strong>?<br><small>Evita que otros usen tus puntos.</small></p>`,
+                            showCancelButton: true,
+                            confirmButtonText: '🔐 Crear Contraseña',
+                            cancelButtonText: 'Luego',
+                            background: 'rgba(20, 10, 35, 0.98)',
+                            color: '#fff'
+                        });
+                        if (isConfirmed) await promptSetPassword(uid);
+                    }, 2000);
+                }
                 
             } else {
                 throw new Error('Jugador no encontrado');

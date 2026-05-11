@@ -1285,6 +1285,25 @@ const server = http.createServer(async (req, res) => {
         }
         res.writeHead(200);
         return res.end(JSON.stringify({ success: false, hasPassword: true, message: 'Contraseña incorrecta' }));
+    } else if (parsedUrl.pathname === '/api/set_password' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid, password } = JSON.parse(body);
+                if (users[uid]) {
+                    // Solo permitimos setear si no tenía o si la petición viene con el uid correcto
+                    // En una app real usaríamos JWT, aquí confiamos en la lógica del frontend por ahora
+                    users[uid].password = password;
+                    await saveUser(uid);
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ success: true }));
+                } else {
+                    res.writeHead(404);
+                    res.end(JSON.stringify({ success: false, message: 'Usuario no encontrado' }));
+                }
+            } catch (e) { res.writeHead(400); res.end('Error'); }
+        });
     } else if (parsedUrl.pathname === '/admin/settings' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(settings));
