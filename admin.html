@@ -482,7 +482,13 @@ PIN789012
                 </div>
 
                 <div class="action-card" style="margin-top: 20px;">
-                    <h3><i class="fa-solid fa-history"></i> Últimos 50 Pines Entregados</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <h3 style="margin: 0;"><i class="fa-solid fa-history"></i> Últimos 50 Pines Entregados</h3>
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="pin-history-search" placeholder="Buscar jugador, control, PIN..." onkeyup="filterUsedPines()">
+                        </div>
+                    </div>
                     <div class="table-container">
                         <table>
                             <thead>
@@ -768,30 +774,51 @@ PIN789012
                 const usedRes = await fetch(`${SERVER_URL}/admin/pines/used`);
                 if (usedRes.ok) {
                     const usedPines = await usedRes.json();
-                    const usedTbody = document.getElementById('used-pines-table-body');
-                    usedTbody.innerHTML = '';
-                    if (Array.isArray(usedPines)) {
-                        usedPines.forEach(p => {
-                            let dateStr = 'N/A';
-                            try {
-                                if (p.time) dateStr = new Date(p.time).toLocaleString('es-ES', { timeZone: 'America/Caracas' });
-                                else if (p.created_at) dateStr = new Date(p.created_at).toLocaleString('es-ES', { timeZone: 'America/Caracas' });
-                            } catch (e) { dateStr = 'Error'; }
-
-                            usedTbody.innerHTML += `
-                                <tr>
-                                    <td><small>${dateStr}</small></td>
-                                    <td><span style="color:var(--secondary); font-weight:700;">${p.control_num || '-'}</span></td>
-                                    <td>${p.name || '-'}<br><small>ID: ${p.uid || '-'}</small></td>
-                                    <td>${p.pack || p.amount || '-'}</td>
-                                    <td><code>${p.ref || '-'}</code></td>
-                                    <td><code style="color:var(--secondary)">${p.pin || p.code}</code></td>
-                                </tr>
-                            `;
-                        });
-                    }
+                    allUsedPines = usedPines;
+                    renderUsedPines(allUsedPines);
                 }
             } catch (e) { console.error('Error cargando estadísticas de pines:', e); }
+        }
+
+        let allUsedPines = [];
+        function renderUsedPines(list) {
+            const usedTbody = document.getElementById('used-pines-table-body');
+            usedTbody.innerHTML = '';
+            if (!Array.isArray(list) || list.length === 0) {
+                usedTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; opacity:0.5;">No hay pines entregados aún.</td></tr>';
+                return;
+            }
+            list.forEach(p => {
+                let dateStr = 'N/A';
+                try {
+                    const d = new Date(p.time || p.created_at);
+                    if (!isNaN(d)) dateStr = d.toLocaleString('es-ES', { timeZone: 'America/Caracas' });
+                } catch (e) { /* keep N/A */ }
+                usedTbody.innerHTML += `
+                    <tr>
+                        <td><small>${dateStr}</small></td>
+                        <td><span style="color:var(--secondary); font-weight:700;">${p.control_num || '-'}</span></td>
+                        <td>${p.name || '-'}<br><small>ID: ${p.uid || '-'}</small></td>
+                        <td>${p.pack || p.amount || '-'}</td>
+                        <td><code>${p.ref || '-'}</code></td>
+                        <td><code style="color:var(--secondary)">${p.pin || p.code || '-'}</code></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterUsedPines() {
+            const q = document.getElementById('pin-history-search').value.toLowerCase();
+            const filtered = allUsedPines.filter(p =>
+                (p.name        && p.name.toLowerCase().includes(q)) ||
+                (p.uid         && p.uid.toLowerCase().includes(q)) ||
+                (p.ref         && p.ref.toLowerCase().includes(q)) ||
+                (p.control_num && p.control_num.toLowerCase().includes(q)) ||
+                (p.pin         && p.pin.toLowerCase().includes(q)) ||
+                (p.code        && p.code.toLowerCase().includes(q)) ||
+                (p.pack        && p.pack.toLowerCase().includes(q))
+            );
+            renderUsedPines(filtered);
         }
 
         async function loadAvailablePines() {
