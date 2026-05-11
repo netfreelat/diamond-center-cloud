@@ -1119,8 +1119,25 @@ const server = http.createServer(async (req, res) => {
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
     } else if (parsedUrl.pathname === '/admin/usuarios' && req.method === 'GET') {
-        res.writeHead(200);
-        res.end(JSON.stringify(users));
+        try {
+            // Obtener lista de UIDs que tienen al menos un pedido en Supabase
+            const { data: realUids } = await supabase.from('ff_orders').select('uid');
+            const customerSet = new Set(realUids.map(o => o.uid));
+            
+            const filteredUsers = {};
+            Object.entries(users).forEach(([uid, data]) => {
+                if (customerSet.has(uid) || data.points > 0) {
+                    filteredUsers[uid] = data;
+                }
+            });
+            
+            res.writeHead(200);
+            res.end(JSON.stringify(filteredUsers));
+        } catch (e) {
+            // Fallback: enviar todos si falla la consulta
+            res.writeHead(200);
+            res.end(JSON.stringify(users));
+        }
     } else if (parsedUrl.pathname === '/admin/usuarios/update_points' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
