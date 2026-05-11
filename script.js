@@ -783,7 +783,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const packText = `${selectedPackage.amount} + ${selectedPackage.bonus}`;
         const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price);
         const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
-        const waFull = countryCode.value + waNum;
+        let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
+        const waFull = countryCode.value + waClean;
 
         Swal.fire({
             title: 'Procesando pago...',

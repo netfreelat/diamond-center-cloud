@@ -132,7 +132,13 @@ async function checkQueue() {
 async function sendMessage(item) {
     try {
         // Formatear número (Ej. 584121234567@c.us)
-        const numberId = `${item.number}@c.us`;
+        let targetNumber = item.number;
+        // Auto-fix: Quitar el 0 extra después del código de país 58 (Venezuela) si existe
+        if (targetNumber.startsWith('580')) {
+            console.log(`[WHATSAPP] 🔧 Corrigiendo número: ${targetNumber} -> 58${targetNumber.substring(3)}`);
+            targetNumber = '58' + targetNumber.substring(3);
+        }
+        const numberId = `${targetNumber}@c.us`;
         
         console.log(`[WHATSAPP] Enviando mensaje a ${item.number}...`);
         
