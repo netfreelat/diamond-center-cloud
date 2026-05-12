@@ -204,7 +204,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
         if (pin) {
             msg += `\n\n⚡ *CANJE SU PIN AQUÍ:* \n` +
-                   `Presiona el link de abajo para recibir tus diamantes al instante:\n` +
+                   `Presiona el link para ir directo a cangear tu pin:\n` +
                    `🔗 https://redeempins.com/\n\n` +
                    `*Tu PIN está abajo, cópialo y ve a canjearlo* 👇👇`;
             
