@@ -1040,6 +1040,28 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/recientes') {
         res.writeHead(200);
         res.end(JSON.stringify(recentReloads));
+    } else if (parsedUrl.pathname === '/historial') {
+        // Historial de compras de un jugador por su UID (tiempo real desde Supabase)
+        const uid = parsedUrl.searchParams.get('uid');
+        if (!uid) {
+            res.writeHead(400);
+            return res.end(JSON.stringify({ success: false, error: 'Falta el uid' }));
+        }
+        try {
+            const { data, error } = await supabase
+                .from('ff_orders')
+                .select('ref, control_num, pack, status, time, pin, method, price')
+                .eq('uid', uid)
+                .order('time', { ascending: false })
+                .limit(20);
+            if (error) throw error;
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: true, orders: data || [] }));
+        } catch (e) {
+            console.error('[HISTORIAL] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, error: 'Error al obtener historial' }));
+        }
     } else if (parsedUrl.pathname === '/admin/stats' && req.method === 'GET') {
         const stats = {
             pending: Object.values(orders).filter(o => o.status === 'pending').length,

@@ -94,6 +94,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeIdBtn = document.getElementById('change-id-btn');
     const resetUiBtn = document.getElementById('reset-ui-btn');
 
+    // Historial en tiempo real del jugador verificado
+    let currentPlayerHistory = [];
+    let historyLoadedForUid = null;
+
+    async function fetchPlayerHistory(uid) {
+        try {
+            const res = await fetch(`${SERVER_URL}/historial?uid=${uid}`);
+            if (!res.ok) throw new Error('Error al cargar historial');
+            const data = await res.json();
+            if (data.success) {
+                currentPlayerHistory = data.orders || [];
+                historyLoadedForUid = uid;
+                console.log(`[HISTORIAL] Cargadas ${currentPlayerHistory.length} compras para UID: ${uid}`);
+            }
+        } catch (e) {
+            console.error('[HISTORIAL] Error fetching:', e);
+            currentPlayerHistory = [];
+        }
+    }
+
     // Manejar Último ID usado
     const lastId = localStorage.getItem('ff_last_id');
     if (lastId && loadLastIdBtn) {
@@ -128,70 +148,205 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('ff_my_orders', JSON.stringify(myOrders));
     }
 
-    // Manejar Botón de Historial
+    // Manejar Botón de Historial — carga tiempo real desde servidor si hay ID verificado
     historyBtn.addEventListener('click', async () => {
-        let myOrders = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
-        
-        if (myOrders.length === 0) {
+        const activeUid = historyLoadedForUid || playerInput.value.trim();
+
+        // ── Caso 1: Hay UID verificado → mostrar historial del servidor ──
+        if (activeUid && currentPlayerHistory.length >= 0 && historyLoadedForUid === activeUid) {
+            // Recargar en tiempo real antes de mostrar
             Swal.fire({
+                title: '<i class="fa-solid fa-rotate" style="animation: spin 1s linear infinite;"></i> Cargando...',
+                html: '<p style="color:#aaa;font-size:0.85rem;">Consultando historial en tiempo real...</p>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: 'rgba(20, 10, 35, 0.97)',
+                color: '#fff',
+                didOpen: () => Swal.showLoading()
+            });
+            await fetchPlayerHistory(activeUid);
+            Swal.close();
+
+            if (currentPlayerHistory.length === 0) {
+                return Swal.fire({
+                    icon: 'info',
+                    title: '📭 Sin Compras',
+                    text: 'Este jugador aún no tiene compras registradas.',
+                    background: 'rgba(20, 10, 35, 0.97)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            }
+
+            let historyHtml = `
+                <div style="margin-bottom:12px; padding:8px 12px; background:rgba(157,0,255,0.08); border-radius:8px; border:1px solid rgba(157,0,255,0.2); font-size:0.75rem; color:#aaa; text-align:left;">
+                    <i class="fa-solid fa-id-badge" style="color:#9D00FF;"></i> ID: <strong style="color:#fff;">${activeUid}</strong>
+                    &nbsp;·&nbsp; <i class="fa-solid fa-circle-check" style="color:#25D366;"></i> Datos en tiempo real
+                </div>
+                <div class="history-list" style="max-height: 380px; overflow-y: auto; padding-right: 8px;">`;
+
+            currentPlayerHistory.forEach(order => {
+                const statusClass = order.status === 'approved' ? 'status-approved' : (order.status === 'rejected' ? 'status-rejected' : 'status-pending');
+                const statusText  = order.status === 'approved' ? '✅ APROBADO' : (order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE');
+                const statusBg    = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
+                const methodIcon  = order.method === 'binance' ? '₿' : '📱';
+                const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
+
+                const pinBox = order.pin
+                    ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                           <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
+                           <button onclick="navigator.clipboard.writeText('${order.pin}').then(()=>{ this.innerText='✓ Copiado!'; setTimeout(()=>this.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15); border:1px solid rgba(0,240,255,0.3); color:#00f0ff; border-radius:6px; padding:3px 10px; font-size:0.72rem; cursor:pointer;">Copiar</button>
+                       </div>`
+                    : '';
+
+                historyHtml += `
+                    <div style="border-bottom:1px solid rgba(255,255,255,0.07); padding:14px 0; text-align:left;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                            <div style="flex:1;">
+                                <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
+                                <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">💎 ${order.pack} diamantes</p>
+                                ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
+                            </div>
+                            <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap;">
+                                <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:6px; font-size:0.72rem; color:#666;">
+                            Ref: <code style="color:var(--secondary);">${order.ref}</code>
+                            ${order.control_num ? `&nbsp;·&nbsp; N°: <code style="color:#aaa;">${order.control_num}</code>` : ''}
+                        </div>
+                        ${pinBox}
+                    </div>`;
+            });
+
+            historyHtml += '</div>';
+
+            return Swal.fire({
+                title: '<i class="fa-solid fa-receipt"></i> Historial de Compras',
+                html: historyHtml,
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                confirmButtonText: '🔄 Actualizar',
+                confirmButtonColor: '#9D00FF',
+                showCloseButton: true,
+                width: '420px'
+            }).then(result => {
+                if (result.isConfirmed) historyBtn.click(); // Recargar al presionar Actualizar
+            });
+        }
+
+        // ── Caso 2: Sin ID verificado → pedir ID al usuario para consultar ──
+        const savedUid = localStorage.getItem('ff_user_id') || localStorage.getItem('ff_last_id') || '';
+        const { value: inputUid } = await Swal.fire({
+            title: '<i class="fa-solid fa-receipt"></i> Consultar Compras',
+            html: `
+                <p style="font-size:0.85rem; color:#aaa; margin-bottom:12px;">
+                    Ingresa tu ID de Free Fire para ver tu historial de compras.
+                </p>
+                <input id="swal-history-uid" type="text" inputmode="numeric"
+                    class="swal2-input"
+                    placeholder="Ej: 123456789"
+                    value="${savedUid}"
+                    autocomplete="off"
+                    style="font-size:1.1rem; letter-spacing:2px; text-align:center;">
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-magnifying-glass"></i> Buscar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#9D00FF',
+            background: 'rgba(20, 10, 35, 0.98)',
+            color: '#fff',
+            didOpen: () => {
+                const inp = document.getElementById('swal-history-uid');
+                if (inp) { inp.focus(); inp.select(); }
+            },
+            preConfirm: () => {
+                const v = document.getElementById('swal-history-uid').value.trim();
+                if (!v) { Swal.showValidationMessage('Ingresa tu ID de Free Fire'); return false; }
+                return v;
+            }
+        });
+
+        if (!inputUid) return;
+
+        // Consultar historial del ID ingresado
+        Swal.fire({
+            title: 'Consultando...',
+            html: '<p style="color:#aaa;font-size:0.85rem;">Buscando tus compras en tiempo real...</p>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            background: 'rgba(20, 10, 35, 0.97)',
+            color: '#fff',
+            didOpen: () => Swal.showLoading()
+        });
+
+        await fetchPlayerHistory(inputUid);
+        Swal.close();
+
+        if (currentPlayerHistory.length === 0) {
+            return Swal.fire({
                 icon: 'info',
-                title: 'Sin Historial',
-                text: 'Aún no has realizado ninguna compra en este navegador.',
-                background: 'rgba(20, 10, 35, 0.95)',
+                title: '📭 Sin Compras',
+                html: `<p style="color:#aaa;">El ID <strong>${inputUid}</strong><br>no tiene compras registradas.</p>`,
+                background: 'rgba(20, 10, 35, 0.97)',
                 color: '#fff',
                 confirmButtonColor: '#9D00FF'
             });
-            return;
         }
 
-        // Si hay pendientes, intentar actualizar antes de mostrar
-        const hasPending = myOrders.some(o => o.status === 'pending');
-        if (hasPending) {
-            Swal.fire({
-                title: 'Actualizando historial...',
-                html: '<div class="ff-loader-text">Verificando estados con el servidor...</div>',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-                background: 'rgba(20, 10, 35, 0.95)',
-                color: '#fff'
-            });
-            await refreshHistoryStatuses();
-            myOrders = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
-            Swal.close();
-        }
+        // Mostrar historial encontrado
+        let historyHtml = `
+            <div style="margin-bottom:12px; padding:8px 12px; background:rgba(157,0,255,0.08); border-radius:8px; border:1px solid rgba(157,0,255,0.2); font-size:0.75rem; color:#aaa; text-align:left;">
+                <i class="fa-solid fa-id-badge" style="color:#9D00FF;"></i> ID: <strong style="color:#fff;">${inputUid}</strong>
+                &nbsp;·&nbsp; <i class="fa-solid fa-circle-check" style="color:#25D366;"></i> Datos en tiempo real
+            </div>
+            <div class="history-list" style="max-height: 380px; overflow-y: auto; padding-right: 8px;">`;
 
-        let historyHtml = '<div class="history-list" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">';
-        [...myOrders].reverse().forEach(order => {
+        currentPlayerHistory.forEach(order => {
             const statusClass = order.status === 'approved' ? 'status-approved' : (order.status === 'rejected' ? 'status-rejected' : 'status-pending');
-            const statusText = order.status === 'approved' ? 'APROBADO' : (order.status === 'rejected' ? 'RECHAZADO' : 'PENDIENTE');
-            const pinInfo = order.pin ? `<p style="margin: 5px 0; color: #00f0ff; font-family: monospace; font-size: 0.9rem; background: rgba(0,240,255,0.05); padding: 8px; border-radius: 6px; border: 1px dashed rgba(0,240,255,0.3);">🔑 PIN: ${order.pin}</p>` : '';
-            
+            const statusText  = order.status === 'approved' ? '✅ APROBADO' : (order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE');
+            const statusBg    = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
+            const methodIcon  = order.method === 'binance' ? '₿' : '📱';
+            const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
+            const pinBox = order.pin
+                ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                       <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
+                       <button onclick="navigator.clipboard.writeText('${order.pin}').then(()=>{ this.innerText='✓ Copiado!'; setTimeout(()=>this.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15); border:1px solid rgba(0,240,255,0.3); color:#00f0ff; border-radius:6px; padding:3px 10px; font-size:0.72rem; cursor:pointer;">Copiar</button>
+                   </div>`
+                : '';
             historyHtml += `
-                <div class="history-item" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 15px 0; text-align: left;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <p style="margin: 0; font-size: 0.7rem; color: #888;">${order.date}</p>
-                            <p style="margin: 5px 0; font-weight: 800; font-size: 1rem; color: #fff;">💎 ${order.pack} diamantes</p>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.07); padding:14px 0; text-align:left;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        <div style="flex:1;">
+                            <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
+                            <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">💎 ${order.pack} diamantes</p>
+                            ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
                         </div>
-                        <span class="${statusClass}" style="font-size: 0.7rem; font-weight: 900; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.05);">${statusText}</span>
+                        <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap;">
+                            <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
+                        </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                        <span style="font-size: 0.8rem; color: #aaa;">Ref: <code style="color: var(--secondary); font-weight:bold;">${order.ref}</code></span>
+                    <div style="margin-top:6px; font-size:0.72rem; color:#666;">
+                        Ref: <code style="color:var(--secondary);">${order.ref}</code>
+                        ${order.control_num ? `&nbsp;·&nbsp; N°: <code style="color:#aaa;">${order.control_num}</code>` : ''}
                     </div>
-                    ${pinInfo}
-                </div>
-            `;
+                    ${pinBox}
+                </div>`;
         });
+
         historyHtml += '</div>';
 
         Swal.fire({
-            title: '<i class="fa-solid fa-receipt"></i> Mis Compras',
+            title: '<i class="fa-solid fa-receipt"></i> Historial de Compras',
             html: historyHtml,
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
-            confirmButtonText: 'Cerrar',
+            confirmButtonText: '🔄 Buscar otro ID',
             confirmButtonColor: '#9D00FF',
-            width: '400px'
+            showCloseButton: true,
+            width: '420px'
+        }).then(result => {
+            if (result.isConfirmed) historyBtn.click();
         });
     });
 
@@ -624,6 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Cargar puntos del usuario
                 loadUserPoints(uid);
+
+                // ✅ AUTO-CARGAR historial de compras en tiempo real
+                fetchPlayerHistory(uid);
 
                 // Si no tenía contraseña, ofrecer crear una
                 if (passCheck && !passCheck.hasPassword) {
@@ -1182,6 +1340,10 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPackage = null;
         document.querySelectorAll('.package-card').forEach(c => c.classList.remove('selected'));
         buyBtn.disabled = true;
+
+        // Limpiar historial en memoria al cambiar de ID
+        currentPlayerHistory = [];
+        historyLoadedForUid = null;
     }
 
     if (changeIdBtn) changeIdBtn.addEventListener('click', resetUI);
