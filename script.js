@@ -766,6 +766,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const playerName = await checkPlayerId(uid);
 
             if (playerName) {
+                // --- TÉRMINOS Y CONDICIONES ---
+                const { isConfirmed: acceptedTerms } = await Swal.fire({
+                    title: '📜 TÉRMINOS Y CONDICIONES',
+                    html: `
+                        <div style="text-align: left; font-size: 0.85rem; line-height: 1.4; color: #eee; max-height: 300px; overflow-y: auto;">
+                            <p style="color: var(--secondary); font-weight: 800; margin-bottom: 5px; font-size: 0.9rem;">💰 SOBRE EL PAGO</p>
+                            <p style="margin-bottom: 12px; color: #aaa;">Debe pagar exactamente el monto que indica la página para el producto que seleccione. No pague sin revisar el monto antes.</p>
+                            
+                            <p style="color: var(--secondary); font-weight: 800; margin-bottom: 5px; font-size: 0.9rem;">⏰ REPORTE INMEDIATO</p>
+                            <p style="margin-bottom: 12px; color: #aaa;">Debe reportar su pago al momento de realizarlo. Los pagos de días anteriores NO son válidos y no serán procesados.</p>
+                            
+                            <p style="color: #FF3D71; font-weight: 800; margin-bottom: 5px; font-size: 0.9rem;">⚠️ IMPORTANTE</p>
+                            <p style="color: #aaa; margin-bottom: 12px;">No se realizan reembolsos ni se aceptan reclamos por errores del usuario. Verifique su ID de jugador y el producto antes de confirmar.</p>
+                            
+                            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+                            <p style="text-align: center; font-weight: 700; color: #fff;">He leído y entiendo las condiciones del servicio</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'Aceptar y continuar',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showCloseButton: false
+                });
+
+                if (!acceptedTerms) {
+                    resetUI();
+                    return;
+                }
+
                 Swal.close();
                 
                 // Guardar como último ID usado
