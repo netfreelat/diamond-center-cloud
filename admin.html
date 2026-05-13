@@ -36,7 +36,7 @@
                 radial-gradient(circle at 80% 80%, rgba(0, 240, 255, 0.1) 0%, transparent 40%);
             color: var(--text);
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 20px 10px;
         }
 
         .admin-container {
@@ -66,8 +66,13 @@
             gap: 10px;
             margin-bottom: 30px;
             overflow-x: auto;
-            padding-bottom: 10px;
-            justify-content: center;
+            padding: 5px;
+            justify-content: flex-start;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        @media (min-width: 769px) {
+            .tabs-nav { justify-content: center; }
         }
 
         .tab-btn {
@@ -190,6 +195,14 @@
         .stat-card.alert .value { color: var(--danger); text-shadow: 0 0 15px rgba(255, 61, 113, 0.4); }
 
         .stat-card.success .value { color: var(--success); text-shadow: 0 0 15px rgba(0, 255, 148, 0.4); }
+
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+        @media (min-width: 769px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
 
         .action-card {
             background: var(--dark-card);
@@ -327,6 +340,13 @@
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .header h1 { font-size: 1.8rem; }
             .btn-action span { display: none; }
+            .action-card { padding: 15px; border-radius: 15px; }
+            .stat-card { padding: 15px; }
+            .stat-card .value { font-size: 1.8rem; }
+            
+            /* Ajustes para evitar scroll horizontal excesivo */
+            .admin-container { overflow-x: hidden; width: 100%; }
+            table { min-width: 600px; } /* Forzar scroll dentro del contenedor de tabla solamente */
         }
     </style>
 </head>
