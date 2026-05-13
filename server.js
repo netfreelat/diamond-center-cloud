@@ -1381,8 +1381,8 @@ const server = http.createServer(async (req, res) => {
             precios: settings.precios,
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
-            stock: Object.keys(pines).reduce((acc, amount) => {
-                acc[amount] = pines[amount].length > 0;
+            stock: Object.keys(settings.precios).reduce((acc, amount) => {
+                acc[amount] = (pines[amount] && pines[amount].length > 0) || false;
                 return acc;
             }, {})
         };

@@ -248,11 +248,26 @@
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
+            display: inline-block;
         }
 
-        .status-pending { background: rgba(255, 193, 7, 0.2); color: #FFC107; border: 1px solid #FFC107; }
+        .status-pending { background: rgba(255, 193, 7, 0.2); color: #FFC107; border: 1px solid #FFC107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.2); }
         .status-approved { background: rgba(37, 211, 102, 0.2); color: #25D366; border: 1px solid #25D366; }
         .status-rejected { background: rgba(255, 75, 43, 0.2); color: #ff4b2b; border: 1px solid #ff4b2b; }
+
+        .btn-wa {
+            background: #25D366;
+            color: white;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: var(--transition);
+        }
+        .btn-wa:hover { transform: scale(1.1); background: #128C7E; }
 
         .btn-action {
             padding: 6px 12px;
@@ -648,20 +663,20 @@ PIN789012
                 updatePendingBadge(stats.pending);
                 
                 document.getElementById('dashboard-stats').innerHTML = `
-                    <div class="stat-card">
-                        <span class="label">P. PENDIENTES</span>
+                    <div class="stat-card ${stats.pending > 0 ? 'alert' : ''}">
+                        <span class="label"><i class="fa-solid fa-clock"></i> P. PENDIENTES</span>
                         <span class="value" style="color:#FFC107">${stats.pending}</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="label">P. APROBADOS</span>
+                    <div class="stat-card success">
+                        <span class="label"><i class="fa-solid fa-check-double"></i> P. APROBADOS</span>
                         <span class="value">${stats.approved}</span>
                     </div>
                     <div class="stat-card">
-                        <span class="label">USUARIOS</span>
+                        <span class="label"><i class="fa-solid fa-user-friends"></i> USUARIOS</span>
                         <span class="value" style="color:var(--primary)">${stats.total_users}</span>
                     </div>
                     <div class="stat-card">
-                        <span class="label">STOCK TOTAL</span>
+                        <span class="label"><i class="fa-solid fa-box"></i> STOCK TOTAL</span>
                         <span class="value" style="color:var(--secondary)">${stats.total_pines}</span>
                     </div>
                 `;
@@ -691,14 +706,18 @@ PIN789012
                     <td><small>${dateStr}</small><br><strong>${timeStr}</strong></td>
                     <td><span style="color:var(--secondary); font-weight:700;">${order.control_num || '-'}</span></td>
                     <td><code>${order.ref}</code><br><small style="color:var(--text-gray)">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small></td>
-                    <td>${order.name}<br><small>ID: ${order.uid}</small></td>
+                    <td>
+                        ${order.name}<br>
+                        <small>ID: ${order.uid}</small>
+                        ${order.wa ? `<br><a href="https://wa.me/${order.wa}" target="_blank" class="btn-wa"><i class="fa-brands fa-whatsapp"></i> Chat</a>` : ''}
+                    </td>
                     <td>${order.pack}</td>
                     <td><span style="color:#25D366; font-weight:700;">${order.price || 'N/A'}</span></td>
                     <td><span class="status-badge status-${order.status}">${order.status}</span></td>
                     <td>
                         ${order.status === 'pending' ? `
-                            <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve"><i class="fa-solid fa-check"></i></button>
-                            <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject"><i class="fa-solid fa-times"></i></button>
+                            <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar"><i class="fa-solid fa-check"></i></button>
+                            <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar"><i class="fa-solid fa-times"></i></button>
                         ` : '-'}
                     </td>
                 `;
@@ -971,7 +990,9 @@ PIN789012
                     <td><code>${uid}</code></td>
                     <td>${data.name}</td>
                     <td style="color:var(--secondary); font-weight:800">${data.points}</td>
-                    <td style="color:${data.password ? '#25D366' : '#aaa'}; font-size:0.8rem;">${data.password ? '🔒 Tiene' : '🔓 Sin clave'}</td>
+                    <td style="color:${data.password ? '#25D366' : '#FF3D71'}; font-size:0.8rem; font-weight:600;">
+                        ${data.password ? '<i class="fa-solid fa-lock"></i> Protegido' : '<i class="fa-solid fa-lock-open"></i> SIN CLAVE'}
+                    </td>
                     <td>
                         <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar Puntos"><i class="fa-solid fa-edit"></i></button>
                         <button onclick="editPassword('${uid}')" class="btn-action" style="background:#1a0a2e;" title="Cambiar Contraseña"><i class="fa-solid fa-key"></i></button>

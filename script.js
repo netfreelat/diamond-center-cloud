@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${SERVER_URL}/api/config`);
             const data = await res.json();
+            
+            // Si la tasa o los precios cambiaron, o es la primera carga, re-renderizar
+            const shouldRender = !APP_CONFIG.precios || 
+                               JSON.stringify(APP_CONFIG.precios) !== JSON.stringify(data.precios) ||
+                               APP_CONFIG.tasa_del_dia !== data.tasa_del_dia ||
+                               JSON.stringify(APP_CONFIG.stock) !== JSON.stringify(data.stock);
+
             APP_CONFIG = data;
             DOLAR_RATE = data.tasa_del_dia;
             
@@ -20,10 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const marquee = document.getElementById('marquee-content');
             if (marquee) marquee.innerText = data.barra_informativa;
 
-            // Renderizar paquetes dinámicamente
-            renderPackages(data.precios, data.tasa_del_dia);
+            if (shouldRender) {
+                console.log('[CONFIG] 🔄 Actualizando tienda (Precios o Stock cambiaron)');
+                renderPackages(data.precios, data.tasa_del_dia);
+            }
 
-            // Actualizar métodos de pago
+            // Actualizar métodos de pago (solo si cambiaron)
             if (data.metodos_pago) {
                 const pm = data.metodos_pago.pagomovil;
                 const bin = data.metodos_pago.binance;
@@ -41,11 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (waSoporte) waSoporte.href = `https://wa.me/${data.whatsapp.soporte}`;
                 if (waCanal) waCanal.href = data.whatsapp.canal;
             }
-            
-            console.log('[CONFIG] Cargada:', data);
         } catch (e) { console.error('Error cargando config:', e); }
     }
+    
+    // Carga inicial y sondeo automático cada 5 segundos
     loadConfig();
+    setInterval(loadConfig, 5000);
 
     // Mostrar banner de bienvenida si nunca ha iniciado sesión
     const newUserBanner = document.getElementById('new-user-banner');
@@ -890,8 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const countryCode = document.getElementById('country-code');
 
     refPagoMovil.addEventListener('input', (e) => {
-        let val = e.target.value.replace(/\D/g, ''); // Eliminar todo lo que no sea número
-        if (val.length > 4) val = val.slice(-4);
+        let val = e.target.value.replace(/\D/g, ''); // Solo números
         e.target.value = val;
         checkFinishButton();
     });
@@ -926,8 +935,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const refPM = refPagoMovil.value.trim();
         const refB = refBinance.value.trim();
 
-        if (selectedMethod === 'pagomovil' && refPM.length < 4) {
-            return Swal.fire({ icon: 'warning', title: 'Referencia incompleta', text: 'Por favor, ingresa los últimos 4 dígitos de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
+        if (selectedMethod === 'pagomovil' && refPM.length < 1) {
+            return Swal.fire({ icon: 'warning', title: 'Falta Referencia', text: 'Por favor, ingresa el número de referencia de tu Pago Móvil.', confirmButtonColor: '#9D00FF' });
         }
         if (selectedMethod === 'binance' && refB.length < 1) {
             return Swal.fire({ icon: 'warning', title: 'Falta ID Binance', text: 'Por favor, ingresa tu ID de transacción de Binance Pay.', confirmButtonColor: '#9D00FF' });
