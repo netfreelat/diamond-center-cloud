@@ -221,6 +221,9 @@ body::before {
         top: 45px;
         right: 10px;
     }
+    .marquee {
+        animation-duration: 25s !important;
+    }
 }
 
 .logo-container {
