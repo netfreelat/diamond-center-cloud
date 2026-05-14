@@ -1522,13 +1522,19 @@ const server = http.createServer(async (req, res) => {
                         res.end(JSON.stringify({ success: true, message: `¡Canje realizado con éxito! ${parsedData.codigo_aprobacion ? 'N° Aprobación: ' + parsedData.codigo_aprobacion : ''}` }));
                     } else {
                         let errorMsg = parsedData.mensaje || 'PIN inválido o ya utilizado.';
-                        // Limpiar mensaje si menciona competidores
-                        if (errorMsg.includes('Pago Norte') || errorMsg.includes('Netfreelat')) {
-                            errorMsg = 'Este PIN no pudo ser procesado automáticamente. Por favor, canjéalo manualmente en redeempins.com';
+                        const isExternalPin = errorMsg.includes('Pago Norte') || errorMsg.includes('Netfreelat');
+
+                        if (isExternalPin) {
+                            // PIN de otro proveedor → cliente debe ir a redeempins.com
+                            console.log(`[CANJE_PIN] 🔁 PIN externo detectado. Enviando a guía manual.`);
+                            res.writeHead(200);
+                            res.end(JSON.stringify({ success: false, needsManual: true }));
+                        } else {
+                            // Error real: PIN inválido, ya usado, etc.
+                            console.log(`[CANJE_PIN] ❌ Error real: ${errorMsg.substring(0, 80)}`);
+                            res.writeHead(200);
+                            res.end(JSON.stringify({ success: false, message: errorMsg }));
                         }
-                        console.log(`[CANJE_PIN] ❌ Canje fallido: ${errorMsg.substring(0, 80)}`);
-                        res.writeHead(200);
-                        res.end(JSON.stringify({ success: false, message: errorMsg, needsManual: true }));
                     }
                 } catch (e) {
                     console.error('[CANJE_PIN] Error parseando respuesta:', e.message, body.substring(0, 200));
