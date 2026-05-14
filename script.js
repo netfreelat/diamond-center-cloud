@@ -1066,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p id="assigned-pin"></p>
                                 <button class="btn-copy-pin" onclick="copyPin()"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
                                 <div style="font-size: 0.7rem; color: #fff; margin-top: 10px; background: rgba(0,191,255,0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,191,255,0.3); display: flex; flex-direction: column; gap: 5px;">
-                                    <a id="chile-redeem-link" href="https://redeempins.com/" target="_blank" style="color: #00bfff; text-decoration: none; font-weight: 800; text-align: center;"><i class="fa-solid fa-bolt"></i> CANJE SU PIN AQUÍ</a>
+                                    <a id="chile-redeem-link" href="canjear.html" style="color: #00bfff; text-decoration: none; font-weight: 800; text-align: center;"><i class="fa-solid fa-bolt"></i> CANJE SU PIN AQUÍ</a>
                                 </div>
                             </div>
                             

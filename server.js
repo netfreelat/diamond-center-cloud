@@ -203,10 +203,10 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `━━━━━━━━━━━━━━━\n\n` +
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
         if (pin) {
-            msg += `\n\n⚡ *CANJE SU PIN AQUÍ:* \n` +
-                   `Presiona el link para ir directo a cangear tu pin:\n` +
-                   `🔗 https://redeempins.com/\n\n` +
-                   `*Tu PIN está abajo, cópialo y ve a canjearlo* 👇👇`;
+            msg += `\n\n⚡ *CENTRO DE CANJE:* \n` +
+                   `Entra aquí para activar tus diamantes:\n` +
+                   `🔗 https://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}\n\n` +
+                   `*Copia tu PIN de abajo y pégalo en el link anterior* 👇👇`;
             
             // Mensaje 1: Ticket con instrucciones (ID único por ref)
             const waTicket = { id: ticketId, number: order.wa, message: msg };
