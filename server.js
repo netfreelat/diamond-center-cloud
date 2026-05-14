@@ -2,6 +2,13 @@ require('dotenv').config();
 // DEPLOYMENT TIMESTAMP: 2026-05-10T12:20:00
 const http = require('http');
 const https = require('https');
+let autoRedeemChile = null;
+try {
+    const service = require('./redeem-service.js');
+    autoRedeemChile = service.autoRedeemChile;
+} catch (e) {
+    console.error('[CRÍTICO] No se pudo cargar el servicio de canje automático:', e.message);
+}
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -1489,10 +1496,13 @@ const server = http.createServer(async (req, res) => {
         if (isChilePin) {
             console.log(`[CANJE_PIN] 🤖 Detectado PIN de Chile. Iniciando BOT SILENCIOSO para ID: ${uid}`);
             
-            // Importar dinámicamente el servicio del bot
-            const { autoRedeemChile } = require('./redeem-service.js');
-            
-            autoRedeemChile(pin, uid)
+            if (!autoRedeemChile) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ success: false, message: 'El sistema de canje automático no está disponible en este momento. Por favor, canjea el PIN manualmente en redeempins.com' }));
+            }
+
+            try {
+                autoRedeemChile(pin, uid)
                 .then(result => {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
@@ -1502,6 +1512,11 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: false, message: `Error en el bot: ${err.message}` }));
                 });
+            } catch (globalErr) {
+                console.error('[CANJE_PIN] Error crítico al lanzar el bot:', globalErr.message);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: `Error crítico del servidor: ${globalErr.message}` }));
+            }
             return;
         }
 
