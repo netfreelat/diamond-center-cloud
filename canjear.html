@@ -244,7 +244,7 @@
             btnVerify.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando...';
 
             try {
-                const res = await fetch(`${SERVER_URL}/verify?id=${uid}`);
+                const res = await fetch(`${SERVER_URL}/verificar?uid=${uid}`);
                 const data = await res.json();
 
                 if (data.success) {
