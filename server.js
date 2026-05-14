@@ -1483,8 +1483,30 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ success: false, message: 'Falta el ID o el PIN' }));
         }
 
-        console.log(`[CANJE_PIN] Intentando canjear PIN ${pin} para ID: ${uid}`);
+        // DETECCIÓN DE PIN DE CHILE (UUID de 36 caracteres)
+        const isChilePin = pin.length > 20 && pin.includes('-');
 
+        if (isChilePin) {
+            console.log(`[CANJE_PIN] 🤖 Detectado PIN de Chile. Iniciando BOT SILENCIOSO para ID: ${uid}`);
+            
+            // Importar dinámicamente el servicio del bot
+            const { autoRedeemChile } = require('./redeem-service.js');
+            
+            autoRedeemChile(pin, uid)
+                .then(result => {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(result));
+                })
+                .catch(err => {
+                    console.error('[CANJE_PIN] Error en bot:', err.message);
+                    res.writeHead(500);
+                    res.end(JSON.stringify({ success: false, message: 'Error en el bot de canje automático.', error: err.message }));
+                });
+            return;
+        }
+
+        // FLUJO NORMAL (Netfreelat)
+        console.log(`[CANJE_PIN] 📡 Usando API Netfreelat para ID: ${uid}`);
         const apiUrl = `https://netfreelat.net/redeem/conexion_api/api.php?action=canjefreeFire&id=${encodeURIComponent(uid)}&pin=${encodeURIComponent(pin)}`;
 
         https.get(apiUrl, (apiRes) => {
@@ -1499,13 +1521,11 @@ const server = http.createServer(async (req, res) => {
                     const parsedData = JSON.parse(data);
                     
                     if (parsedData.alerta === 'green') {
-                        // Guardar en recientes
                         saveRecent(uid, 'Diamantes', 'canje');
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, message: parsedData.mensaje }));
                     } else {
                         let errorMsg = parsedData.mensaje;
-                        // Ocultar referencias a Pago Norte / Netfreelat y hacer el mensaje más amigable
                         if (errorMsg && (errorMsg.includes('Pago Norte') || errorMsg.includes('Netfreelat'))) {
                             errorMsg = 'El PIN ingresado no es válido, ha caducado o ya fue utilizado. Por favor, verifica que lo hayas escrito correctamente e intenta de nuevo.';
                         }

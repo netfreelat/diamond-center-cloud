@@ -1,297 +1,315 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canje de Pines - Free Fire</title>
-    <meta name="description" content="Canjea tus pines de diamantes de Free Fire de manera rápida y segura.">
-
-    <!-- Custom Styles -->
+    <title>Centro de Canje - Diamond Center</title>
     <link rel="stylesheet" href="style.css">
-
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-purple: #9d00ff;
+            --dark-bg: #0a0510;
+        }
 
-    <!-- Confetti Library -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+        body {
+            background-color: var(--dark-bg);
+            background-image: radial-gradient(circle at 50% 50%, #1a0b2e 0%, #0a0510 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .redeem-card {
+            background: rgba(20, 10, 35, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .redeem-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            animation: border-anim 3s linear infinite;
+        }
+
+        @keyframes border-anim {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .redeem-title {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #fff, var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--neon-cyan);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .redeem-input {
+            width: 100%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .redeem-input:focus {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 240, 255, 0.05);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+
+        .player-card {
+            background: linear-gradient(135deg, rgba(157, 0, 255, 0.1), rgba(0, 240, 255, 0.1));
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .player-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .btn-redeem {
+            width: 100%;
+            padding: 18px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--neon-cyan), #00a2ff);
+            color: #000;
+            font-size: 1.1rem;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-redeem:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 240, 255, 0.4);
+        }
+
+        .btn-redeem:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
 </head>
-
 <body>
-    <!-- BARRA INFORMATIVA -->
-    <div class="top-banner">
-        <div class="marquee">
-            <i class="fa-solid fa-bullhorn"></i>
-            <span id="marquee-content">¡Bienvenido al Centro de Canje de Pines! Verifica tu ID y canjea tu código al instante.</span>
+
+    <div class="redeem-card">
+        <h1 class="redeem-title">CANJE DE PINES</h1>
+        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 30px;">FREE FIRE • LATAM</p>
+
+        <div class="step-indicator">
+            <div id="step1" class="step active">1</div>
+            <div id="step2" class="step">2</div>
         </div>
-    </div>
 
-    <div class="header-actions">
-        <a href="index.html" class="btn-login-header" style="text-decoration: none;">
-            <i class="fa-solid fa-house"></i> Volver a la Tienda
-        </a>
-    </div>
-
-    <div class="main-container">
-        <div class="card">
-            <div class="logo-container">
-                <h1>CANJE DE PINES</h1>
-                <p>FREE FIRE</p>
+        <!-- PASO 1: ID -->
+        <div id="section-id">
+            <div class="input-group">
+                <label>Ingresa tu ID de Jugador</label>
+                <input type="text" id="uid-input" class="redeem-input" placeholder="Ej: 123456789">
             </div>
+            <button id="btn-verify" class="btn-redeem">Consultar ID</button>
+        </div>
 
-            <!-- Paso 1: Validar ID -->
-            <div id="step-1">
-                <div class="input-group">
-                    <input type="text" id="player-id" placeholder="Ingresa ID del Jugador" autocomplete="off" inputmode="numeric">
-                </div>
+        <!-- INFORMACIÓN DEL JUGADOR -->
+        <div id="player-display" class="player-card">
+            <p style="font-size: 0.7rem; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 5px;">Jugador Encontrado:</p>
+            <div id="player-name" class="player-name">---</div>
+        </div>
 
-                <button id="verify-btn" class="btn-primary">
-                    <i class="fa-solid fa-magnifying-glass"></i> Consultar ID
-                </button>
-
-                <!-- Instrucciones -->
-                <div style="margin-top: 25px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; text-align: left;">
-                    <h4 style="color: var(--secondary); font-size: 0.85rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-lightbulb"></i> INSTRUCCIONES DE CANJE
-                    </h4>
-                    <ul style="font-size: 0.8rem; color: #aaa; list-style: none; padding: 0;">
-                        <li style="margin-bottom: 8px;">1. Ingresa el ID del jugador y consulta su validez.</li>
-                        <li style="margin-bottom: 8px;">2. Pega el código PIN que recibiste en tu compra.</li>
-                        <li style="margin-bottom: 8px;">3. Presiona "Canjear Diamantes" y ¡listo!</li>
-                        <li>4. Los diamantes se acreditan al instante en tu cuenta de Free Fire.</li>
-                    </ul>
-                </div>
+        <!-- PASO 2: PIN -->
+        <div id="section-pin" style="display: none;">
+            <div class="input-group">
+                <label>Ingresa tu PIN de Diamantes</label>
+                <input type="text" id="pin-input" class="redeem-input" placeholder="Pega tu código aquí">
             </div>
+            <button id="btn-redeem-final" class="btn-redeem">Canjear Diamantes</button>
+        </div>
 
-            <!-- Paso 2: Canjear PIN -->
-            <div id="step-2" style="display: none;">
-                <div class="welcome-container" style="padding: 15px; margin-bottom: 20px;">
-                    <div class="welcome-icon"><i class="fa-solid fa-gamepad"></i></div>
-                    <p>Jugador Verificado</p>
-                    <h2 id="player-name-display" style="font-size: 1.4rem;">Nombre del Jugador</h2>
-                </div>
-
-                <div class="input-group">
-                    <input type="text" id="pin-input" placeholder="Ingresa el código del PIN" autocomplete="off" style="text-transform: uppercase; font-family: monospace; letter-spacing: 2px; text-align: center;">
-                </div>
-
-                <button id="redeem-pin-btn" class="btn-primary" style="background: linear-gradient(135deg, #00c853, #009624);">
-                    <i class="fa-solid fa-gift"></i> Canjear Diamantes
-                </button>
-
-                <button id="change-id-btn" class="btn-change-id" style="margin-top: 15px;">
-                    <i class="fa-solid fa-rotate-left"></i> Cambiar ID
-                </button>
-            </div>
-
-            <div class="footer-text">
-                <p>Compatible con toda la region de LATAM para Free Fire.</p>
-                <p style="margin-top: 15px;">Desarrollado con ❤️ para la comunidad</p>
-            </div>
+        <div style="margin-top: 30px;">
+            <a href="index.html" style="color: #666; text-decoration: none; font-size: 0.85rem;">
+                <i class="fa-solid fa-arrow-left"></i> Volver a la tienda
+            </a>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const hostname = window.location.hostname;
-            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-            const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
+        const SERVER_URL = 'https://diamond-center-cloud.onrender.com';
+        
+        const btnVerify = document.getElementById('btn-verify');
+        const btnRedeem = document.getElementById('btn-redeem-final');
+        const sectionId = document.getElementById('section-id');
+        const sectionPin = document.getElementById('section-pin');
+        const playerDisplay = document.getElementById('player-display');
+        const playerNameEl = document.getElementById('player-name');
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
 
-            const playerIdInput = document.getElementById('player-id');
-            const verifyBtn = document.getElementById('verify-btn');
-            const step1 = document.getElementById('step-1');
-            const step2 = document.getElementById('step-2');
-            const playerNameDisplay = document.getElementById('player-name-display');
-            const pinInput = document.getElementById('pin-input');
-            const redeemPinBtn = document.getElementById('redeem-pin-btn');
-            const changeIdBtn = document.getElementById('change-id-btn');
-            
-            let selectedRegion = 'chile'; // Modo LATAM por defecto
-
-            // Forzar interfaz directa
-            redeemPinBtn.innerHTML = '<i class="fa-solid fa-gift"></i> Canjear Diamantes';
-
-            window.copyCurrentId = () => {
-                const id = playerIdInput.value.trim();
-                navigator.clipboard.writeText(id);
-                Swal.fire({ icon: 'success', title: 'ID Copiado', text: id, timer: 1000, showConfirmButton: false, background: 'rgba(20, 10, 35, 0.95)', color: '#fff' });
-            };
-
-            // Auto-llenado desde URL
+        // Leer parámetros de la URL (Autocompletado)
+        window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const uidParam = urlParams.get('uid');
-            const pinParam = urlParams.get('pin');
-            const regionParam = urlParams.get('region');
+            const uid = urlParams.get('uid');
+            const pin = urlParams.get('pin');
+            if (uid) document.getElementById('uid-input').value = uid;
+            if (pin) document.getElementById('pin-input').value = pin;
+        };
 
-            if (uidParam) {
-                playerIdInput.value = uidParam;
-                if (pinParam) pinInput.value = pinParam;
-                if (regionParam === 'chile') {
-                    setTimeout(() => regionChile.click(), 500);
+        btnVerify.onclick = async () => {
+            const uid = document.getElementById('uid-input').value.trim();
+            if (!uid) return Swal.fire('Error', 'Ingresa tu ID', 'error');
+
+            btnVerify.disabled = true;
+            btnVerify.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando...';
+
+            try {
+                const res = await fetch(`${SERVER_URL}/verify?id=${uid}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    playerNameEl.innerText = data.name;
+                    playerDisplay.style.display = 'block';
+                    sectionId.style.display = 'none';
+                    sectionPin.style.display = 'block';
+                    step1.classList.remove('active');
+                    step2.classList.add('active');
+                } else {
+                    Swal.fire('ID no encontrado', 'Verifica el número e intenta de nuevo.', 'warning');
                 }
-                setTimeout(() => verifyBtn.click(), 500);
+            } catch (err) {
+                Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+            } finally {
+                btnVerify.disabled = false;
+                btnVerify.innerText = 'Consultar ID';
             }
+        };
 
-            // Formato de inputs
-            playerIdInput.addEventListener('input', function() {
-                this.value = this.value.replace(/[^0-9]/g, '');
-            });
+        btnRedeem.onclick = async () => {
+            const uid = document.getElementById('uid-input').value.trim();
+            const pin = document.getElementById('pin-input').value.trim();
 
-            playerIdInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') verifyBtn.click();
-            });
+            if (!pin) return Swal.fire('Error', 'Ingresa el PIN', 'error');
 
-            pinInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') redeemPinBtn.click();
-            });
-
-            // Verificar ID
-            verifyBtn.addEventListener('click', async () => {
-                const uid = playerIdInput.value.trim();
-                if (!uid) {
-                    Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Ingresa un ID.', background: 'rgba(20, 10, 35, 0.95)', color: '#fff' });
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Validando ID...',
-                    html: `
-                        <div class="ff-loader-container">
-                            <div class="ff-loader-text">Conectando con servidores...</div>
-                            <div class="ff-progress-bar"><div class="ff-progress-fill"></div></div>
-                        </div>
-                    `,
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    background: 'rgba(20, 10, 35, 0.95)',
-                    color: '#fff'
-                });
-
-                try {
-                    const response = await fetch(`${SERVER_URL}/verificar?uid=${uid}`);
-                    const data = await response.json();
-
-                    if (data.success && data.nombre) {
-                        Swal.close();
-                        playerNameDisplay.innerText = data.nombre;
-                        step1.style.display = 'none';
-                        step2.style.display = 'block';
-                        pinInput.focus();
-                    } else {
-                        throw new Error(data.mensaje || 'Jugador no encontrado');
-                    }
-                } catch (error) {
-                    Swal.fire({ 
-                        icon: 'error', 
-                        title: 'Error de Verificación', 
-                        text: error.message || 'ID NO ENCONTRADO EN GARENA.', 
-                        background: 'rgba(20, 10, 35, 0.95)',
-                        color: '#fff'
-                    });
+            // Si es un PIN de Chile (UUID), avisar que el bot está trabajando
+            const isChilePin = pin.length > 20 && pin.includes('-');
+            
+            Swal.fire({
+                title: isChilePin ? 'Iniciando Canje Automático' : 'Procesando Canje',
+                html: `
+                    <div style="text-align: center;">
+                        <p style="font-size: 0.9rem;">${isChilePin ? 'Nuestro bot está completando el formulario de Redeempins por ti...' : 'Conectando con el servidor...'}</p>
+                        <div class="loader-custom" style="margin: 20px auto; width: 50px; height: 50px; border: 5px solid rgba(0,240,255,0.2); border-top-color: #00f0ff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    </div>
+                `,
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    // Estilo para la animación
+                    const style = document.createElement('style');
+                    style.innerHTML = '@keyframes spin { to { transform: rotate(360deg); } }';
+                    document.head.appendChild(style);
                 }
             });
 
-            // Volver
-            changeIdBtn.addEventListener('click', () => {
-                step2.style.display = 'none';
-                step1.style.display = 'block';
-                pinInput.value = '';
-                playerIdInput.focus();
-            });
+            try {
+                const res = await fetch(`${SERVER_URL}/api/redeem_pin?uid=${uid}&pin=${encodeURIComponent(pin)}`);
+                const data = await res.json();
 
-            // Canjear PIN
-            redeemPinBtn.addEventListener('click', async () => {
-                const uid = playerIdInput.value.trim();
-                const pin = pinInput.value.trim();
-
-                if (!pin) {
-                    Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Ingresa el PIN.', background: 'rgba(20, 10, 35, 0.95)', color: '#fff' });
-                    return;
-                }
-
-                Swal.fire({
-                    title: 'Procesando Canje...',
-                    html: `
-                        <div class="ff-loader-container">
-                            <div class="ff-loader-text">Enviando a Netfreelat...</div>
-                            <div class="ff-progress-bar"><div class="ff-progress-fill"></div></div>
-                        </div>
-                    `,
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    background: 'rgba(20, 10, 35, 0.95)',
-                    color: '#fff'
-                });
-
-                if (selectedRegion === 'chile') {
-                    const redeemUrl = `https://redeempins.com/`;
-                    window.open(redeemUrl, '_blank');
-                    
+                if (data.success) {
                     Swal.fire({
-                        icon: 'info',
-                        title: 'PORTAL DE CANJE ABIERTO',
-                        html: `
-                            <p style="color: #fff; margin-bottom: 15px;">Hemos abierto <b>RedeemPins</b> para tu canje.</p>
-                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
-                                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Tu ID para pegar:</p>
-                                <h3 style="color: var(--secondary); font-family: monospace; letter-spacing: 2px;">${uid}</h3>
-                                <button onclick="copyCurrentId()" style="background: var(--secondary); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">COPIAR ID</button>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
-                                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Tu PIN para pegar:</p>
-                                <h3 style="color: #00ff88; font-family: monospace; font-size: 0.9rem;">${pin}</h3>
-                                <button onclick="navigator.clipboard.writeText('${pin}'); Swal.fire({icon:'success', title:'PIN Copiado', timer:800, showConfirmButton:false, background: 'rgba(20, 10, 35, 0.95)', color: '#fff'});" style="background: #00c853; border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">COPIAR PIN</button>
-                            </div>
-                            <p style="color: var(--secondary); font-size: 0.7rem; margin-top: 15px;">⚠️ Selecciona Free Fire, pega tu ID y el PIN que acabas de copiar.</p>
-                        `,
-                        background: 'rgba(20, 10, 35, 0.95)',
-                        color: '#fff',
-                        confirmButtonText: 'ENTENDIDO',
-                        confirmButtonColor: 'var(--secondary)'
-                    });
-                    return;
+                        title: '¡CANJE EXITOSO!',
+                        text: data.message || 'Los diamantes han sido acreditados.',
+                        icon: 'success',
+                        confirmButtonText: 'Genial'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Atención', data.message || 'El PIN no pudo ser canjeado.', 'info');
                 }
-
-                try {
-                    const response = await fetch(`${SERVER_URL}/api/redeem_pin?uid=${uid}&pin=${encodeURIComponent(pin)}`);
-                    const data = await response.json();
-
-                    if (data.success) {
-                        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ffd700', '#00c853', '#ffffff'] });
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡CANJE EXITOSO!',
-                            html: `<p style="color: #fff;">${data.message}</p>`,
-                            background: 'rgba(20, 10, 35, 0.95)',
-                            color: '#fff',
-                            confirmButtonColor: '#00c853'
-                        }).then(() => {
-                            pinInput.value = '';
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de Canje',
-                            html: `<p style="color: #fff;">${data.message}</p>`,
-                            background: 'rgba(20, 10, 35, 0.95)',
-                            color: '#fff',
-                            confirmButtonColor: '#ff4b2b'
-                        });
-                    }
-                } catch (error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de Red',
-                        text: 'No se pudo conectar con el servidor de canje.',
-                        background: 'rgba(20, 10, 35, 0.95)',
-                        color: '#fff'
-                    });
-                }
-            });
-        });
+            } catch (err) {
+                Swal.fire('Error', 'Ocurrió un problema en el servidor.', 'error');
+            }
+        };
     </script>
 </body>
 </html>
