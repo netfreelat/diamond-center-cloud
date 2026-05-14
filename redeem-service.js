@@ -77,7 +77,7 @@ async function autoRedeemChile(pin, uid) {
             }
         }
         
-        await page.waitForTimeout(4000); // Esperar validación de Garena
+        await new Promise(r => setTimeout(r, 4000)); // Esperar validación de Garena
 
         // 5. CANJE FINAL
         console.log('[BOT_CHILE] 💎 Intentando canje final...');
@@ -94,7 +94,7 @@ async function autoRedeemChile(pin, uid) {
 
         if (!finalBtnClicked) throw new Error('No se encontró el botón final de canje.');
 
-        await page.waitForTimeout(5000); // Esperar respuesta de éxito
+        await new Promise(r => setTimeout(r, 5000)); // Esperar respuesta de éxito
 
         const content = await page.content();
         if (content.includes('sucesso') || content.includes('exitoso') || content.includes('Pedido')) {
@@ -102,14 +102,14 @@ async function autoRedeemChile(pin, uid) {
             return { success: true, message: 'Canje automático realizado con éxito.' };
         } else {
             console.log('[BOT_CHILE] ⚠️ El canje podría haber fallado o requiere intervención manual.');
-            return { success: false, message: 'El sitio requiere validación manual (Captcha).' };
+            return { success: false, message: 'El sitio requiere validación manual o el PIN ya fue usado.' };
         }
 
     } catch (err) {
         console.error('[BOT_CHILE] ❌ Error:', err.message);
         return { success: false, error: err.message };
     } finally {
-        await browser.close();
+        if (browser) await browser.close();
     }
 }
 
