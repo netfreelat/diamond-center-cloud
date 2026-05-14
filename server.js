@@ -1499,8 +1499,8 @@ const server = http.createServer(async (req, res) => {
                 })
                 .catch(err => {
                     console.error('[CANJE_PIN] Error en bot:', err.message);
-                    res.writeHead(500);
-                    res.end(JSON.stringify({ success: false, message: 'Error en el bot de canje automático.', error: err.message }));
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, message: `Error en el bot: ${err.message}` }));
                 });
             return;
         }

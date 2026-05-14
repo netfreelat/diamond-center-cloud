@@ -18,82 +18,91 @@ async function autoRedeemChile(pin, uid) {
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--no-first-run',
                 '--no-zygote',
                 '--single-process'
             ]
         });
 
         const page = await browser.newPage();
-        await page.setDefaultNavigationTimeout(60000); // 60 segundos de margen
+        await page.setDefaultNavigationTimeout(60000);
         
         console.log('[BOT_CHILE] 📡 Navegando a Redeempins...');
         await page.goto('https://redeempins.com/', { waitUntil: 'networkidle2' });
         
-        // 1. Ingresar PIN
+        // 1. Ingresar PIN en la página principal
         console.log('[BOT_CHILE] 🔑 Ingresando PIN...');
-        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
-        await page.type('input[type="text"]', pin, { delay: 50 });
+        await page.waitForSelector('input[type="text"]', { timeout: 20000 });
+        await page.type('input[type="text"]', pin);
         await page.keyboard.press('Enter');
         
-        // Esperar un momento a que cargue la siguiente sección
-        await new Promise(r => setTimeout(r, 3000));
+        // Esperar a que cargue el iframe de Hype.games
+        console.log('[BOT_CHILE] ⏳ Esperando carga del formulario (Hype Games)...');
+        await new Promise(r => setTimeout(r, 8000)); 
 
-        // 2. Rellenar formulario de datos
-        console.log('[BOT_CHILE] 📝 Detectando formulario de datos...');
-        // Buscamos cualquier input que parezca de nombre o el contenedor del formulario
-        try {
-            await page.waitForSelector('input', { timeout: 10000 });
-        } catch (e) {
-            // Si no aparece el formulario, puede que el PIN sea inválido o ya usado
-            const bodyText = await page.evaluate(() => document.body.innerText);
-            if (bodyText.includes('inválido') || bodyText.includes('usado') || bodyText.includes('error')) {
-                throw new Error('El PIN parece no ser válido o ya fue utilizado.');
-            }
-            throw new Error('No se cargó el formulario de canje a tiempo.');
-        }
+        // 2. Localizar el iframe y cambiar el contexto
+        const iframeHandle = await page.waitForSelector('iframe', { timeout: 20000 });
+        const frame = await iframeHandle.contentFrame();
+        
+        if (!frame) throw new Error('No se pudo acceder al marco del formulario (Iframe).');
 
-        // Datos aleatorios para el formulario
-        const nombres = ['Juan Perez', 'Carlos Ruiz', 'Miguel Angel', 'Andres Bello'];
-        const nombre = nombres[Math.floor(Math.random() * nombres.length)];
+        console.log('[BOT_CHILE] 🎯 Dentro del formulario. Rellenando datos...');
 
-        // Intentar llenar los campos (usando selectores más flexibles)
-        await page.evaluate((n, id) => {
-            const inputs = document.querySelectorAll('input');
-            inputs.forEach(i => {
-                const name = (i.getAttribute('name') || '').toLowerCase();
-                const placeholder = (i.getAttribute('placeholder') || '').toLowerCase();
-                
-                if (name.includes('name') || placeholder.includes('nombre')) i.value = n;
-                if (name.includes('birthday') || placeholder.includes('fecha')) i.value = '10/10/1995';
-                if (name.includes('player') || placeholder.includes('id')) i.value = id;
-            });
+        // 3. Rellenar campos dentro del iframe
+        await frame.waitForSelector('input', { timeout: 15000 });
+
+        const nombres = ['Juan Martinez', 'Carlos Perez', 'Miguel Rodriguez', 'Andres Lopez'];
+        const nombreAleatorio = nombres[Math.floor(Math.random() * nombres.length)];
+
+        await frame.evaluate((n, id) => {
+            const inputs = Array.from(document.querySelectorAll('input'));
             
-            // Seleccionar nacionalidad (Chile es usualmente el primer option con valor o el 1)
+            // Buscar por label o placeholder ya que los nombres de los campos pueden variar
+            const inputNombre = inputs.find(i => i.placeholder?.toLowerCase().includes('nombre') || i.name?.toLowerCase().includes('name'));
+            const inputFecha = inputs.find(i => i.placeholder?.toLowerCase().includes('fecha') || i.name?.toLowerCase().includes('birthday'));
+            const inputID = inputs.find(i => i.placeholder?.toLowerCase().includes('id') || i.name?.toLowerCase().includes('player'));
+            
+            if (inputNombre) { inputNombre.value = n; inputNombre.dispatchEvent(new Event('input', { bubbles: true })); }
+            if (inputFecha) { inputFecha.value = '15/08/1996'; inputFecha.dispatchEvent(new Event('input', { bubbles: true })); }
+            if (inputID) { inputID.value = id; inputID.dispatchEvent(new Event('input', { bubbles: true })); }
+
+            // Seleccionar Chile en el dropdown
             const select = document.querySelector('select');
-            if (select) select.value = select.options[1].value;
+            if (select) {
+                // Buscar la opción de Chile
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].text.includes('Chile')) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
 
-            // Aceptar términos
-            const check = document.querySelector('input[type="checkbox"]');
-            if (check) check.click();
-        }, nombre, uid);
+            // Aceptar Términos
+            const checkbox = document.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                checkbox.click();
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }, nombreAleatorio, uid);
 
-        console.log('[BOT_CHILE] ✅ Formulario completado. Validando ID...');
+        console.log('[BOT_CHILE] ✅ Datos ingresados. Verificando ID...');
 
-        // 3. Botón de Verificación
-        await page.evaluate(() => {
-            const btns = Array.from(document.querySelectorAll('button'));
-            const verifyBtn = btns.find(b => b.innerText.includes('VERIFICAR') || b.innerText.includes('VALIDAR'));
+        // 4. Clic en Verificar
+        await frame.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const verifyBtn = buttons.find(b => b.innerText.includes('VERIFICAR') || b.innerText.includes('VALIDAR'));
             if (verifyBtn) verifyBtn.click();
         });
 
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 5000));
 
-        // 4. Botón Final de Canje
+        // 5. Clic Final en Canjear
         console.log('[BOT_CHILE] 💎 Intentando canje final...');
-        const canjeExitoso = await page.evaluate(() => {
-            const btns = Array.from(document.querySelectorAll('button'));
-            const finalBtn = btns.find(b => b.innerText.includes('CANJEAR') || b.innerText.includes('AHORA') || b.innerText.includes('CONFIRMAR'));
+        const clickCanje = await frame.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const finalBtn = buttons.find(b => b.innerText.includes('CANJEAR') || b.innerText.includes('AHORA') || b.innerText.includes('CONFIRMAR'));
             if (finalBtn) {
                 finalBtn.click();
                 return true;
@@ -101,27 +110,25 @@ async function autoRedeemChile(pin, uid) {
             return false;
         });
 
-        if (!canjeExitoso) throw new Error('No se encontró el botón final de canje.');
+        if (!clickCanje) throw new Error('No se encontró el botón final de canje.');
 
-        await new Promise(r => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 8000));
 
-        const finalContent = await page.evaluate(() => document.body.innerText.toLowerCase());
-        if (finalContent.includes('sucesso') || finalContent.includes('exitoso') || finalContent.includes('parabéns')) {
+        // 6. Verificar éxito
+        const bodyText = await frame.evaluate(() => document.body.innerText.toLowerCase());
+        if (bodyText.includes('sucesso') || bodyText.includes('exitoso') || bodyText.includes('parabéns') || bodyText.includes('pedido')) {
             console.log('[BOT_CHILE] ✨ CANJE COMPLETADO CON ÉXITO');
-            return { success: true, message: '¡Canje realizado con éxito automáticamente!' };
+            return { success: true, message: '¡Canje realizado con éxito!' };
         } else {
-            console.log('[BOT_CHILE] ⚠️ Resultado incierto. Revisar manualmente.');
-            return { success: false, message: 'El PIN podría ser inválido o el sistema requiere un CAPTCHA manual.' };
+            console.log('[BOT_CHILE] ⚠️ Resultado dudoso.');
+            return { success: false, message: 'El PIN podría ser inválido o ya fue usado.' };
         }
 
     } catch (err) {
-        console.error('[BOT_CHILE] ❌ ERROR CRÍTICO:', err.message);
-        return { success: false, message: 'Error en el proceso automático', error: err.message };
+        console.error('[BOT_CHILE] ❌ ERROR:', err.message);
+        return { success: false, message: 'Error en el bot', error: err.message };
     } finally {
-        if (browser) {
-            console.log('[BOT_CHILE] 🔒 Cerrando navegador.');
-            await browser.close();
-        }
+        if (browser) await browser.close();
     }
 }
 
