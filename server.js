@@ -1490,74 +1490,68 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ success: false, message: 'Falta el ID o el PIN' }));
         }
 
-        // DETECCIÓN DE PIN DE CHILE (UUID de 36 caracteres)
-        const isChilePin = pin.length > 20 && pin.includes('-');
+        // CANJE UNIVERSAL: Todos los pines pasan por la API de Netfreelat
+        // Los pines UUID de Netfreelat son canjeados automáticamente
+        // Los pines de otros proveedores son guiados desde el frontend (no llegan aquí)
+        console.log(`[CANJE_PIN] 📡 Canjeando PIN via API Netfreelat | ID: ${uid} | PIN: ${pin}`);
 
-        if (isChilePin) {
-            console.log(`[CANJE_PIN] 🤖 Detectado PIN de Chile. Iniciando BOT SILENCIOSO para ID: ${uid}`);
-            
-            if (!autoRedeemChile) {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({ success: false, message: 'El sistema de canje automático no está disponible en este momento. Por favor, canjea el PIN manualmente en redeempins.com' }));
-            }
+        const postData = `action=canjefreeFire&id=${encodeURIComponent(uid)}&pin=${encodeURIComponent(pin)}`;
+        const options = {
+            hostname: 'netfreelat.net',
+            path: '/redeem/conexion_api/api.php',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(postData),
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://netfreelat.net/redeem/'
+            },
+            timeout: 20000
+        };
 
-            try {
-                autoRedeemChile(pin, uid)
-                .then(result => {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(result));
-                })
-                .catch(err => {
-                    console.error('[CANJE_PIN] Error en bot:', err.message);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: false, message: `Error en el bot: ${err.message}` }));
-                });
-            } catch (globalErr) {
-                console.error('[CANJE_PIN] Error crítico al lanzar el bot:', globalErr.message);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, message: `Error crítico del servidor: ${globalErr.message}` }));
-            }
-            return;
-        }
-
-        // FLUJO NORMAL (Netfreelat)
-        console.log(`[CANJE_PIN] 📡 Usando API Netfreelat para ID: ${uid}`);
-        const apiUrl = `https://netfreelat.net/redeem/conexion_api/api.php?action=canjefreeFire&id=${encodeURIComponent(uid)}&pin=${encodeURIComponent(pin)}`;
-
-        https.get(apiUrl, (apiRes) => {
+        const apiReq = https.request(options, (apiRes) => {
             let body = '';
             apiRes.on('data', chunk => body += chunk);
             apiRes.on('end', () => {
                 try {
-                    let data = body.trim();
-                    if (data.startsWith('"') && data.endsWith('"')) {
-                        data = data.substring(1, data.length - 1).replace(/\\"/g, '"');
-                    }
-                    const parsedData = JSON.parse(data);
-                    
+                    const parsedData = JSON.parse(body.trim());
                     if (parsedData.alerta === 'green') {
                         saveRecent(uid, 'Diamantes', 'canje');
+                        console.log(`[CANJE_PIN] ✅ Canje exitoso para ID: ${uid}`);
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: true, message: parsedData.mensaje }));
+                        res.end(JSON.stringify({ success: true, message: `¡Canje realizado con éxito! ${parsedData.codigo_aprobacion ? 'N° Aprobación: ' + parsedData.codigo_aprobacion : ''}` }));
                     } else {
-                        let errorMsg = parsedData.mensaje;
-                        if (errorMsg && (errorMsg.includes('Pago Norte') || errorMsg.includes('Netfreelat'))) {
-                            errorMsg = 'El PIN ingresado no es válido, ha caducado o ya fue utilizado. Por favor, verifica que lo hayas escrito correctamente e intenta de nuevo.';
+                        let errorMsg = parsedData.mensaje || 'PIN inválido o ya utilizado.';
+                        // Limpiar mensaje si menciona competidores
+                        if (errorMsg.includes('Pago Norte') || errorMsg.includes('Netfreelat')) {
+                            errorMsg = 'Este PIN no pudo ser procesado automáticamente. Por favor, canjéalo manualmente en redeempins.com';
                         }
+                        console.log(`[CANJE_PIN] ❌ Canje fallido: ${errorMsg.substring(0, 80)}`);
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: false, message: errorMsg }));
+                        res.end(JSON.stringify({ success: false, message: errorMsg, needsManual: true }));
                     }
                 } catch (e) {
-                    console.error('[CANJE_PIN] Error parseando respuesta:', e.message, body);
-                    res.writeHead(500);
+                    console.error('[CANJE_PIN] Error parseando respuesta:', e.message, body.substring(0, 200));
+                    res.writeHead(200);
                     res.end(JSON.stringify({ success: false, message: 'Error procesando la respuesta del proveedor.' }));
                 }
             });
-        }).on('error', (err) => {
-            console.error('[CANJE_PIN] Error conectando a Netfreelat:', err.message);
-            res.writeHead(500);
-            res.end(JSON.stringify({ success: false, message: 'Error de conexión con el proveedor.' }));
         });
+
+        apiReq.on('error', (err) => {
+            console.error('[CANJE_PIN] Error conectando a Netfreelat:', err.message);
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: false, message: 'Error de conexión con el proveedor. Intenta de nuevo.' }));
+        });
+
+        apiReq.on('timeout', () => {
+            apiReq.destroy();
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: false, message: 'El servidor tardó demasiado. Intenta de nuevo.' }));
+        });
+
+        apiReq.write(postData);
+        apiReq.end();
     } else if (parsedUrl.pathname === '/api/whatsapp_queue') {
         res.writeHead(200);
         res.end(JSON.stringify({ 
