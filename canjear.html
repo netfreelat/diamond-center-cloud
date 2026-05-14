@@ -12,27 +12,31 @@
             --neon-cyan: #00f0ff;
             --neon-purple: #9d00ff;
             --dark-bg: #0a0510;
+            --success: #00e676;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             background-color: var(--dark-bg);
-            background-image: radial-gradient(circle at 50% 50%, #1a0b2e 0%, #0a0510 100%);
+            background-image: radial-gradient(circle at 50% 20%, #1a0b2e 0%, #0a0510 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            font-family: 'Segoe UI', sans-serif;
         }
 
         .redeem-card {
-            background: rgba(20, 10, 35, 0.8);
+            background: rgba(20, 10, 35, 0.85);
             border: 1px solid rgba(0, 240, 255, 0.2);
-            border-radius: 20px;
-            padding: 40px;
+            border-radius: 24px;
+            padding: 40px 35px;
             width: 100%;
             max-width: 500px;
-            box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.08), 0 20px 60px rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -41,204 +45,228 @@
         .redeem-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
+            top: 0; left: -100%;
+            width: 100%; height: 2px;
             background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
             animation: border-anim 3s linear infinite;
         }
 
-        @keyframes border-anim {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
+        @keyframes border-anim { 0% { left: -100%; } 100% { left: 100%; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 15px rgba(0,230,118,0.4); } 50% { box-shadow: 0 0 30px rgba(0,230,118,0.7); } }
 
         .redeem-title {
-            font-size: 2rem;
-            font-weight: 900;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
+            font-size: 2rem; font-weight: 900; letter-spacing: 3px; margin-bottom: 5px;
             background: linear-gradient(to right, #fff, var(--neon-cyan));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
 
-        .step-indicator {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
+        .step-indicator { display: flex; justify-content: center; gap: 15px; margin: 25px 0; align-items: center; }
+        .step-line { height: 2px; width: 50px; background: rgba(255,255,255,0.1); transition: background 0.4s; }
+        .step-line.active { background: var(--neon-cyan); }
         .step {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #666;
-            transition: all 0.3s ease;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #666; transition: all 0.3s ease;
         }
+        .step.active { background: rgba(0,240,255,0.15); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0,240,255,0.3); }
+        .step.done { background: rgba(0,230,118,0.15); border-color: var(--success); color: var(--success); }
 
-        .step.active {
-            background: rgba(0, 240, 255, 0.15);
-            border-color: var(--neon-cyan);
-            color: var(--neon-cyan);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; font-size: 0.75rem; color: var(--neon-cyan); margin-bottom: 8px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+
+        .redeem-input {
+            width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px 18px; border-radius: 12px; color: #fff; font-size: 1rem; outline: none; transition: all 0.3s ease;
         }
+        .redeem-input:focus { border-color: var(--neon-cyan); background: rgba(0,240,255,0.05); box-shadow: 0 0 12px rgba(0,240,255,0.1); }
 
-        .input-group {
-            margin-bottom: 20px;
+        .player-card {
+            background: linear-gradient(135deg, rgba(157,0,255,0.1), rgba(0,240,255,0.1));
+            border: 1px solid rgba(0,240,255,0.25); padding: 18px; border-radius: 15px;
+            margin-bottom: 25px; display: none; animation: fadeInUp 0.4s ease;
+        }
+        .player-name { font-size: 1.4rem; font-weight: 800; color: #fff; text-shadow: 0 0 12px var(--neon-cyan); margin-top: 4px; }
+
+        .btn-redeem {
+            width: 100%; padding: 17px; border-radius: 12px; border: none;
+            background: linear-gradient(135deg, var(--neon-cyan), #007cff);
+            color: #000; font-size: 1.05rem; font-weight: 900; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;
+        }
+        .btn-redeem:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,240,255,0.4); }
+        .btn-redeem:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* --- GUÍA DE CANJE MANUAL --- */
+        .guide-card {
+            display: none;
+            animation: fadeInUp 0.5s ease;
             text-align: left;
         }
 
-        .input-group label {
-            display: block;
-            font-size: 0.8rem;
-            color: var(--neon-cyan);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            font-weight: 700;
+        .guide-header {
+            text-align: center; margin-bottom: 20px;
+        }
+        .guide-header .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .guide-header h2 { font-size: 1.3rem; font-weight: 800; color: #fff; margin: 0; }
+        .guide-header p { font-size: 0.85rem; color: #aaa; margin: 5px 0 0; }
+
+        .pin-box {
+            background: rgba(0,240,255,0.05); border: 1px solid rgba(0,240,255,0.3);
+            border-radius: 12px; padding: 16px 20px; margin: 16px 0;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        }
+        .pin-box code { font-size: 1rem; color: var(--neon-cyan); font-weight: 700; word-break: break-all; flex: 1; }
+        .btn-copy {
+            background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.3);
+            color: var(--neon-cyan); padding: 8px 14px; border-radius: 8px;
+            cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover { background: rgba(0,240,255,0.25); }
+
+        .steps-list { list-style: none; padding: 0; margin: 16px 0; }
+        .steps-list li {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.9rem; color: #ccc;
+        }
+        .steps-list li:last-child { border-bottom: none; }
+        .step-num {
+            min-width: 26px; height: 26px; border-radius: 50%;
+            background: rgba(0,240,255,0.1); border: 1px solid rgba(0,240,255,0.3);
+            color: var(--neon-cyan); font-weight: 800; font-size: 0.8rem;
+            display: flex; align-items: center; justify-content: center; margin-top: 1px;
         }
 
-        .redeem-input {
-            width: 100%;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 1.1rem;
-            outline: none;
-            transition: all 0.3s ease;
+        .btn-goto {
+            width: 100%; padding: 17px; border-radius: 12px; border: none;
+            background: linear-gradient(135deg, #9d00ff, #6200ee);
+            color: #fff; font-size: 1.05rem; font-weight: 900; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;
+            text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px;
+            animation: pulse-glow 2.5s ease-in-out infinite;
         }
+        .btn-goto:hover { transform: translateY(-2px); }
 
-        .redeem-input:focus {
-            border-color: var(--neon-cyan);
-            background: rgba(0, 240, 255, 0.05);
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
-        }
+        .btn-netfreelat { background: linear-gradient(135deg, #00e676, #009e50); color: #000; }
 
-        .player-card {
-            background: linear-gradient(135deg, rgba(157, 0, 255, 0.1), rgba(0, 240, 255, 0.1));
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-            display: none;
-            animation: fadeInUp 0.5s ease;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .player-name {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: #fff;
-            text-shadow: 0 0 10px var(--neon-cyan);
-        }
-
-        .btn-redeem {
-            width: 100%;
-            padding: 18px;
-            border-radius: 12px;
-            border: none;
-            background: linear-gradient(135deg, var(--neon-cyan), #00a2ff);
-            color: #000;
-            font-size: 1.1rem;
-            font-weight: 900;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-redeem:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 240, 255, 0.4);
-        }
-
-        .btn-redeem:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .back-link { color: #555; text-decoration: none; font-size: 0.85rem; display: inline-block; margin-top: 25px; transition: color 0.2s; }
+        .back-link:hover { color: #aaa; }
     </style>
 </head>
 <body>
 
     <div class="redeem-card">
-        <h1 class="redeem-title">CANJE DE PINES</h1>
-        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 30px;">FREE FIRE • LATAM</p>
+        <h1 class="redeem-title">💎 CANJE</h1>
+        <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">FREE FIRE • DIAMOND CENTER</p>
 
         <div class="step-indicator">
             <div id="step1" class="step active">1</div>
+            <div class="step-line" id="line1"></div>
             <div id="step2" class="step">2</div>
+            <div class="step-line" id="line2"></div>
+            <div id="step3" class="step">3</div>
         </div>
 
         <!-- PASO 1: ID -->
         <div id="section-id">
             <div class="input-group">
-                <label>Ingresa tu ID de Jugador</label>
-                <input type="text" id="uid-input" class="redeem-input" placeholder="Ej: 123456789">
+                <label><i class="fa-solid fa-id-badge"></i> &nbsp;Tu ID de Jugador Free Fire</label>
+                <input type="number" id="uid-input" class="redeem-input" placeholder="Ej: 2937558386">
             </div>
-            <button id="btn-verify" class="btn-redeem">Consultar ID</button>
+            <button id="btn-verify" class="btn-redeem">
+                <i class="fa-solid fa-magnifying-glass"></i> &nbsp;Verificar ID
+            </button>
         </div>
 
-        <!-- INFORMACIÓN DEL JUGADOR -->
+        <!-- INFO DEL JUGADOR -->
         <div id="player-display" class="player-card">
-            <p style="font-size: 0.7rem; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 5px;">Jugador Encontrado:</p>
+            <p style="font-size: 0.7rem; color: var(--neon-cyan); text-transform: uppercase; margin: 0 0 4px;">✅ Jugador Verificado</p>
             <div id="player-name" class="player-name">---</div>
         </div>
 
         <!-- PASO 2: PIN -->
         <div id="section-pin" style="display: none;">
             <div class="input-group">
-                <label>Ingresa tu PIN de Diamantes</label>
-                <input type="text" id="pin-input" class="redeem-input" placeholder="Pega tu código aquí">
+                <label><i class="fa-solid fa-key"></i> &nbsp;Tu PIN de Diamantes</label>
+                <input type="text" id="pin-input" class="redeem-input" placeholder="Pega tu código aquí" autocomplete="off" autocorrect="off" spellcheck="false">
             </div>
-            <button id="btn-redeem-final" class="btn-redeem">Canjear Diamantes</button>
+            <button id="btn-redeem-final" class="btn-redeem">
+                <i class="fa-solid fa-diamond"></i> &nbsp;Canjear Diamantes
+            </button>
         </div>
 
-        <div style="margin-top: 30px;">
-            <a href="index.html" style="color: #666; text-decoration: none; font-size: 0.85rem;">
-                <i class="fa-solid fa-arrow-left"></i> Volver a la tienda
+        <!-- PASO 3: GUÍA PARA PINES CHILE (hype.games) -->
+        <div id="section-guide" class="guide-card">
+            <div class="guide-header">
+                <div class="icon">🎯</div>
+                <h2>¡PIN Listo para Canjear!</h2>
+                <p>Sigue estos 3 pasos rápidos — ¡solo toma 1 minuto!</p>
+            </div>
+
+            <label style="font-size:0.75rem; color: var(--neon-cyan); font-weight:700; text-transform:uppercase; letter-spacing:1px;">Tu PIN de Diamantes</label>
+            <div class="pin-box">
+                <code id="pin-display">---</code>
+                <button class="btn-copy" onclick="copyPinCode()"><i class="fa-solid fa-copy"></i> Copiar</button>
+            </div>
+
+            <ul class="steps-list">
+                <li><div class="step-num">1</div><span>Haz clic en el botón de abajo para ir a la página de canje</span></li>
+                <li><div class="step-num">2</div><span>Tu PIN ya está copiado — pégalo en el campo <strong>"Código PIN"</strong></span></li>
+                <li><div class="step-num">3</div><span>Completa el mini-captcha de seguridad y ¡listo! 💎</span></li>
+            </ul>
+
+            <a id="btn-goto-redeem" href="https://redeempins.com/" target="_blank" class="btn-goto">
+                <i class="fa-solid fa-external-link-alt"></i>
+                Ir a Canjear PIN Ahora
             </a>
+            <p style="font-size: 0.72rem; color:#666; text-align:center; margin-top: 12px;">
+                <i class="fa-solid fa-shield-halved"></i> &nbsp;El PIN se ha copiado automáticamente para que solo pegues y confirmes.
+            </p>
         </div>
+
+        <!-- PASO 3: ÉXITO CANJE AUTOMÁTICO (Netfreelat) -->
+        <div id="section-success" style="display: none; animation: fadeInUp 0.5s ease;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">🎉</div>
+            <h2 style="color: var(--success); font-weight: 900;">¡CANJE EXITOSO!</h2>
+            <p id="success-msg" style="color: #aaa; font-size: 0.9rem;"></p>
+        </div>
+
+        <a href="index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver a la tienda</a>
     </div>
 
     <script>
         const SERVER_URL = 'https://diamond-center-cloud.onrender.com';
-        
+
         const btnVerify = document.getElementById('btn-verify');
         const btnRedeem = document.getElementById('btn-redeem-final');
         const sectionId = document.getElementById('section-id');
         const sectionPin = document.getElementById('section-pin');
+        const sectionGuide = document.getElementById('section-guide');
+        const sectionSuccess = document.getElementById('section-success');
         const playerDisplay = document.getElementById('player-display');
         const playerNameEl = document.getElementById('player-name');
         const step1 = document.getElementById('step1');
         const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        const line1 = document.getElementById('line1');
+        const line2 = document.getElementById('line2');
 
-        // Leer parámetros de la URL (Autocompletado)
+        // Leer parámetros de URL
         window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const uid = urlParams.get('uid');
-            const pin = urlParams.get('pin');
+            const params = new URLSearchParams(window.location.search);
+            const uid = params.get('uid');
+            const pin = params.get('pin');
             if (uid) document.getElementById('uid-input').value = uid;
             if (pin) document.getElementById('pin-input').value = pin;
         };
 
+        // PASO 1: Verificar ID
         btnVerify.onclick = async () => {
             const uid = document.getElementById('uid-input').value.trim();
-            if (!uid) return Swal.fire('Error', 'Ingresa tu ID', 'error');
+            if (!uid) return Swal.fire('⚠️ Error', 'Ingresa tu ID de jugador', 'warning');
 
             btnVerify.disabled = true;
             btnVerify.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verificando...';
@@ -247,68 +275,101 @@
                 const res = await fetch(`${SERVER_URL}/verificar?uid=${uid}`);
                 const data = await res.json();
 
-                if (data.success) {
+                if (data.success && data.nombre) {
                     playerNameEl.innerText = data.nombre;
                     playerDisplay.style.display = 'block';
                     sectionId.style.display = 'none';
                     sectionPin.style.display = 'block';
                     step1.classList.remove('active');
+                    step1.classList.add('done');
+                    step1.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    line1.classList.add('active');
                     step2.classList.add('active');
                 } else {
-                    Swal.fire('ID no encontrado', 'Verifica el número e intenta de nuevo.', 'warning');
+                    Swal.fire('🔍 ID no encontrado', 'Verifica que tu ID sea correcto e intenta de nuevo.', 'warning');
+                    btnVerify.disabled = false;
+                    btnVerify.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> &nbsp;Verificar ID';
                 }
             } catch (err) {
-                Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
-            } finally {
+                Swal.fire('Error de conexión', 'No se pudo contactar el servidor.', 'error');
                 btnVerify.disabled = false;
-                btnVerify.innerText = 'Consultar ID';
+                btnVerify.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> &nbsp;Verificar ID';
             }
         };
 
+        // PASO 2: Canjear PIN
         btnRedeem.onclick = async () => {
             const uid = document.getElementById('uid-input').value.trim();
             const pin = document.getElementById('pin-input').value.trim();
 
-            if (!pin) return Swal.fire('Error', 'Ingresa el PIN', 'error');
+            if (!pin) return Swal.fire('⚠️ Error', 'Ingresa el PIN', 'warning');
 
-            // Si es un PIN de Chile (UUID), avisar que el bot está trabajando
             const isChilePin = pin.length > 20 && pin.includes('-');
-            
-            Swal.fire({
-                title: isChilePin ? 'Iniciando Canje Automático' : 'Procesando Canje',
-                html: `
-                    <div style="text-align: center;">
-                        <p style="font-size: 0.9rem;">${isChilePin ? 'Nuestro bot está completando el formulario de Redeempins por ti...' : 'Conectando con el servidor...'}</p>
-                        <div class="loader-custom" style="margin: 20px auto; width: 50px; height: 50px; border: 5px solid rgba(0,240,255,0.2); border-top-color: #00f0ff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    </div>
-                `,
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => {
-                    // Estilo para la animación
-                    const style = document.createElement('style');
-                    style.innerHTML = '@keyframes spin { to { transform: rotate(360deg); } }';
-                    document.head.appendChild(style);
-                }
-            });
 
-            try {
-                const res = await fetch(`${SERVER_URL}/api/redeem_pin?uid=${uid}&pin=${encodeURIComponent(pin)}`);
-                const data = await res.json();
+            if (isChilePin) {
+                // PIN de Chile: mostrar guía con link directo
+                document.getElementById('pin-display').innerText = pin;
+                
+                // Copiar al portapapeles automáticamente
+                try { await navigator.clipboard.writeText(pin); } catch(e) {}
 
-                if (data.success) {
-                    Swal.fire({
-                        title: '¡CANJE EXITOSO!',
-                        text: data.message || 'Los diamantes han sido acreditados.',
-                        icon: 'success',
-                        confirmButtonText: 'Genial'
-                    }).then(() => location.reload());
-                } else {
-                    Swal.fire('Atención', data.message || 'El PIN no pudo ser canjeado.', 'info');
+                sectionPin.style.display = 'none';
+                sectionGuide.style.display = 'block';
+
+                step2.classList.remove('active');
+                step2.classList.add('done');
+                step2.innerHTML = '<i class="fa-solid fa-check"></i>';
+                line2.classList.add('active');
+                step3.classList.add('active');
+
+            } else {
+                // PIN Netfreelat: canje automático por API
+                btnRedeem.disabled = true;
+                btnRedeem.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Procesando...';
+
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/redeem_pin?uid=${uid}&pin=${encodeURIComponent(pin)}`);
+                    const data = await res.json();
+
+                    if (data.success) {
+                        sectionPin.style.display = 'none';
+                        playerDisplay.style.display = 'none';
+                        sectionSuccess.style.display = 'block';
+                        document.getElementById('success-msg').innerText = data.message || '¡Los diamantes han sido acreditados a tu cuenta!';
+                        step2.classList.remove('active');
+                        step2.classList.add('done');
+                        step2.innerHTML = '<i class="fa-solid fa-check"></i>';
+                        line2.classList.add('active');
+                        step3.classList.add('done');
+                        step3.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    } else {
+                        Swal.fire('Atención', data.message || 'El PIN no pudo ser canjeado. Puede que ya haya sido usado.', 'info');
+                        btnRedeem.disabled = false;
+                        btnRedeem.innerHTML = '<i class="fa-solid fa-diamond"></i> &nbsp;Canjear Diamantes';
+                    }
+                } catch (err) {
+                    Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error');
+                    btnRedeem.disabled = false;
+                    btnRedeem.innerHTML = '<i class="fa-solid fa-diamond"></i> &nbsp;Canjear Diamantes';
                 }
-            } catch (err) {
-                Swal.fire('Error', 'Ocurrió un problema en el servidor.', 'error');
             }
+        };
+
+        // Copiar PIN manualmente
+        window.copyPinCode = async () => {
+            const pin = document.getElementById('pin-display').innerText;
+            try {
+                await navigator.clipboard.writeText(pin);
+                const btn = document.querySelector('.btn-copy');
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Copiado!';
+                btn.style.background = 'rgba(0,230,118,0.2)';
+                btn.style.color = '#00e676';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fa-solid fa-copy"></i> Copiar';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                }, 2500);
+            } catch(e) {}
         };
     </script>
 </body>
