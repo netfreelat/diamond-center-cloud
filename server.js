@@ -57,6 +57,8 @@ async function verifyBDVPayment(montoReportado, referencia4) {
     }
 }
 
+const { checkBinanceEmails, markEmailAsRead } = require('./binance-service.js');
+
 // --- Helper de Hora Venezuela (UTC-4) ---
 function getVEISO() {
     // Almacenar el timestamp real estándar (UTC). El frontend (navegador) 
@@ -510,6 +512,13 @@ setInterval(async () => {
     const NOW = new Date();
     let changed = false;
 
+    // 1. Obtener pagos recientes de Binance (si hay pedidos pendientes)
+    let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance');
+    let binanceEmails = [];
+    if (pendingBinanceOrders.length > 0) {
+        binanceEmails = await checkBinanceEmails();
+    }
+
     for (let ref in orders) {
         if (orders[ref].status === 'pending') {
             const orderTime = new Date(orders[ref].time);
@@ -554,6 +563,31 @@ setInterval(async () => {
                 }
             }
             */
+
+            // --- AUTO APROBACIÓN BINANCE ---
+            if (orders[ref].method === 'binance' && binanceEmails.length > 0) {
+                let expectedUsdt = 0;
+                try {
+                    expectedUsdt = parseFloat(orders[ref].price.split('USDT')[0].trim());
+                } catch (e) {}
+
+                if (expectedUsdt > 0) {
+                    // Buscar un correo que coincida con el monto exacto
+                    const matchingEmail = binanceEmails.find(email => email.amount === expectedUsdt);
+                    if (matchingEmail) {
+                        console.log(`[AUTO-BINANCE] ¡Pago de ${expectedUsdt} USDT encontrado en el correo! Aprobando pedido ${ref}`);
+                        
+                        // Aprobar pedido
+                        processPendingOrder(matchingEmail.uid.toString(), ref);
+                        
+                        // Marcar el correo como leído para no re-usarlo
+                        await markEmailAsRead(matchingEmail.uid);
+                        
+                        // Removerlo de la lista temporal para no aplicarlo a dos pedidos en el mismo ciclo
+                        binanceEmails = binanceEmails.filter(e => e.uid !== matchingEmail.uid);
+                    }
+                }
+            }
         }
     }
 
