@@ -31,29 +31,28 @@ const BDV_TOKEN = process.env.BDV_TOKEN;
 const BDV_PASSWORD = process.env.BDV_PASSWORD;
 const BDV_API_URL = 'https://apicentral.pro/apis/movimientos_bdv.jsp';
 
+const { bdvLogin, verificarPagoBDV } = require('./bdv-service.js');
+let currentBdvToken = null;
+
 async function verifyBDVPayment(montoReportado, referencia4) {
     try {
-        const urlStr = `${BDV_API_URL}?token=${BDV_TOKEN}&password=${encodeURIComponent(BDV_PASSWORD)}`;
-        const response = await new Promise((resolve, reject) => {
-            https.get(urlStr, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => resolve(JSON.parse(data)));
-            }).on('error', reject);
-        });
-
-        if (response.alerta !== 'green' || !Array.isArray(response.movimientos)) return { success: false, pending: true };
-
-        const match = response.movimientos.find(m => {
-            if (m.tipo !== 'credito') return false;
-            const montoMov = parseFloat(m.monto.replace(/\./g, '').replace(',', '.'));
-            const refMov = String(m.referencia || '').slice(-4);
-            return Math.abs(montoMov - montoReportado) < 1 && refMov === referencia4;
-        });
-
-        return match ? { success: true, movimiento: match } : { success: false, pending: true };
+        if (!currentBdvToken) {
+            currentBdvToken = await bdvLogin();
+        }
+        
+        let result = await verificarPagoBDV(montoReportado, referencia4, currentBdvToken);
+        
+        if (!result.success && result.pending && !result.movimiento) {
+            const newToken = await bdvLogin();
+            if (newToken && newToken !== currentBdvToken) {
+                currentBdvToken = newToken;
+                result = await verificarPagoBDV(montoReportado, referencia4, currentBdvToken);
+            }
+        }
+        
+        return result;
     } catch (e) {
-        console.error('[BDV] Error:', e);
+        console.error('[BDV] Error en verifyBDVPayment:', e.message);
         return { success: false, pending: true };
     }
 }
@@ -506,8 +505,8 @@ function processPendingOrder(inputFullRef, inputShortRef) {
     return false;
 }
 
-// --- LIMPIADOR AUTOMÁTICO DE PEDIDOS (Cada 1 minuto) ---
-setInterval(() => {
+// --- AUTO-APROBACIÓN Y LIMPIADOR AUTOMÁTICO DE PEDIDOS (Cada 1 minuto) ---
+setInterval(async () => {
     const NOW = new Date();
     let changed = false;
 
@@ -516,11 +515,45 @@ setInterval(() => {
             const orderTime = new Date(orders[ref].time);
             const diffMinutes = (NOW - orderTime) / (1000 * 60);
 
-            if (diffMinutes > 5) {
-                console.log(`[AUTO-CLEAN] Rechazando pedido ${ref} por inactividad (5+ min).`);
+            if (diffMinutes > 10) {
+                console.log(`[AUTO-CLEAN] Rechazando pedido ${ref} por inactividad (10+ min).`);
                 orders[ref].status = 'rejected';
                 changed = true;
+                continue;
             }
+
+            // --- AUTO APROBACIÓN BDV (DESACTIVADA TEMPORALMENTE) ---
+            /*
+            if (orders[ref].method === 'pagomovil') {
+                let expectedBs = 0;
+                try {
+                    const parts = orders[ref].price.split('/');
+                    if (parts[1]) expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
+                } catch (e) {}
+
+                if (expectedBs > 0) {
+                    const check = await verifyBDVPayment(expectedBs, ref);
+                    if (check.success && check.movimiento) {
+                        const fullRef = check.movimiento.referencia;
+                        
+                        // Agregar a pagosValidados si no existe
+                        if (!pagosValidados[fullRef]) {
+                            pagosValidados[fullRef] = {
+                                amount: parseFloat(check.movimiento.importe.replace(/\./g, '').replace(',', '.')),
+                                date: check.movimiento.fecha,
+                                used: false
+                            };
+                            savePagos();
+                        }
+                        
+                        if (!pagosValidados[fullRef].used) {
+                            console.log(`[AUTO-BDV] ¡Pago encontrado! Procediendo a aprobar ${ref}`);
+                            processPendingOrder(fullRef, ref);
+                        }
+                    }
+                }
+            }
+            */
         }
     }
 
