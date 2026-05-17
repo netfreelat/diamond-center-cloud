@@ -444,23 +444,45 @@ function processPendingOrder(inputFullRef, inputShortRef) {
         const pago = pagosValidados[targetFullRef];
         
         if (pago && !pago.used) {
-            // Extraer precio esperado en Bs: "1.00USDT/635.00Bs" -> 635.00
-            let expectedBs = 0;
-            try {
-                const parts = order.price.split('/');
-                if (parts[1]) {
-                    expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
+            let isValid = false;
+
+            if (order.method === 'binance') {
+                let expectedUsdt = 0;
+                try {
+                    expectedUsdt = parseFloat(order.price.split('USDT')[0].trim());
+                } catch (e) {}
+
+                console.log(`[AUTO-APPROVE-BINANCE] Validando monto -> Recibido: ${pago.amount} USDT | Esperado: ${expectedUsdt} USDT`);
+                if (expectedUsdt > 0 && pago.amount >= expectedUsdt) {
+                    isValid = true;
+                } else {
+                    console.log(`[AUTO-APPROVE-BINANCE] ❌ MONTO INSUFICIENTE. Recibido: ${pago.amount} USDT, Esperado: ${expectedUsdt} USDT.`);
                 }
-            } catch (e) {
-                console.error('[AUTO-APPROVE] Error extrayendo precio esperado:', e.message);
+            } else {
+                // Extraer precio esperado en Bs: "1.00USDT/635.00Bs" -> 635.00
+                let expectedBs = 0;
+                try {
+                    const parts = order.price.split('/');
+                    if (parts[1]) {
+                        expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
+                    }
+                } catch (e) {
+                    console.error('[AUTO-APPROVE] Error extrayendo precio esperado:', e.message);
+                }
+
+                console.log(`[AUTO-APPROVE-BDV] Validando monto -> Recibido: ${pago.amount} Bs | Esperado: ${expectedBs} Bs`);
+
+                // Validación de seguridad: El pago debe ser igual o mayor al esperado (con margen de 0.50 Bs)
+                if (pago.amount >= (expectedBs - 0.50)) {
+                    isValid = true;
+                } else {
+                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO INSUFICIENTE. El pago de ${pago.amount} Bs es menor a lo esperado (${expectedBs} Bs).`);
+                }
             }
 
-            console.log(`[AUTO-APPROVE] Validando monto -> Recibido: ${pago.amount} Bs | Esperado: ${expectedBs} Bs`);
-
-            // Validación de seguridad: El pago debe ser igual o mayor al esperado (con margen de 0.50 Bs)
-            if (pago.amount >= (expectedBs - 0.50)) {
+            if (isValid) {
                 console.log(`[AUTO-APPROVE] ✅ MONTO CORRECTO. Procediendo...`);
-                console.log(`[AUTO-APPROVE] Ref Banco: ${targetFullRef} <--> Ref Formulario: ${targetShortRef}`);
+                console.log(`[AUTO-APPROVE] Ref Banco/Correo: ${targetFullRef} <--> Ref Formulario: ${targetShortRef}`);
                 
                 pagosValidados[targetFullRef].used = true;
                 savePagos();
@@ -498,7 +520,6 @@ function processPendingOrder(inputFullRef, inputShortRef) {
         });
                 return true;
             } else {
-                console.log(`[AUTO-APPROVE] ❌ MONTO INSUFICIENTE. El pago de ${pago.amount} Bs es menor a lo esperado (${expectedBs} Bs).`);
                 // No marcamos como usado para que el admin pueda decidir qué hacer
                 return false;
             }
@@ -572,13 +593,26 @@ setInterval(async () => {
                 } catch (e) {}
 
                 if (expectedUsdt > 0) {
-                    // Buscar un correo que coincida con el monto exacto
-                    const matchingEmail = binanceEmails.find(email => email.amount === expectedUsdt);
+                    // Buscar un correo que coincida con el monto exacto o mayor
+                    const matchingEmail = binanceEmails.find(email => email.amount >= expectedUsdt);
                     if (matchingEmail) {
-                        console.log(`[AUTO-BINANCE] ¡Pago de ${expectedUsdt} USDT encontrado en el correo! Aprobando pedido ${ref}`);
+                        const emailUidStr = matchingEmail.uid.toString();
+                        console.log(`[AUTO-BINANCE] ¡Pago de ${matchingEmail.amount} USDT encontrado en el correo! Aprobando pedido ${ref}`);
                         
-                        // Aprobar pedido
-                        processPendingOrder(matchingEmail.uid.toString(), ref);
+                        // Guardar en pagosValidados
+                        if (!pagosValidados[emailUidStr]) {
+                            pagosValidados[emailUidStr] = {
+                                amount: matchingEmail.amount,
+                                date: new Date().toISOString(),
+                                used: false
+                            };
+                            savePagos();
+                        }
+
+                        if (!pagosValidados[emailUidStr].used) {
+                            // Aprobar pedido
+                            processPendingOrder(emailUidStr, ref);
+                        }
                         
                         // Marcar el correo como leído para no re-usarlo
                         await markEmailAsRead(matchingEmail.uid);

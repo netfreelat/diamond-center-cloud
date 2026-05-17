@@ -268,7 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#fff',
             didOpen: () => {
                 const inp = document.getElementById('swal-history-uid');
-                if (inp) { inp.focus(); inp.select(); }
+                if (inp) {
+                    inp.focus();
+                    inp.select();
+                    inp.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') Swal.clickConfirm();
+                    });
+                }
             },
             preConfirm: () => {
                 const v = document.getElementById('swal-history-uid').value.trim();
@@ -412,6 +418,15 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
+            didOpen: () => {
+                const inp = document.getElementById('swal-login-id');
+                if (inp) {
+                    inp.focus();
+                    inp.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') Swal.clickConfirm();
+                    });
+                }
+            },
             preConfirm: () => document.getElementById('swal-login-id').value.trim()
         });
 
@@ -438,6 +453,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelButtonText: 'Atrás',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff',
+                didOpen: () => {
+                    const inp = document.getElementById('swal-login-pass');
+                    if (inp) {
+                        inp.focus();
+                        inp.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') Swal.clickConfirm();
+                        });
+                    }
+                },
                 preConfirm: () => document.getElementById('swal-login-pass').value
             });
 
@@ -504,6 +528,21 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancelar',
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
+            didOpen: () => {
+                const inp1 = document.getElementById('swal-set-pass1');
+                const inp2 = document.getElementById('swal-set-pass2');
+                if (inp1) {
+                    inp1.focus();
+                    inp1.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') inp2.focus();
+                    });
+                }
+                if (inp2) {
+                    inp2.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') Swal.clickConfirm();
+                    });
+                }
+            },
             preConfirm: () => {
                 const p1 = document.getElementById('swal-set-pass1').value;
                 const p2 = document.getElementById('swal-set-pass2').value;
@@ -728,6 +767,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelButtonText: 'Cancelar',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff',
+                didOpen: () => {
+                    const inp = document.getElementById('swal-verify-pass');
+                    if (inp) {
+                        inp.focus();
+                        inp.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') Swal.clickConfirm();
+                        });
+                    }
+                },
                 preConfirm: () => document.getElementById('swal-verify-pass').value
             });
 

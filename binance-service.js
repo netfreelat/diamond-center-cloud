@@ -28,7 +28,7 @@ async function checkBinanceEmails() {
 
         const delay = 24 * 3600 * 1000; // Últimas 24 horas
         const yesterday = new Date(Date.now() - delay);
-        
+
         // Buscar correos no leídos de Binance
         const searchCriteria = [
             ['UNSEEN'],
@@ -53,7 +53,7 @@ async function checkBinanceEmails() {
             if (bodyStr.indexOf('base64') > -1 || !bodyStr.includes(' ')) {
                 try {
                     bodyStr = Buffer.from(bodyStr, 'base64').toString('utf8');
-                } catch (e) {}
+                } catch (e) { }
             }
 
             const plainText = bodyStr.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -63,13 +63,13 @@ async function checkBinanceEmails() {
             // "Has recibido un pago de 5 USDT"
             // "Recibiste un pago de"
             // O simplemente "Importe: 5 USDT" y ver que sea "recibido"
-            
+
             const lowerText = plainText.toLowerCase();
-            const esRecibido = lowerText.includes('recibido un pago') || 
-                               lowerText.includes('received a payment') || 
-                               lowerText.includes('has recibido') || 
-                               lowerText.includes('te ha enviado') ||
-                               lowerText.includes('payment received');
+            const esRecibido = lowerText.includes('recibido un pago') ||
+                lowerText.includes('received a payment') ||
+                lowerText.includes('has recibido') ||
+                lowerText.includes('te ha enviado') ||
+                lowerText.includes('payment received');
 
             if (esRecibido) {
                 // Extraer el monto en USDT
