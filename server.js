@@ -1606,7 +1606,7 @@ const server = http.createServer(async (req, res) => {
                 if (pin) {
                     const pointsBefore = Number(user.points);
                     user.points = pointsBefore - cost;
-                    saveUsers();
+                    await saveUser(uid);
                     console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} puntos. Balance: ${pointsBefore} -> ${user.points}`);
                     
                     // Mostrar en la marquesina (usar nombre si existe o ID)
