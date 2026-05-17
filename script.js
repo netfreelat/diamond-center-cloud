@@ -204,9 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
 
                 const pinBox = order.pin
-                    ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                    ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                            <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
-                           <button onclick="navigator.clipboard.writeText('${order.pin}').then(()=>{ this.innerText='✓ Copiado!'; setTimeout(()=>this.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15); border:1px solid rgba(0,240,255,0.3); color:#00f0ff; border-radius:6px; padding:3px 10px; font-size:0.72rem; cursor:pointer;">Copiar</button>
+                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar</button>
                        </div>`
                     : '';
 
@@ -326,9 +326,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const methodIcon  = order.method === 'binance' ? '₿' : '📱';
             const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
             const pinBox = order.pin
-                ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                        <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
-                       <button onclick="navigator.clipboard.writeText('${order.pin}').then(()=>{ this.innerText='✓ Copiado!'; setTimeout(()=>this.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15); border:1px solid rgba(0,240,255,0.3); color:#00f0ff; border-radius:6px; padding:3px 10px; font-size:0.72rem; cursor:pointer;">Copiar</button>
+                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar</button>
                    </div>`
                 : '';
             historyHtml += `
