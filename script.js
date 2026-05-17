@@ -1453,7 +1453,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     html: `Tu PIN es: <code style="font-size: 1.2rem; color: var(--secondary);">${data.pin}</code>`,
                     confirmButtonText: 'Copiar PIN y Cerrar'
                 }).then(() => {
-                    navigator.clipboard.writeText(data.pin);
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(data.pin).catch(err => console.log('Error al copiar PIN:', err));
+                    }
                     loadUserPoints(uid);
                 });
             } else {
