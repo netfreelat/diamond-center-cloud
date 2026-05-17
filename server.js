@@ -1602,7 +1602,7 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 // Intentar recarga (prioridad pines para canje)
-                const pin = getFallbackPin(pack);
+                const pin = await getFallbackPin(pack);
                 if (pin) {
                     const pointsBefore = Number(user.points);
                     user.points = pointsBefore - cost;
