@@ -361,14 +361,32 @@ async function rechargeViaNetfreelat(order, ref) {
     });
 }
 
+function extractPackInfo(packStr) {
+    if (!packStr) return { qty: 1, amountKey: "" };
+    const qtyMatch = packStr.match(/\(x(\d+)\)/);
+    const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+    
+    // El amountKey es el primer número en el pack string, e.g. "100" de "100 + 10 (x3)" o "100" de "100"
+    const amountKey = packStr.toString().split(' ')[0].replace(',', '').replace('.', '').trim();
+    
+    return { qty, amountKey };
+}
+
 async function getFallbackPin(amount) {
-    const amountKey = amount.toString().split(' ')[0].replace(',', '').replace('.', '');
-    if (pines[amountKey] && pines[amountKey].length > 0) {
-        const pin = pines[amountKey].shift();
-        // Marcar como usado en Supabase
-        const { error } = await supabase.from('ff_pines').update({ used: true }).eq('code', pin);
-        if (error) console.error('[SUPABASE] Error marcando PIN como usado:', error.message);
-        return pin;
+    const { qty, amountKey } = extractPackInfo(amount);
+    
+    if (pines[amountKey] && pines[amountKey].length >= qty) {
+        const selectedPins = [];
+        for (let i = 0; i < qty; i++) {
+            const pin = pines[amountKey].shift();
+            selectedPins.push(pin);
+        }
+        
+        // Marcar como usados en Supabase
+        const { error } = await supabase.from('ff_pines').update({ used: true }).in('code', selectedPins);
+        if (error) console.error('[SUPABASE] Error marcando PINes como usados:', error.message);
+        
+        return selectedPins.join(' / ');
     }
     return null;
 }
@@ -414,7 +432,7 @@ function updateTelegramStatus(ref) {
     editReq.end();
 }
 
-function processPendingOrder(inputFullRef, inputShortRef) {
+async function processPendingOrder(inputFullRef, inputShortRef) {
     let targetFullRef = inputFullRef;
     let targetShortRef = inputShortRef;
 
@@ -487,37 +505,61 @@ function processPendingOrder(inputFullRef, inputShortRef) {
                 pagosValidados[targetFullRef].used = true;
                 savePagos();
                 
-                rechargeViaNetfreelat(order, targetShortRef).then(result => {
-                    if (result.success) {
+                const { qty } = extractPackInfo(order.pack);
+                
+                if (qty > 1) {
+                    // Si la cantidad es mayor a 1, no usamos la API automatizada (para evitar bloqueos por duplicados)
+                    // y vamos directo a entregar pines
+                    console.log(`[AUTO-APPROVE] Compra múltiple detectada (${qty}x). Usando fallback de PINs.`);
+                    const pin = await getFallbackPin(order.pack);
+                    if (pin) {
                         orders[targetShortRef].status = 'approved';
-                        
+                        orders[targetShortRef].pin = pin;
+                        updateOrderStatus(targetShortRef, 'approved', pin);
                         saveRecent(order.name, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) {
                             addPoints(order.uid, usdtPrice, order.name);
                         }
-                queueWhatsAppMessage(order, true);
-                updateTelegramStatus(targetShortRef);
-                console.log(`[AUTO-APPROVE] Recarga exitosa para ${order.uid}`);
-            } else {
-                        const pin = getFallbackPin(order.pack);
-                        if (pin) {
+                        queueWhatsAppMessage(order, true, pin);
+                        updateTelegramStatus(targetShortRef);
+                        console.log(`[AUTO-APPROVE] Recarga múltiple exitosa (PINs) para ${order.uid}`);
+                    } else {
+                        console.error(`[AUTO-APPROVE] Error: No hay stock de pines para recarga múltiple de ${order.pack}`);
+                    }
+                } else {
+                    rechargeViaNetfreelat(order, targetShortRef).then(async result => {
+                        if (result.success) {
                             orders[targetShortRef].status = 'approved';
-                            orders[targetShortRef].pin = pin;
                             
                             saveRecent(order.name, order.pack);
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) {
                                 addPoints(order.uid, usdtPrice, order.name);
                             }
-                    queueWhatsAppMessage(order, true, pin);
-                    updateTelegramStatus(targetShortRef);
-                    console.log(`[AUTO-APPROVE] Recarga exitosa (PIN) para ${order.uid}`);
-                } else {
-                    console.error(`[AUTO-APPROVE] Error en recarga automática.`);
+                            queueWhatsAppMessage(order, true);
+                            updateTelegramStatus(targetShortRef);
+                            console.log(`[AUTO-APPROVE] Recarga exitosa para ${order.uid}`);
+                        } else {
+                            const pin = await getFallbackPin(order.pack);
+                            if (pin) {
+                                orders[targetShortRef].status = 'approved';
+                                orders[targetShortRef].pin = pin;
+                                
+                                saveRecent(order.name, order.pack);
+                                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                                if (!isNaN(usdtPrice)) {
+                                    addPoints(order.uid, usdtPrice, order.name);
+                                }
+                                queueWhatsAppMessage(order, true, pin);
+                                updateTelegramStatus(targetShortRef);
+                                console.log(`[AUTO-APPROVE] Recarga exitosa (PIN) para ${order.uid}`);
+                            } else {
+                                console.error(`[AUTO-APPROVE] Error en recarga automática.`);
+                            }
+                        }
+                    });
                 }
-            }
-        });
                 return true;
             } else {
                 // No marcamos como usado para que el admin pueda decidir qué hacer
@@ -1490,7 +1532,7 @@ const server = http.createServer(async (req, res) => {
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
             stock: Object.keys(settings.precios).reduce((acc, amount) => {
-                acc[amount] = (pines[amount] && pines[amount].length > 0) || false;
+                acc[amount] = pines[amount] ? pines[amount].length : 0;
                 return acc;
             }, {})
         };

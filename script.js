@@ -76,8 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         Object.entries(precios).forEach(([amount, data]) => {
             const priceBs = (data.usdt * tasa).toFixed(2).replace('.', ',');
-            const isAvailable = APP_CONFIG.stock && APP_CONFIG.stock[amount] !== false;
-            const stockLabel = isAvailable ? '<span class="stock-badge available">Disponible</span>' : '<span class="stock-badge out">Agotado</span>';
+            const stockCount = APP_CONFIG.stock ? (APP_CONFIG.stock[amount] || 0) : 0;
+            const isAvailable = stockCount > 0;
+            const stockLabel = isAvailable ? `<span class="stock-badge available">Disponible (${stockCount})</span>` : '<span class="stock-badge out">Agotado</span>';
             const disabledClass = isAvailable ? '' : 'out-of-stock';
             
             grid.innerHTML += `
@@ -909,6 +910,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lógica de selección de paquetes (Encapsulada para recarga dinámica)
     const buyBtn = document.getElementById('buy-btn');
     let selectedPackage = null;
+    let selectedQty = 1;
+
+    const qtyValueDisplay = document.getElementById('qty-value');
+    const totalPreviewUsdt = document.getElementById('total-preview-usdt');
+    const totalPreviewBs = document.getElementById('total-preview-bs');
+    const quantitySection = document.getElementById('quantity-section');
+    
+    function updateTotalsPreview() {
+        if (!selectedPackage) return;
+        const selectedCard = document.querySelector('.package-card.selected');
+        if (!selectedCard) return;
+        
+        const priceUSDT = parseFloat(selectedCard.dataset.price);
+        const totalUSDT = (priceUSDT * selectedQty).toFixed(2);
+        const totalBs = (priceUSDT * selectedQty * DOLAR_RATE).toFixed(2).replace('.', ',');
+        
+        totalPreviewUsdt.innerText = `${totalUSDT} USDT`;
+        totalPreviewBs.innerText = `${totalBs} Bs`;
+        
+        qtyValueDisplay.innerText = selectedQty;
+    }
+
+    document.getElementById('qty-minus').addEventListener('click', () => {
+        if (selectedQty > 1) {
+            selectedQty--;
+            updateTotalsPreview();
+        }
+    });
+
+    document.getElementById('qty-plus').addEventListener('click', () => {
+        if (!selectedPackage) return;
+        const stockCount = APP_CONFIG.stock ? (APP_CONFIG.stock[selectedPackage.amount] || 0) : 0;
+        if (selectedQty < stockCount) {
+            selectedQty++;
+            updateTotalsPreview();
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Límite de Stock',
+                text: `Solo hay ${stockCount} paquetes disponibles de esta denominación.`,
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+        }
+    });
 
     function initPackageEvents() {
         const packageCards = document.querySelectorAll('.package-card');
@@ -923,6 +970,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     amount: card.dataset.amount,
                     bonus: card.dataset.bonus
                 };
+                
+                // Resetear cantidad
+                selectedQty = 1;
+                if (quantitySection) quantitySection.style.display = 'block';
+                updateTotalsPreview();
                 
                 // Habilitar botón de compra
                 buyBtn.disabled = false;
@@ -961,13 +1013,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('details-binance').style.display = selectedMethod === 'binance' ? 'block' : 'none';
             
             // Llenar montos automáticamente
-            const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price);
+            const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
             const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
             
             if(selectedMethod === 'pagomovil') {
-                document.getElementById('amount-pagomovil').value = `${priceBS} Bs`;
+                document.getElementById('amount-pagomovil').value = `${priceBS.replace('.', ',')} Bs`;
             } else {
-                document.getElementById('amount-binance').value = `${priceUSDT} USDT`;
+                document.getElementById('amount-binance').value = `${priceUSDT.toFixed(2)} USDT`;
             }
 
             checkFinishButton();
@@ -1027,8 +1079,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ref = selectedMethod === 'pagomovil' ? refPM : refB;
         const name = document.getElementById('player-name-display').innerText.trim();
-        const packText = `${selectedPackage.amount} + ${selectedPackage.bonus}`;
-        const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price);
+        const packText = selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`;
+        const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
         const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
         let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
         const waFull = countryCode.value + waClean;
@@ -1051,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const loginUid = localStorage.getItem('ff_user_id') || playerInput.value;
-            const messageParams = `uid=${playerInput.value}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT}USDT/${priceBS}Bs&wa=${waFull}`;
+            const messageParams = `uid=${playerInput.value}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
             
             const notifyRes = await fetch(notifyUrl);
@@ -1079,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const newOrder = {
                 ref: ref,
                 control_num: controlNum,
-                pack: selectedPackage.amount,
+                pack: selectedQty > 1 ? `${selectedPackage.amount} (x${selectedQty})` : selectedPackage.amount,
                 date: new Date().toLocaleString("es-VE", { timeZone: "America/Caracas" }),
                 status: 'pending'
             };
@@ -1427,6 +1479,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Resetear selección de paquetes
         selectedPackage = null;
+        selectedQty = 1;
+        if (quantitySection) quantitySection.style.display = 'none';
         document.querySelectorAll('.package-card').forEach(c => c.classList.remove('selected'));
         buyBtn.disabled = true;
 
