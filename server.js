@@ -830,7 +830,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Generar número de control único
-        const control_num = `DC-${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
+        const control_num = `${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
 
         // Guardar pedido como pendiente
         const currentTime = getVEISO();
