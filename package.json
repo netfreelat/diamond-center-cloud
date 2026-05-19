@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "node -e \"if (process.platform !== 'android') { try { require('child_process').execSync('npx puppeteer browsers install chrome', {stdio: 'inherit'}); } catch(e) { process.exit(0); } }\""
   },
   "engines": {
     "node": ">=18.0.0"
