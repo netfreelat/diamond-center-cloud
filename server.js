@@ -120,7 +120,8 @@ let settings = {
     },
     admin: { 
         username: process.env.ADMIN_USER || "admin", 
-        password: process.env.ADMIN_PASS || "123" 
+        password: process.env.ADMIN_PASS || "123",
+        session_token: null
     },
     metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
     whatsapp: { soporte: "", canal: "" }
@@ -170,6 +171,7 @@ async function loadFromSupabase() {
             settings.barra_informativa = settingsData.barra_informativa;
             settings.admin.username = settingsData.admin_username;
             settings.admin.password = settingsData.admin_password;
+            settings.admin.session_token = settingsData.admin_session_token || null;
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.precios = settingsData.precios;
@@ -720,7 +722,27 @@ setInterval(async () => {
         console.log('[AUTO-CLEAN] Cambios detectados en pedidos pendientes.');
     }
 }, 60000); // Se ejecuta cada 60 segundos
-// ------------------------------------------------------
+// --- SISTEMA DE AUTENTICACIÓN ADMIN ---
+function checkAdminAuth(req, res) {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    let token = parsedUrl.searchParams.get('token');
+    
+    if (!token && req.headers.authorization) {
+        const parts = req.headers.authorization.split(' ');
+        if (parts.length === 2 && parts[0] === 'Bearer') {
+            token = parts[1];
+        }
+    }
+    
+    // Validar token contra el guardado en memoria
+    if (!token || !settings.admin.session_token || token !== settings.admin.session_token) {
+        console.warn(`[AUTH] 🛑 Acceso denegado: ${req.method} ${parsedUrl.pathname}`);
+        res.writeHead(401);
+        res.end(JSON.stringify({ success: false, error: 'Unauthorized', code: 401 }));
+        return false;
+    }
+    return true;
+}
 
 const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -734,7 +756,7 @@ const server = http.createServer(async (req, res) => {
     // Permisos CORS para que el panel admin y la web funcionen
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Permitir Authorization header
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
     // Responder rápido a peticiones OPTIONS (preflight)
@@ -742,6 +764,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(204);
         res.end();
         return;
+    }
+
+    // --- PROTECCIÓN DE RUTAS DE ADMINISTRACIÓN ---
+    if (parsedUrl.pathname.startsWith('/admin/')) {
+        if (!checkAdminAuth(req, res)) {
+            return;
+        }
     }
 
     // parsedUrl ya está definida al inicio del handler
@@ -1571,7 +1600,7 @@ const server = http.createServer(async (req, res) => {
         req.on('end', () => {
             try {
                 const newSettings = JSON.parse(body);
-                settings = { ...settings, ...newSettings };
+                
                 // Guardar en Supabase
                 const dbUpdate = {};
                 if (newSettings.tasa_del_dia !== undefined) dbUpdate.tasa_del_dia = newSettings.tasa_del_dia;
@@ -1579,10 +1608,25 @@ const server = http.createServer(async (req, res) => {
                 if (newSettings.metodos_pago !== undefined) dbUpdate.metodos_pago = newSettings.metodos_pago;
                 if (newSettings.whatsapp !== undefined) dbUpdate.whatsapp_config = newSettings.whatsapp;
                 if (newSettings.precios !== undefined) dbUpdate.precios = newSettings.precios;
+                
+                let passwordChanged = false;
                 if (newSettings.admin) {
+                    passwordChanged = newSettings.admin.password && newSettings.admin.password !== settings.admin.password;
                     dbUpdate.admin_username = newSettings.admin.username;
                     dbUpdate.admin_password = newSettings.admin.password;
+                    
+                    if (passwordChanged) {
+                        console.log('[ADMIN] 🔒 Contraseña modificada. Invalidando todas las sesiones.');
+                        newSettings.admin.session_token = null;
+                        dbUpdate.admin_session_token = null;
+                    } else {
+                        // Preservar el token existente
+                        newSettings.admin.session_token = settings.admin.session_token;
+                    }
                 }
+                
+                settings = { ...settings, ...newSettings };
+                
                 supabase.from('ff_settings').update(dbUpdate).eq('id', 1)
                     .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando settings:', error.message); });
                 res.writeHead(200);
@@ -1791,6 +1835,54 @@ const server = http.createServer(async (req, res) => {
 
         apiReq.write(postData);
         apiReq.end();
+    } else if (parsedUrl.pathname === '/api/admin/login' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { username, password } = JSON.parse(body);
+                if (username === settings.admin.username && password === settings.admin.password) {
+                    // Generar un token aleatorio seguro
+                    const token = 'tok_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+                    settings.admin.session_token = token;
+                    
+                    // Guardar en Supabase para persistencia
+                    const { error } = await supabase
+                        .from('ff_settings')
+                        .update({ admin_session_token: token })
+                        .eq('id', 1);
+                    if (error) {
+                        console.error('[SUPABASE] Error guardando session_token:', error.message);
+                    }
+                    
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ success: true, token }));
+                } else {
+                    res.writeHead(400);
+                    res.end(JSON.stringify({ success: false, message: 'Usuario o contraseña incorrectos' }));
+                }
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+            }
+        });
+    } else if (parsedUrl.pathname === '/api/admin/logout_all' && req.method === 'POST') {
+        if (!checkAdminAuth(req, res)) return;
+        
+        const token = null;
+        settings.admin.session_token = token;
+        
+        // Guardar en Supabase
+        const { error } = await supabase
+            .from('ff_settings')
+            .update({ admin_session_token: token })
+            .eq('id', 1);
+        if (error) {
+            console.error('[SUPABASE] Error guardando session_token (logout):', error.message);
+        }
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, message: 'Todas las sesiones cerradas' }));
     } else if (parsedUrl.pathname === '/api/whatsapp_queue') {
         res.writeHead(200);
         res.end(JSON.stringify({ 

@@ -345,14 +345,58 @@
             .stat-card .value { font-size: 1.8rem; }
             
             /* Ajustes para evitar scroll horizontal excesivo */
-            .admin-container { overflow-x: hidden; width: 100%; }
+            .admin-container { overflow-x: hidden; width: 100%; display: none; } /* Ocultar por defecto hasta autenticar */
             table { min-width: 600px; } /* Forzar scroll dentro del contenedor de tabla solamente */
+        }
+        
+        @keyframes overlayFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body>
 
-    <div class="admin-container">
+    <!-- Login Overlay Premium -->
+    <div id="login-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #07030D; z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
+        <div style="width: 90%; max-width: 420px; background: rgba(20, 10, 35, 0.7); border: 1px solid rgba(157, 0, 255, 0.2); border-radius: 24px; padding: 40px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(157, 0, 255, 0.1); text-align: center; position: relative; overflow: hidden; animation: overlayFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
+            <!-- Efectos de luz flotantes -->
+            <div style="position: absolute; width: 150px; height: 150px; background: rgba(157, 0, 255, 0.2); border-radius: 50%; filter: blur(40px); top: -50px; right: -50px; pointer-events: none;"></div>
+            <div style="position: absolute; width: 150px; height: 150px; background: rgba(0, 240, 255, 0.15); border-radius: 50%; filter: blur(40px); bottom: -50px; left: -50px; pointer-events: none;"></div>
+            
+            <div style="margin-bottom: 30px;">
+                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(157, 0, 255, 0.4); border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="fa-solid fa-lock" style="font-size: 2rem; color: #fff;"></i>
+                </div>
+                <h2 style="font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.8rem; letter-spacing: -0.5px; background: linear-gradient(to right, #fff, var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;">Acceso Restringido</h2>
+                <p style="color: var(--text-gray); font-size: 0.9rem;">Ingresa tus credenciales administrativas para continuar.</p>
+            </div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                    <label style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Usuario</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 0.95rem;"></i>
+                        <input type="text" id="login-username" required placeholder="admin" style="padding-left: 45px; height: 50px; border-radius: 12px; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.4); width: 100%;">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="text-align: left; margin-bottom: 30px;">
+                    <label style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Contraseña</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 0.95rem;"></i>
+                        <input type="password" id="login-password" required placeholder="••••••••" style="padding-left: 45px; height: 50px; border-radius: 12px; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.4); width: 100%;">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-main" style="height: 50px; box-shadow: 0 4px 20px rgba(157,0,255,0.4);">
+                    <span>Iniciar Sesión</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-container" style="display: none;">
         <div class="header">
             <h1>DIAMOND CENTER ADMIN</h1>
             <p>Control total de pedidos, pines y usuarios</p>
@@ -629,6 +673,13 @@ PIN789012
                 <button onclick="saveSettings()" class="btn-main" style="margin-top: 20px;">
                     <i class="fa-solid fa-save"></i> Guardar Todos los Cambios
                 </button>
+                
+                <hr style="opacity:0.1; margin: 30px 0;">
+                <h3 style="margin-bottom: 10px; color: var(--danger);"><i class="fa-solid fa-power-off"></i> Cierre de Sesión Global</h3>
+                <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">Esto invalidará de inmediato el token actual del servidor, forzando a todos los dispositivos (incluido este) a iniciar sesión nuevamente.</p>
+                <button onclick="logoutAll()" class="btn-main" style="background: rgba(255, 75, 43, 0.2); border: 1px solid var(--danger); color: var(--danger); box-shadow: none; margin-bottom: 10px;">
+                    <i class="fa-solid fa-user-slash"></i> Cerrar Sesión en Todos los Dispositivos
+                </button>
             </div>
         </div>
 
@@ -659,6 +710,103 @@ PIN789012
         const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
         const SERVER_URL = isLocal ? 'http://localhost:3500' : RENDER_URL;
 
+        // Helper para inyectar token de sesión en las peticiones
+        async function adminFetch(url, options = {}) {
+            const token = localStorage.getItem('admin_token');
+            options.headers = options.headers || {};
+            if (token) {
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+            if (!options.headers['Content-Type'] && !(options.body instanceof FormData) && options.method && options.method !== 'GET') {
+                options.headers['Content-Type'] = 'application/json';
+            }
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                localStorage.removeItem('admin_token');
+                showLoginOverlay();
+                throw new Error('Unauthorized');
+            }
+            return res;
+        }
+
+        function showLoginOverlay() {
+            document.getElementById('login-overlay').style.display = 'flex';
+            document.querySelector('.admin-container').style.display = 'none';
+        }
+
+        function hideLoginOverlay() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.querySelector('.admin-container').style.display = 'block';
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            Swal.fire({ title: 'Verificando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                const res = await fetch(`${SERVER_URL}/api/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('admin_token', data.token);
+                    Swal.close();
+                    hideLoginOverlay();
+                    loadDashboardStats();
+                } else {
+                    Swal.fire('Error', data.message || 'Credenciales incorrectas', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+            }
+        }
+
+        async function logoutAll() {
+            const { isConfirmed } = await Swal.fire({
+                title: '¿Cerrar todas las sesiones?',
+                text: "Se cerrarán todas las secciones abiertas de administración en cualquier dispositivo (incluyendo este).",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4b2b',
+                confirmButtonText: 'Sí, cerrar todas',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+            
+            if (!isConfirmed) return;
+            
+            Swal.fire({ title: 'Cerrando sesiones...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                await adminFetch(`${SERVER_URL}/api/admin/logout_all`, { method: 'POST' });
+                localStorage.removeItem('admin_token');
+                Swal.fire('¡Completado!', 'Todas las sesiones activas han sido cerradas.', 'success').then(() => {
+                    showLoginOverlay();
+                });
+            } catch (e) {
+                localStorage.removeItem('admin_token');
+                showLoginOverlay();
+                Swal.close();
+            }
+        }
+
+        // Ejecutar al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('admin_token');
+            if (!token) {
+                showLoginOverlay();
+            } else {
+                hideLoginOverlay();
+                loadDashboardStats(); // Carga inicial
+            }
+        });
+
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -677,7 +825,7 @@ PIN789012
 
         async function loadDashboardStats() {
             try {
-                const res = await fetch(`${SERVER_URL}/admin/stats`);
+                const res = await adminFetch(`${SERVER_URL}/admin/stats`);
                 const stats = await res.json();
                 
                 updatePendingBadge(stats.pending);
@@ -706,7 +854,7 @@ PIN789012
         let allOrders = [];
         async function loadOrders() {
             try {
-                const res = await fetch(`${SERVER_URL}/admin/pedidos`);
+                const res = await adminFetch(`${SERVER_URL}/admin/pedidos`);
                 allOrders = await res.json();
                 allOrders.sort((a, b) => new Date(b.time) - new Date(a.time));
                 renderOrders(allOrders);
@@ -759,7 +907,7 @@ PIN789012
         async function approveOrder(ref) {
             Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                const res = await fetch(`${SERVER_URL}/admin/aprobar`, {
+                const res = await adminFetch(`${SERVER_URL}/admin/aprobar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ref })
@@ -778,7 +926,7 @@ PIN789012
             const { isConfirmed } = await Swal.fire({ title: '¿Rechazar?', text: "El usuario recibirá notificación.", icon: 'warning', showCancelButton: true });
             if (!isConfirmed) return;
             try {
-                await fetch(`${SERVER_URL}/admin/rechazar`, {
+                await adminFetch(`${SERVER_URL}/admin/rechazar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ref })
@@ -789,7 +937,7 @@ PIN789012
 
         async function loadPinStats() {
             try {
-                const res = await fetch(`${SERVER_URL}/admin/pines`);
+                const res = await adminFetch(`${SERVER_URL}/admin/pines`);
                 const pines = await res.json();
                 const container = document.getElementById('pines-stats');
                 container.innerHTML = '';
@@ -810,7 +958,7 @@ PIN789012
                 });
 
                 // Cargar pines usados
-                const usedRes = await fetch(`${SERVER_URL}/admin/pines/used`);
+                const usedRes = await adminFetch(`${SERVER_URL}/admin/pines/used`);
                 if (usedRes.ok) {
                     const usedPines = await usedRes.json();
                     allUsedPines = usedPines;
@@ -866,7 +1014,7 @@ PIN789012
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Cargando...</td></tr>';
             
             try {
-                const res = await fetch(`${SERVER_URL}/admin/pines/available?amount=${amount}`);
+                const res = await adminFetch(`${SERVER_URL}/admin/pines/available?amount=${amount}`);
                 const data = await res.json();
                 tbody.innerHTML = '';
                 
@@ -907,7 +1055,7 @@ PIN789012
 
             if (newCode && newCode !== oldCode) {
                 try {
-                    const res = await fetch(`${SERVER_URL}/admin/pines/update`, {
+                    const res = await adminFetch(`${SERVER_URL}/admin/pines/update`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id, code: newCode.trim() })
@@ -938,7 +1086,7 @@ PIN789012
 
             if (isConfirmed) {
                 try {
-                    const res = await fetch(`${SERVER_URL}/admin/pines/delete`, {
+                    const res = await adminFetch(`${SERVER_URL}/admin/pines/delete`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id })
@@ -968,7 +1116,7 @@ PIN789012
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Cargando...';
 
             try {
-                const res = await fetch(`${SERVER_URL}/admin/pines/add`, {
+                const res = await adminFetch(`${SERVER_URL}/admin/pines/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount, codes })
@@ -995,7 +1143,7 @@ PIN789012
         let allUsers = {};
         async function loadUsers() {
             try {
-                const res = await fetch(`${SERVER_URL}/admin/usuarios`);
+                const res = await adminFetch(`${SERVER_URL}/admin/usuarios`);
                 allUsers = await res.json();
                 renderUsers(allUsers);
             } catch (e) { console.error(e); }
@@ -1036,7 +1184,7 @@ PIN789012
             const { value: newPoints } = await Swal.fire({ title: 'Editar Puntos', input: 'number', inputValue: current, showCancelButton: true });
             if (newPoints !== null) {
                 try {
-                    await fetch(`${SERVER_URL}/admin/usuarios/update_points`, {
+                    await adminFetch(`${SERVER_URL}/admin/usuarios/update_points`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ uid, points: newPoints })
@@ -1063,7 +1211,7 @@ PIN789012
 
             if (newPass !== undefined) { // undefined = cancelado
                 try {
-                    const res = await fetch(`${SERVER_URL}/admin/usuarios/set_password`, {
+                    const res = await adminFetch(`${SERVER_URL}/admin/usuarios/set_password`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ uid, password: newPass || null })
@@ -1093,7 +1241,7 @@ PIN789012
 
             if (isConfirmed) {
                 try {
-                    const res = await fetch(`${SERVER_URL}/admin/usuarios/delete`, {
+                    const res = await adminFetch(`${SERVER_URL}/admin/usuarios/delete`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ uid })
@@ -1112,7 +1260,7 @@ PIN789012
         let allSettings = {};
         async function loadSettings() {
             try {
-                const res = await fetch(`${SERVER_URL}/admin/settings`);
+                const res = await adminFetch(`${SERVER_URL}/admin/settings`);
                 allSettings = await res.json();
                 document.getElementById('setting-tasa').value = allSettings.tasa_del_dia;
                 document.getElementById('setting-marquee').value = allSettings.barra_informativa;
@@ -1195,7 +1343,7 @@ PIN789012
             if (newPass) newSettings.admin.password = newPass;
 
             try {
-                const res = await fetch(`${SERVER_URL}/admin/settings`, {
+                const res = await adminFetch(`${SERVER_URL}/admin/settings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newSettings)
@@ -1210,7 +1358,7 @@ PIN789012
 
         async function checkWaStatus() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/wa_status`);
+                const res = await adminFetch(`${SERVER_URL}/api/wa_status`);
                 const data = await res.json();
                 const statusEl = document.getElementById('wa-status-text');
                 const qrContainer = document.getElementById('wa-qr-container');
@@ -1234,7 +1382,7 @@ PIN789012
             });
             if (!isConfirmed) return;
             try {
-                const res = await fetch(`${SERVER_URL}/admin/clear-wa-queue`, { method: 'POST' });
+                const res = await adminFetch(`${SERVER_URL}/admin/clear-wa-queue`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire('¡Vaciada!', 'La cola de WhatsApp ha sido borrada.', 'success');
@@ -1252,7 +1400,7 @@ PIN789012
             });
             if (!isConfirmed) return;
             try {
-                const res = await fetch(`${SERVER_URL}/admin/restart-wa`, { method: 'POST' });
+                const res = await adminFetch(`${SERVER_URL}/admin/restart-wa`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire('Solicitado', 'El bot recibirá la orden de reinicio en unos segundos.', 'success');
@@ -1324,11 +1472,12 @@ PIN789012
             }
         }
 
-        // Init
-        loadDashboardStats();
-
+        // Init se maneja a través del event listener DOMContentLoaded arriba
+        
         // Refresco automático de datos (cada 5 segundos)
         setInterval(() => {
+            if (!localStorage.getItem('admin_token')) return; // No refrescar si no hay sesión
+            
             const activeTabBtn = document.querySelector('.tab-btn.active');
             const activeTabText = activeTabBtn ? activeTabBtn.innerText.trim() : '';
             
@@ -1339,7 +1488,7 @@ PIN789012
             
             // Siempre actualizar el badge de pendientes, sin importar el tab
             if (!activeTabText.includes('Dashboard')) {
-                fetch(`${SERVER_URL}/admin/stats`)
+                adminFetch(`${SERVER_URL}/admin/stats`)
                     .then(r => r.json())
                     .then(stats => updatePendingBadge(stats.pending))
                     .catch(e => {});
