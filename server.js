@@ -169,12 +169,13 @@ async function loadFromSupabase() {
         if (settingsData) {
             settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
             settings.barra_informativa = settingsData.barra_informativa;
-            settings.admin.username = settingsData.admin_username;
-            settings.admin.password = settingsData.admin_password;
+            settings.admin.username = settingsData.admin_username || settings.admin.username;
+            settings.admin.password = settingsData.admin_password || settings.admin.password;
             settings.admin.session_token = settingsData.admin_session_token || null;
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.precios = settingsData.precios;
+            console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}' | token_activo=${!!settings.admin.session_token}`);
         }
 
         // Recientes
@@ -1841,6 +1842,7 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const { username, password } = JSON.parse(body);
+                console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${username}' | Esperado: '${settings.admin.username}'`);
                 if (username === settings.admin.username && password === settings.admin.password) {
                     // Generar un token aleatorio seguro
                     const token = 'tok_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
@@ -1854,16 +1856,18 @@ const server = http.createServer(async (req, res) => {
                     if (error) {
                         console.error('[SUPABASE] Error guardando session_token:', error.message);
                     }
-                    
+                    console.log('[ADMIN-LOGIN] ✅ Login exitoso.');
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true, token }));
                 } else {
-                    res.writeHead(400);
+                    console.warn('[ADMIN-LOGIN] ❌ Credenciales incorrectas.');
+                    // Siempre devolver 200 para que el frontend pueda leer el mensaje
+                    res.writeHead(200);
                     res.end(JSON.stringify({ success: false, message: 'Usuario o contraseña incorrectos' }));
                 }
             } catch (e) {
-                res.writeHead(400);
-                res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: false, message: 'Datos inválidos. Intenta de nuevo.' }));
             }
         });
     } else if (parsedUrl.pathname === '/api/admin/logout_all' && req.method === 'POST') {
