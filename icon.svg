@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="112" fill="#07030D"/>
+    <!-- Diamond Shape -->
+    <path d="M256 460L70 200L170 70H342L442 200L256 460Z" fill="url(#grad1)"/>
+    <path d="M256 460L170 70M256 460L342 70M70 200H442M170 200L256 70L342 200" stroke="#07030D" stroke-width="12"/>
+    <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#00F0FF;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#9D00FF;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+</svg>

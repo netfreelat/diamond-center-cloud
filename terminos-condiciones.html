@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Términos y Condiciones - Diamond Center</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#07030D">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-purple: #9d00ff;
+            --dark-bg: #07030d;
+            --glass-card: rgba(20, 10, 35, 0.85);
+            --glass-border: rgba(0, 240, 255, 0.15);
+            --text-white: #FFFFFF;
+            --text-gray: #b0a8c0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            background-image: radial-gradient(circle at 50% 20%, #1a0b2e 0%, #07030d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            font-family: 'Segoe UI', sans-serif;
+            color: var(--text-white);
+        }
+
+        .policy-card {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 45px 35px;
+            width: 100%;
+            max-width: 750px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.05), 0 20px 60px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .policy-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            animation: border-anim 4s linear infinite;
+        }
+
+        @keyframes border-anim {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .policy-title {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-align: center;
+            background: linear-gradient(to right, #fff, var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .policy-subtitle {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .content-section {
+            text-align: left;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 20px;
+        }
+
+        .content-section:last-of-type {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .content-section h2 {
+            font-size: 1.15rem;
+            color: var(--neon-cyan);
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .content-section p, .content-section li {
+            font-size: 0.92rem;
+            color: #d1cbdc;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .content-section ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--neon-cyan), #007cff);
+            color: #000;
+            font-size: 0.95rem;
+            font-weight: 900;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.25);
+            margin-top: 20px;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 240, 255, 0.45);
+        }
+
+        .disclaimer-box {
+            background: rgba(157, 0, 255, 0.05);
+            border: 1px solid rgba(157, 0, 255, 0.25);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .disclaimer-box p {
+            font-size: 0.82rem;
+            color: #bfaed6;
+            line-height: 1.5;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="policy-card">
+        <h1 class="policy-title">TÉRMINOS Y CONDICIONES</h1>
+        <p class="policy-subtitle">Diamond Center • Free Fire</p>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-gavel"></i> 1. Aceptación de los Términos</h2>
+            <p>Al acceder, navegar o utilizar la aplicación móvil o sitio web de <strong>Diamond Center</strong>, declaras ser mayor de edad en tu jurisdicción o contar con el debido consentimiento paterno o de tutor, y aceptas incondicionalmente todos los Términos y Condiciones aquí expresados. Si no estás de acuerdo con alguna de las cláusulas, por favor abstente de utilizar nuestros servicios.</p>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-gamepad"></i> 2. Naturaleza del Servicio e Independencia</h2>
+            <p><strong>Diamond Center</strong> es una plataforma de comercio electrónico independiente que facilita a los usuarios la adquisición de pines de diamantes de Free Fire y recargas de forma automatizada y directa.</p>
+            <div class="disclaimer-box">
+                <p><strong>DESLINDE DE ASOCIACIÓN:</strong> No somos un canal oficial de Garena Online ni estamos afiliados directamente a la desarrolladora del videojuego. Nuestro servicio actúa como un proveedor alternativo de pines pre-comprados legalmente y canjeados mediante pasarelas autorizadas, con un sistema local de puntos de lealtad.</p>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-user-check"></i> 3. Responsabilidad del ID de Jugador</h2>
+            <p>Para procesar cualquier compra o canje de diamantes, el usuario debe ingresar su <strong>ID de Jugador (UID)</strong> exacto de Free Fire.</p>
+            <ul>
+                <li>Nuestra plataforma consultará a los servidores del juego para mostrarte en pantalla el <strong>Nickname (apodo)</strong> asociado a dicho ID.</li>
+                <li><strong>Es obligación estricta del usuario verificar que el Nickname en pantalla sea el correcto</strong> antes de proceder con el pago o canje.</li>
+                <li>Debido al carácter inmediato e irreversible de la entrega de bienes virtuales (diamantes de Free Fire), <strong>no se realizarán reembolsos</strong> bajo ningún concepto si el usuario confirma y realiza un pago a un ID incorrecto ingresado por su propia equivocación.</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-credit-card"></i> 4. Métodos de Pago y Transacciones</h2>
+            <p>Todas las transacciones de pago son finales. Ofrecemos opciones automatizadas en USDT, Bolívares (Pago Móvil / Banco de Venezuela) y Binance Pay. Las recargas se procesarán inmediatamente después de que el sistema reciba e identifique el reporte de pago del usuario o la confirmación de la pasarela de criptomonedas. Los tiempos de espera promedio oscilan entre 1 y 15 minutos.</p>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-star"></i> 5. Sistema de Puntos de Fidelidad y Referidos</h2>
+            <p>Nuestra plataforma premia tu lealtad mediante un sistema de puntos acumulables que pueden canjearse por diamantes gratuitos:</p>
+            <ul>
+                <li>Los puntos se obtienen al completar recargas válidas en la tienda y a través del enlace de referidor personalizado en tu perfil.</li>
+                <li>El beneficio de referidos otorga un bono único de <strong>+15 puntos</strong> cuando el usuario invitado completa su <strong>primera recarga</strong>.</li>
+                <li><strong>El auto-referido</strong> (crearse cuentas alternativas utilizando tu propio enlace con IDs de jugador diferentes) <strong>está estrictamente prohibido</strong>. Nuestro sistema realiza auditorías automáticas de IPs e historial de red; cualquier cuenta que abuse del programa de referidos será suspendida de inmediato y sus puntos confiscados.</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-ban"></i> 6. Limitación de Responsabilidad</h2>
+            <p>No nos responsabilizamos por fallas de red del operador del juego (Garena), mantenimientos programados de los servidores del videojuego, o suspensiones de cuenta aplicadas de forma directa por Garena a los jugadores por comportamientos ajenos a nuestro servicio. Los pines e insumos distribuidos por Diamond Center son legítimos y adquiridos legalmente.</p>
+        </div>
+
+        <div class="content-section" style="text-align: center;">
+            <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Volver a la Tienda</a>
+        </div>
+    </div>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "TU_PACKAGE_NAME_AQUÍ (Ej: com.diamondcenter.app)",
+      "sha256_cert_fingerprints": [
+        "TU_SHA256_FINGERPRINT_AQUÍ (Ej: XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX)"
+      ]
+    }
+  }
+]

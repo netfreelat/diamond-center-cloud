@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad - Diamond Center</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#07030D">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-purple: #9d00ff;
+            --dark-bg: #07030d;
+            --glass-card: rgba(20, 10, 35, 0.85);
+            --glass-border: rgba(0, 240, 255, 0.15);
+            --text-white: #FFFFFF;
+            --text-gray: #b0a8c0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            background-image: radial-gradient(circle at 50% 20%, #1a0b2e 0%, #07030d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            font-family: 'Segoe UI', sans-serif;
+            color: var(--text-white);
+        }
+
+        .policy-card {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 45px 35px;
+            width: 100%;
+            max-width: 750px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.05), 0 20px 60px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .policy-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            animation: border-anim 4s linear infinite;
+        }
+
+        @keyframes border-anim {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .policy-title {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-align: center;
+            background: linear-gradient(to right, #fff, var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .policy-subtitle {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .content-section {
+            text-align: left;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 20px;
+        }
+
+        .content-section:last-of-type {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .content-section h2 {
+            font-size: 1.15rem;
+            color: var(--neon-cyan);
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .content-section p, .content-section li {
+            font-size: 0.92rem;
+            color: #d1cbdc;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .content-section ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--neon-cyan), #007cff);
+            color: #000;
+            font-size: 0.95rem;
+            font-weight: 900;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.25);
+            margin-top: 20px;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 240, 255, 0.45);
+        }
+
+        .disclaimer-box {
+            background: rgba(157, 0, 255, 0.05);
+            border: 1px solid rgba(157, 0, 255, 0.25);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .disclaimer-box p {
+            font-size: 0.82rem;
+            color: #bfaed6;
+            line-height: 1.5;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="policy-card">
+        <h1 class="policy-title">POLÍTICA DE PRIVACIDAD</h1>
+        <p class="policy-subtitle">Diamond Center • Free Fire</p>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-shield-halved"></i> 1. Información General</h2>
+            <p>En <strong>Diamond Center</strong>, valoramos tu privacidad y nos comprometemos a proteger los datos personales de nuestros usuarios. Esta Política de Privacidad describe qué información recopilamos, cómo la utilizamos y las medidas que tomamos para garantizar que se maneje de forma segura, cumpliendo rigurosamente con los estándares y directrices de distribución en plataformas móviles.</p>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-database"></i> 2. Recopilación de Datos</h2>
+            <p>Para ofrecer nuestro servicio de procesamiento y canje de diamantes, recopilamos únicamente los datos necesarios y no invasivos de los usuarios:</p>
+            <ul>
+                <li><strong>ID de Jugador (UID) de Free Fire:</strong> Utilizado única y exclusivamente para consultar la API de validación y verificar el apodo/username del jugador en el juego, garantizando que los diamantes se acrediten en la cuenta correcta. No recopilamos credenciales de acceso, contraseñas ni correos vinculados a tu cuenta de juego.</li>
+                <li><strong>Número de WhatsApp:</strong> Recopilado con tu previo consentimiento para encolar y enviar notificaciones del estado de tu recarga, confirmación de canje de puntos y soporte al cliente.</li>
+                <li><strong>Historial de transacciones local:</strong> Registramos la cantidad de recargas realizadas y los puntos obtenidos en nuestro sistema de fidelidad local para tu control personal y visualización en tu perfil.</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-circle-check"></i> 3. Uso de la Información</h2>
+            <p>La información recopilada se destina de manera exclusiva a los siguientes fines:</p>
+            <ul>
+                <li>Validar tu cuenta de juego en Free Fire antes de que realices un pago, para prevenir pérdidas de fondos o errores de acreditación.</li>
+                <li>Procesar tus solicitudes de compra y canje de códigos PIN de forma automatizada.</li>
+                <li>Administrar el programa de fidelización de puntos ganados y referidos.</li>
+                <li>Enviarte comprobantes de compra y actualizaciones de entrega a través de nuestro bot automatizado en WhatsApp o Telegram.</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-lock"></i> 4. Seguridad de los Datos</h2>
+            <p>Tus datos son almacenados en servidores de base de datos seguros equipados con tecnologías de encriptación SSL/TLS de extremo a extremo. Limitamos estrictamente el acceso a la información y garantizamos que <strong>bajo ninguna circunstancia compartiremos, venderemos, alquilaremos ni distribuiremos tus datos personales a terceros</strong> con fines publicitarios o lucrativos.</p>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-user-gear"></i> 5. Tus Derechos</h2>
+            <p>Tienes total control sobre tu información en nuestra plataforma. En cualquier momento puedes solicitar:</p>
+            <ul>
+                <li>La visualización y confirmación de los datos que guardamos.</li>
+                <li>La corrección de cualquier dato asociado a tu perfil.</li>
+                <li>La eliminación completa y permanente de tu ID de jugador, historial y número de WhatsApp de nuestros registros locales y de la base de datos de producción escribiendo directamente a nuestro Soporte Técnico.</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2><i class="fa-solid fa-scale-balanced"></i> 6. Deslinde de Responsabilidad Oficial (Disclaimer)</h2>
+            <div class="disclaimer-box">
+                <p><strong>IMPORTANTE:</strong> Diamond Center es una plataforma de servicios independiente orientada a la comunidad de jugadores. No estamos afiliados, patrocinados, asociados ni respaldados de manera oficial por Garena Online, Garena Free Fire, ni ninguna de sus marcas comerciales asociadas. Todas las marcas registradas, nombres de juegos y logotipos mostrados en esta aplicación son propiedad de sus respectivos dueños y su uso se realiza con fines informativos y de referencia del servicio ofrecido.</p>
+            </div>
+        </div>
+
+        <div class="content-section" style="text-align: center;">
+            <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Volver a la Tienda</a>
+        </div>
+    </div>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
