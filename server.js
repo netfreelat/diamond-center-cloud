@@ -79,6 +79,25 @@ function getVEString() {
     });
 }
 
+// --- Helper para obtener el último WhatsApp registrado de un UID ---
+async function getLastUserWa(uid) {
+    try {
+        const { data, error } = await supabase
+            .from('ff_orders')
+            .select('wa')
+            .eq('uid', uid)
+            .not('wa', 'eq', 'No provisto')
+            .order('time', { ascending: false })
+            .limit(1);
+        if (data && data.length > 0 && data[0].wa) {
+            return data[0].wa;
+        }
+    } catch (e) {
+        console.error('[WA-PUNTOS] Error obteniendo WhatsApp del usuario:', e.message);
+    }
+    return null;
+}
+
 // --- Estado en memoria (cache) ---
 let recentReloads = [];
 let orders = {};
@@ -210,6 +229,16 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
               `💎 *Paquete:* ${order.pack}\n` +
               `━━━━━━━━━━━━━━━\n\n` +
               `✅ *Estado:* ¡Diamantes Enviados! ✨`;
+
+        const userObj = users[order.login_uid || order.uid];
+        if (userObj) {
+            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+            if (!isNaN(usdtPrice) && usdtPrice > 0) {
+                const pointsEarned = Math.floor(usdtPrice * 10);
+                msg += `\n\n🎁 *Puntos ganados por esta compra:* +${pointsEarned} pts\n⭐ *Tu total acumulado:* ${userObj.points} pts`;
+            }
+        }
+
         if (pin) {
             msg += `\n\n⚡ *CANJE SU PIN AQUÍ:* \n` +
                    `Presiona el link para ir directo a cangear tu pin:\n` +
@@ -277,6 +306,24 @@ function addPoints(uid, amountUsdt, name = null) {
             users[uid].referral_claimed = true;
             saveUser(referrerUid);
             console.log(`[REFERRAL_REWARD] ${referrerUid} gana 15 pts por la 1ra recarga de ${uid}`);
+
+            // Encolar mensaje de WhatsApp para el referidor
+            getLastUserWa(referrerUid).then(referrerWa => {
+                if (referrerWa) {
+                    const refMsgId = `wa_ref_${uid}_reward`;
+                    const refMsg = `🎉 *¡FELICIDADES! HAS GANADO PUNTOS* 🎉\n\n` +
+                                   `¡Hola! Tu referido con ID *${uid}* ha realizado su primera compra. 🚀\n\n` +
+                                   `🎁 *Puntos ganados:* +15 pts\n` +
+                                   `⭐ *Tu total acumulado:* ${users[referrerUid].points} pts\n\n` +
+                                   `¡Sigue compartiendo tu enlace para ganar más premios! 💎✨`;
+                    
+                    const waItem = { id: refMsgId, number: referrerWa, message: refMsg };
+                    whatsappQueue.push(waItem);
+                    supabase.from('ff_wa_queue').insert(waItem)
+                        .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error ref reward:', error.message); });
+                    console.log(`[REFERRAL_NOTIFICATION] Encolada notificación de referidos para ${referrerWa}`);
+                }
+            });
         }
     }
 
@@ -1319,6 +1366,24 @@ const server = http.createServer(async (req, res) => {
                 if (users[uid]) {
                     users[uid].points = parseInt(points);
                     saveUser(uid);
+
+                    // Encolar mensaje de WhatsApp para el usuario
+                    getLastUserWa(uid).then(userWa => {
+                        if (userWa) {
+                            const adminUpdateMsgId = `wa_admin_update_${uid}_${Date.now()}`;
+                            const adminUpdateMsg = `⭐ *ACTUALIZACIÓN DE PUNTOS* ⭐\n\n` +
+                                                   `¡Hola! Tu saldo de puntos ha sido actualizado por el administrador. ⚙️\n\n` +
+                                                   `📊 *Tu nuevo balance:* ${users[uid].points} pts\n\n` +
+                                                   `¡Gracias por formar parte de *Diamond Center*! 💎✨`;
+                            
+                            const waItem = { id: adminUpdateMsgId, number: userWa, message: adminUpdateMsg };
+                            whatsappQueue.push(waItem);
+                            supabase.from('ff_wa_queue').insert(waItem)
+                                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error admin update message:', error.message); });
+                            console.log(`[ADMIN_POINTS_NOTIFICATION] Encolada notificación de ajuste de puntos para ${userWa}`);
+                        }
+                    });
+
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true }));
                 }
@@ -1611,6 +1676,31 @@ const server = http.createServer(async (req, res) => {
                     
                     // Mostrar en la marquesina (usar nombre si existe o ID)
                     saveRecent(user.name || uid, pack, 'canje');
+
+                    // Encolar mensaje de WhatsApp para el usuario
+                    getLastUserWa(uid).then(userWa => {
+                        if (userWa) {
+                            const redemptionMsgId = `wa_redeem_${uid}_${Date.now()}`;
+                            const redemptionMsg = `💎 *¡CANJE DE PUNTOS EXITOSO!* 💎\n\n` +
+                                                 `¡Hola! Has canjeado con éxito tu saldo de puntos por un paquete de *${pack} Diamantes*. 🚀\n\n` +
+                                                 `━━━━━━━━━━━━━━━\n` +
+                                                 `🆔 *ID Garena:* ${uid}\n` +
+                                                 `📉 *Costo del canje:* -${cost} pts\n` +
+                                                 `⭐ *Tu nuevo balance:* ${user.points} pts\n` +
+                                                 `━━━━━━━━━━━━━━━\n\n` +
+                                                 `⚡ *Tu PIN de Diamantes:* \n` +
+                                                 `\`${pin}\`\n\n` +
+                                                 `🔗 Canjéalo aquí directamente:\n` +
+                                                 `https://redeempins.com/\n\n` +
+                                                 `¡Gracias por usar *Diamond Center*! 🎯🛡️`;
+                            
+                            const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
+                            whatsappQueue.push(waItem);
+                            supabase.from('ff_wa_queue').insert(waItem)
+                                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error redemption message:', error.message); });
+                            console.log(`[CANJE_NOTIFICATION] Encolada notificación de canje de puntos para ${userWa}`);
+                        }
+                    });
                     
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true, pin: pin, message: '¡Canje exitoso!' }));
