@@ -54,7 +54,7 @@
             "name": "Canjear PIN",
             "short_name": "Canjear",
             "description": "Ir directo a canjear tus códigos de diamantes",
-            "url": "https://redeempins.com/",
+            "url": "/canjear.html",
             "icons": [
                 {
                     "src": "/icon.svg",

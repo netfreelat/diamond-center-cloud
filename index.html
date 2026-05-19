@@ -12,6 +12,13 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-512.png">
     <meta name="theme-color" content="#07030D">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registrado:', reg.scope))
+                .catch(err => console.error('Error al registrar Service Worker:', err));
+        }
+    </script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="style.css">
