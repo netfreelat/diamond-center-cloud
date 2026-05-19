@@ -5,9 +5,9 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "TU_PACKAGE_NAME_AQUÍ (Ej: com.diamondcenter.app)",
+      "package_name": "com.onrender.diamond_center_cloud.twa",
       "sha256_cert_fingerprints": [
-        "TU_SHA256_FINGERPRINT_AQUÍ (Ej: XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX)"
+        "AB:4D:B3:FC:1E:CE:E4:48:A4:66:4A:11:19:11:08:31:12:FB:0B:57:55:F1:43:13:A3:B3:31:28:B4:56:6B:3C"
       ]
     }
   }
