@@ -164,19 +164,40 @@ async function loadFromSupabase() {
             ordersData.forEach(o => { orders[o.ref] = { ...o, time: o.time }; });
         }
         
-        // Configuración
-        const { data: settingsData } = await supabase.from('ff_settings').select('*').eq('id', 1).single();
-        if (settingsData) {
+        // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
+        const { data: settingsData, error: settingsError } = await supabase
+            .from('ff_settings')
+            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios')
+            .eq('id', 1)
+            .single();
+        if (settingsError) {
+            console.error('[SUPABASE] ❌ Error cargando settings:', settingsError.message);
+        } else if (settingsData) {
             settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
             settings.barra_informativa = settingsData.barra_informativa;
             settings.admin.username = settingsData.admin_username || settings.admin.username;
             settings.admin.password = settingsData.admin_password || settings.admin.password;
-            settings.admin.session_token = settingsData.admin_session_token || null;
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.precios = settingsData.precios;
-            console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}' | token_activo=${!!settings.admin.session_token}`);
+            console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
         }
+        
+        // Intentar cargar el token de sesión por separado (requiere columna admin_session_token)
+        try {
+            const { data: tokenData, error: tokenError } = await supabase
+                .from('ff_settings')
+                .select('admin_session_token')
+                .eq('id', 1)
+                .single();
+            if (!tokenError && tokenData) {
+                settings.admin.session_token = tokenData.admin_session_token || null;
+                console.log(`[SUPABASE] 🔒 Token de sesión: ${settings.admin.session_token ? 'activo' : 'ninguno'}`);
+            }
+        } catch (tokenErr) {
+            console.warn('[SUPABASE] ⚠️  Columna admin_session_token no existe. Ejecuta la migración SQL. El login funcionará pero sin persistencia de token.');
+        }
+
 
         // Recientes
         const { data: recData } = await supabase.from('ff_recientes').select('*').order('created_at', { ascending: false }).limit(10);
