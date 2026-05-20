@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     let DOLAR_RATE = 635.00;
     let APP_CONFIG = {};
+    let adminMarqueeText = "";
+    let recentReloadsText = "";
     
     // Detectar si estamos en local, en el túnel o en la nube
     const hostname = window.location.hostname;
@@ -8,6 +10,48 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // URL del servidor en Render (TU URL REAL)
     const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
+
+    // Unificar y actualizar marquesina con velocidad constante
+    function updateMarqueeDisplay() {
+        const marquee = document.getElementById('marquee-content');
+        if (!marquee) return;
+        
+        const marqueeContainer = marquee.closest('.marquee');
+        
+        let parts = [];
+        if (adminMarqueeText && adminMarqueeText.trim()) {
+            parts.push(adminMarqueeText.trim());
+        }
+        if (recentReloadsText && recentReloadsText.trim()) {
+            parts.push(recentReloadsText.trim());
+        }
+        
+        let combinedText = parts.join(' ⚡ ');
+        if (!combinedText) {
+            combinedText = "¡BIENVENIDOS A DIAMOND CENTER! Recargas automáticas 24/7. ¡Booyah! 💎";
+        }
+        
+        if (marquee.innerText !== combinedText) {
+            marquee.innerText = combinedText;
+            
+            if (marqueeContainer) {
+                // Detener temporalmente la animación para forzar al navegador a aplicar el nuevo valor de duración inmediatamente
+                marqueeContainer.style.animation = 'none';
+                
+                // Forzar un reflow leyendo offsetWidth (ancho real)
+                const width = marqueeContainer.offsetWidth;
+                const speed = 75; // 75px por segundo es una velocidad media y muy legible
+                const duration = width > 0 ? (width / speed) : Math.max(25, combinedText.length * 0.20);
+                
+                marqueeContainer.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
+                
+                // Reiniciar la animación en el siguiente frame de renderizado
+                requestAnimationFrame(() => {
+                    marqueeContainer.style.animation = '';
+                });
+            }
+        }
+    }
 
     async function loadConfig() {
         try {
@@ -24,8 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
             DOLAR_RATE = data.tasa_del_dia;
             
             // Actualizar marquesina
-            const marquee = document.getElementById('marquee-content');
-            if (marquee) marquee.innerText = data.barra_informativa;
+            adminMarqueeText = data.barra_informativa || "";
+            updateMarqueeDisplay();
 
             if (shouldRender) {
                 console.log('[CONFIG] 🔄 Actualizando tienda (Precios o Stock cambiaron)');
@@ -715,7 +759,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${SERVER_URL}/recientes`);
             const data = await res.json();
-            const marquee = document.getElementById('marquee-content');
             
             if (data && data.length > 0) {
                 const text = data.map(r => {
@@ -724,10 +767,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     return `✅ ${r.name} compró PIN de ${r.pack} diamantes`;
                 }).join(' | ');
-                marquee.innerText = ` ÚLTIMAS COMPRAS: ${text} | ¡Únete a los miles de jugadores que confían en nosotros! `;
+                recentReloadsText = `ÚLTIMAS COMPRAS: ${text} | ¡Únete a los miles de jugadores que confían en nosotros!`;
             } else {
-                marquee.innerText = " ¡BIENVENIDOS A LA TIENDA DE PINES! – Selecciona tu paquete y recibe tu código al instante. ";
+                recentReloadsText = "¡BIENVENIDOS A LA TIENDA DE PINES! – Selecciona tu paquete y recibe tu código al instante.";
             }
+            updateMarqueeDisplay();
         } catch (e) {
             console.error('Error cargando recientes:', e);
         }
