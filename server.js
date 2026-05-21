@@ -322,14 +322,14 @@ function addPoints(uid, amountUsdt, name = null) {
     users[uid].points += pointsToAdd;
     if (name) users[uid].name = name;
 
-    // Lógica de Referidos: 15 pts al referrer en la PRIMERA recarga
+    // Lógica de Referidos: 10 pts al referrer en la PRIMERA recarga
     if (users[uid].referred_by && !users[uid].referral_claimed) {
         const referrerUid = users[uid].referred_by;
         if (users[referrerUid]) {
-            users[referrerUid].points = (users[referrerUid].points || 0) + 15;
+            users[referrerUid].points = (users[referrerUid].points || 0) + 10;
             users[uid].referral_claimed = true;
             saveUser(referrerUid);
-            console.log(`[REFERRAL_REWARD] ${referrerUid} gana 15 pts por la 1ra recarga de ${uid}`);
+            console.log(`[REFERRAL_REWARD] ${referrerUid} gana 10 pts por la 1ra recarga de ${uid}`);
 
             // Encolar mensaje de WhatsApp para el referidor
             getLastUserWa(referrerUid).then(referrerWa => {
@@ -337,7 +337,7 @@ function addPoints(uid, amountUsdt, name = null) {
                     const refMsgId = `wa_ref_${uid}_reward`;
                     const refMsg = `🎉 *¡FELICIDADES! HAS GANADO PUNTOS* 🎉\n\n` +
                                    `¡Hola! Tu referido con ID *${uid}* ha realizado su primera compra. 🚀\n\n` +
-                                   `🎁 *Puntos ganados:* +15 pts\n` +
+                                   `🎁 *Puntos ganados:* +10 pts\n` +
                                    `⭐ *Tu total acumulado:* ${users[referrerUid].points} pts\n\n` +
                                    `¡Sigue compartiendo tu enlace para ganar más premios! 💎✨`;
                     

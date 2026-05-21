@@ -669,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await navigator.clipboard.writeText(refLink);
                     Swal.fire({
                         html: `<p style="font-size:0.8rem;color:#aaa;word-break:break-all;">${refLink}</p>
-                               <p style="font-size:0.85rem;margin-top:10px;">Compártelo con tus amigos. Ganas <strong>+15 puntos</strong> por cada nuevo usuario que haga su primera compra.</p>`,
+                               <p style="font-size:0.85rem;margin-top:10px;">Compártelo con tus amigos. Ganas <strong>+10 puntos</strong> por cada nuevo usuario que haga su primera compra.</p>`,
                         timer: 4000,
                         showConfirmButton: false,
                         background: 'rgba(20, 10, 35, 0.98)',
