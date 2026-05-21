@@ -1524,14 +1524,14 @@ body::before {
 /* === PROMO TAGS (Marketing Labels) === */
 .promo-tag {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.62rem;
+    bottom: 8px;
+    right: 8px;
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-size: 0.52rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.5px;
     z-index: 5;
     white-space: nowrap;
     animation: promoGlow 2.5s ease-in-out infinite;
