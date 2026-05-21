@@ -1362,6 +1362,9 @@ body::before {
         font-size: 0.42rem;
         letter-spacing: 0px;
         border-radius: 6px;
+        animation: none !important;
+        box-shadow: none !important;
+        background-size: auto !important;
     }
 
     .payment-methods {
