@@ -1733,10 +1733,43 @@ const server = http.createServer(async (req, res) => {
                 
                 await saveUser(uid);
                 
-                console.log(`[REGISTRO] Usuario registrado con éxito: ID=${uid}, Nombre=${users[uid].name}, Cédula=${cedula}, Teléfono=${phone}`);
-                
+                const nombreRegistrado = users[uid].name || 'Jugador';
+                console.log(`[REGISTRO] Usuario registrado con éxito: ID=${uid}, Nombre=${nombreRegistrado}, Cédula=${cedula}, Teléfono=${phone}`);
+
+                // ─── 🔔 NOTIFICACIÓN PUSH DE BIENVENIDA ──────────────────────
+                sendPushToUser(
+                    uid,
+                    '🎉 ¡Bienvenido a Diamond Center!',
+                    `¡Hola ${nombreRegistrado}! Tu cuenta está activa. Acumula puntos en cada compra y canjéalos por diamantes gratis. 💎`,
+                    '/icon-192.png',
+                    '/'
+                );
+
+                // ─── 📱 WHATSAPP DE BIENVENIDA ───────────────────────────────
+                const phoneClean = phone.replace(/\D/g, '');
+                const waWelcomeId = `wa_bienvenida_${uid}`;
+                const yaEnviadoBienvenida = whatsappQueue.some(i => i.id === waWelcomeId);
+                if (!yaEnviadoBienvenida) {
+                    const waWelcomeMsg =
+                        `🔥 *¡BIENVENIDO A DIAMOND CENTER!* 🔥\n\n` +
+                        `¡Hola, *${nombreRegistrado}*! Tu cuenta ha sido creada exitosamente. 🎉\n\n` +
+                        `━━━━━━━━━━━━━━━\n` +
+                        `👤 *Jugador:* ${nombreRegistrado}\n` +
+                        `🆔 *ID Garena:* ${uid}\n` +
+                        `━━━━━━━━━━━━━━━\n\n` +
+                        `✅ Ya puedes *acumular puntos* en cada recarga y canjearlos por diamantes gratis. 💎\n\n` +
+                        `🌐 *Tu tienda:* https://diamond-center-cloud.onrender.com\n\n` +
+                        `¡Gracias por unirte a *Diamond Center*! 🚀`;
+
+                    const waWelcome = { id: waWelcomeId, number: phoneClean, message: waWelcomeMsg };
+                    whatsappQueue.push(waWelcome);
+                    supabase.from('ff_wa_queue').insert(waWelcome)
+                        .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-REGISTRO] Error encolando bienvenida:', error.message); });
+                    console.log(`[REGISTRO] 📱 WhatsApp de bienvenida encolado para ${phoneClean}`);
+                }
+
                 res.writeHead(200);
-                res.end(JSON.stringify({ success: true, name: users[uid].name }));
+                res.end(JSON.stringify({ success: true, name: nombreRegistrado }));
             } catch (e) { 
                 console.error('[REGISTRO] Error:', e.message);
                 res.writeHead(500); 
