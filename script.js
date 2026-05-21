@@ -877,6 +877,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
+                    }).then(() => {
+                        // Preguntar por notificaciones si no están concedidas
+                        if ('Notification' in window && Notification.permission !== 'granted') {
+                            Swal.fire({
+                                title: '🔔 ¿Activar Notificaciones?',
+                                text: 'Te enviaremos alertas al instante cuando tus recargas sean aprobadas y cuando ganes puntos.',
+                                icon: 'info',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, activar 🔔',
+                                cancelButtonText: 'Más tarde',
+                                confirmButtonColor: '#9D00FF',
+                                cancelButtonColor: '#444',
+                                background: 'rgba(20, 10, 35, 0.98)',
+                                color: '#fff'
+                            }).then(async (pushRes) => {
+                                if (pushRes.isConfirmed) {
+                                    try {
+                                        const permission = await Notification.requestPermission();
+                                        if (permission === 'granted') {
+                                            await subscribeUser(result.uid);
+                                        } else {
+                                            Swal.fire({
+                                                icon: 'warning',
+                                                title: 'Permiso Denegado',
+                                                text: 'Puedes activar las notificaciones más tarde presionando el ícono de la campana en tu Cuenta.',
+                                                background: 'rgba(20, 10, 35, 0.98)',
+                                                color: '#fff',
+                                                confirmButtonColor: '#9D00FF'
+                                            });
+                                        }
+                                    } catch (err) {
+                                        console.error('Error al solicitar permiso de notificación:', err);
+                                    }
+                                }
+                            });
+                        }
                     });
                 } else {
                     Swal.fire({
