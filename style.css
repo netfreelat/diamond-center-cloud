@@ -1350,17 +1350,18 @@ body::before {
         top: 4px;
         left: 4px;
         padding: 2px 4px;
-        font-size: 0.5rem;
+        font-size: 0.45rem;
         letter-spacing: 0px;
     }
 
     .promo-tag {
-        bottom: 4px;
+        top: 4px;
         right: 4px;
-        padding: 2px 5px;
-        font-size: 0.45rem;
+        bottom: auto;
+        padding: 2px 4px;
+        font-size: 0.42rem;
         letter-spacing: 0px;
-        border-radius: 8px;
+        border-radius: 6px;
     }
 
     .payment-methods {
