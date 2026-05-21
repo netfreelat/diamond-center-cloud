@@ -1487,7 +1487,153 @@ body::before {
         font-size: 1.2rem;
         margin-bottom: 15px;
     }
-}`n/* === STOCK BADGES === */`n.stock-badge {`n    position: absolute;`n    top: 10px;`n    left: 10px;`n    padding: 4px 8px;`n    border-radius: 6px;`n    font-size: 0.65rem;`n    font-weight: 800;`n    text-transform: uppercase;`n    letter-spacing: 0.5px;`n    z-index: 5;`n}`n.stock-badge.available {`n    background: rgba(37, 211, 102, 0.15);`n    color: #25D366;`n    border: 1px solid rgba(37, 211, 102, 0.3);`n}`n.stock-badge.out {`n    background: rgba(255, 75, 43, 0.15);`n    color: #ff4b2b;`n    border: 1px solid rgba(255, 75, 43, 0.3);`n}`n.package-card.out-of-stock {`n    cursor: not-allowed;`n    filter: grayscale(0.8);`n}`n.package-card.out-of-stock:hover {`n    transform: none;`n    box-shadow: none;`n}`n`n/* === PREMIUM RECEIPT ENHANCEMENTS === */`n.receipt-card {`n    position: relative;`n    overflow: hidden;`n    border: 1px solid var(--glass-border);`n    background: linear-gradient(145deg, rgba(20, 10, 35, 0.9), rgba(10, 5, 20, 0.95));`n}`n.receipt-card::before {`n    content: "";`n    position: absolute;`n    top: -50%;`n    right: -50%;`n    width: 100%;`n    height: 100%;`n    background: radial-gradient(circle, rgba(157, 0, 255, 0.1) 0%, transparent 70%);`n    pointer-events: none;`n}
+}
+
+/* === STOCK BADGES === */
+.stock-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 5;
+}
+.stock-badge.available {
+    background: rgba(37, 211, 102, 0.15);
+    color: #25D366;
+    border: 1px solid rgba(37, 211, 102, 0.3);
+}
+.stock-badge.out {
+    background: rgba(255, 75, 43, 0.15);
+    color: #ff4b2b;
+    border: 1px solid rgba(255, 75, 43, 0.3);
+}
+.package-card.out-of-stock {
+    cursor: not-allowed;
+    filter: grayscale(0.8);
+}
+.package-card.out-of-stock:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* === PROMO TAGS (Marketing Labels) === */
+.promo-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    z-index: 5;
+    white-space: nowrap;
+    animation: promoGlow 2.5s ease-in-out infinite;
+    backdrop-filter: blur(4px);
+}
+
+/* 🎮 Para Empezar - Azul suave */
+.promo-starter {
+    background: linear-gradient(135deg, rgba(100, 149, 237, 0.25), rgba(65, 105, 225, 0.15));
+    color: #7CB9E8;
+    border: 1px solid rgba(100, 149, 237, 0.4);
+    box-shadow: 0 0 8px rgba(100, 149, 237, 0.2);
+}
+
+/* 🔥 Popular - Naranja fuego */
+.promo-popular {
+    background: linear-gradient(135deg, rgba(255, 140, 0, 0.3), rgba(255, 69, 0, 0.15));
+    color: #FF8C00;
+    border: 1px solid rgba(255, 140, 0, 0.5);
+    box-shadow: 0 0 12px rgba(255, 140, 0, 0.3);
+    animation: promoGlow 2s ease-in-out infinite, promoFirePulse 1.5s ease-in-out infinite;
+}
+
+/* ⚡ Más Vendido - Amarillo eléctrico */
+.promo-bestseller {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 165, 0, 0.15));
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    animation: promoGlow 2s ease-in-out infinite, promoBoltFlash 3s ease-in-out infinite;
+}
+
+/* 💰 Mejor Valor - Verde esmeralda */
+.promo-value {
+    background: linear-gradient(135deg, rgba(0, 200, 83, 0.3), rgba(0, 150, 60, 0.15));
+    color: #00E676;
+    border: 1px solid rgba(0, 200, 83, 0.5);
+    box-shadow: 0 0 12px rgba(0, 200, 83, 0.25);
+}
+
+/* 👑 Premium - Dorado real */
+.promo-premium {
+    background: linear-gradient(135deg, rgba(218, 165, 32, 0.35), rgba(184, 134, 11, 0.15));
+    color: #FFD700;
+    border: 1px solid rgba(218, 165, 32, 0.6);
+    box-shadow: 0 0 15px rgba(218, 165, 32, 0.3);
+    animation: promoGlow 2s ease-in-out infinite, promoShimmer 3s linear infinite;
+}
+
+/* 🏆 VIP Élite - Púrpura brillante */
+.promo-vip {
+    background: linear-gradient(135deg, rgba(186, 85, 211, 0.35), rgba(148, 0, 211, 0.2));
+    color: #E040FB;
+    border: 1px solid rgba(186, 85, 211, 0.6);
+    box-shadow: 0 0 18px rgba(186, 85, 211, 0.35);
+    animation: promoGlow 2s ease-in-out infinite, promoShimmer 2.5s linear infinite;
+}
+
+/* Animaciones de las etiquetas */
+@keyframes promoGlow {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 1; }
+}
+
+@keyframes promoFirePulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 140, 0, 0.2); }
+    50% { box-shadow: 0 0 16px rgba(255, 69, 0, 0.5); }
+}
+
+@keyframes promoBoltFlash {
+    0%, 90%, 100% { text-shadow: none; }
+    95% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
+}
+
+@keyframes promoShimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.promo-premium,
+.promo-vip {
+    background-size: 200% auto;
+}
+
+/* === PREMIUM RECEIPT ENHANCEMENTS === */
+.receipt-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(145deg, rgba(20, 10, 35, 0.9), rgba(10, 5, 20, 0.95));
+}
+.receipt-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(157, 0, 255, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+
 /* PIN DISPLAY STYLES */
 #pin-display-container {
     background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(157, 0, 255, 0.1));

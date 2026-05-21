@@ -114,6 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('ff_pending_ref', refParam); // guardar para usarlo cuando inicie sesión
     }
 
+    // Etiquetas de marketing para cada paquete
+    const PROMO_TAGS = {
+        '100':  { text: 'Para Empezar', icon: '🎮', className: 'promo-starter' },
+        '310':  { text: 'Popular',      icon: '🔥', className: 'promo-popular' },
+        '520':  { text: 'Más Vendido',  icon: '⚡', className: 'promo-bestseller' },
+        '1060': { text: 'Mejor Valor',  icon: '💰', className: 'promo-value' },
+        '2180': { text: 'Premium',      icon: '👑', className: 'promo-premium' },
+        '5600': { text: 'VIP Élite',    icon: '🏆', className: 'promo-vip' }
+    };
+
     function renderPackages(precios, tasa) {
         const grid = document.querySelector('.packages-grid');
         if (!grid) return;
@@ -124,10 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const isAvailable = stockCount > 0;
             const stockLabel = isAvailable ? `<span class="stock-badge available">Disponible</span>` : '<span class="stock-badge out">Agotado</span>';
             const disabledClass = isAvailable ? '' : 'out-of-stock';
+
+            // Etiqueta promocional
+            const promo = PROMO_TAGS[amount];
+            const promoTag = promo ? `<span class="promo-tag ${promo.className}">${promo.icon} ${promo.text}</span>` : '';
             
             grid.innerHTML += `
                 <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${parseInt(amount)*0.1}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
                     ${stockLabel}
+                    ${promoTag}
                     <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                     <div class="pack-info">
                         <span class="amount">${data.label}</span>
