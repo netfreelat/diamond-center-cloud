@@ -1697,3 +1697,51 @@ body::before {
     background: #fff;
     transform: scale(1.05);
 }
+
+/* === NOTIFICACIONES PUSH PWA (CAMPANA) === */
+.btn-bell-header {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-gray);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.btn-bell-header:hover {
+    background: rgba(0, 240, 255, 0.15);
+    border-color: var(--secondary);
+    color: var(--secondary);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    transform: scale(1.08);
+}
+
+.btn-bell-header.active {
+    background: rgba(157, 0, 255, 0.2);
+    border-color: var(--primary);
+    color: var(--primary-hover);
+    animation: bellRing 1.5s ease-in-out infinite;
+}
+
+.btn-bell-header.active:hover {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 15px var(--primary);
+}
+
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0); }
+    10% { transform: rotate(15deg); }
+    20% { transform: rotate(-10deg); }
+    30% { transform: rotate(8deg); }
+    40% { transform: rotate(-6deg); }
+    50% { transform: rotate(4deg); }
+    60% { transform: rotate(-2deg); }
+    70% { transform: rotate(0); }
+}

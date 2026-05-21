@@ -431,6 +431,161 @@ document.addEventListener('DOMContentLoaded', () => {
     const userDisplay = document.getElementById('user-display');
     const headerPointsVal = document.getElementById('header-points-val');
     const logoutBtn = document.getElementById('logout-btn');
+    const pushBellBtn = document.getElementById('push-bell-btn');
+    let isPushEnabled = false;
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function checkSubscriptionState() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            if (pushBellBtn) pushBellBtn.style.display = 'none';
+            return;
+        }
+
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            
+            isPushEnabled = !!sub;
+            updateBellUI(isPushEnabled);
+        } catch (e) {
+            console.error('Error verificando suscripción push:', e);
+        }
+    }
+
+    function updateBellUI(enabled) {
+        if (!pushBellBtn) return;
+        const icon = pushBellBtn.querySelector('i');
+        if (enabled) {
+            pushBellBtn.classList.add('active');
+            pushBellBtn.title = "Notificaciones activas de la App";
+            if (icon) {
+                icon.className = 'fa-solid fa-bell';
+            }
+        } else {
+            pushBellBtn.classList.remove('active');
+            pushBellBtn.title = "Activar notificaciones de la App";
+            if (icon) {
+                icon.className = 'fa-regular fa-bell-slash';
+            }
+        }
+    }
+
+    async function subscribeUser(uid) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        try {
+            const response = await fetch(`${SERVER_URL}/api/push/vapid-key`);
+            const { publicKey } = await response.json();
+            
+            if (!publicKey) {
+                console.error('No se pudo obtener la clave VAPID pública.');
+                return;
+            }
+
+            const reg = await navigator.serviceWorker.ready;
+            
+            const subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
+
+            const subData = JSON.parse(JSON.stringify(subscription));
+            const subResponse = await fetch(`${SERVER_URL}/api/push/subscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: uid, subscription: subData })
+            });
+
+            const result = await subResponse.json();
+            if (result.success) {
+                isPushEnabled = true;
+                updateBellUI(true);
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true
+                });
+                Toast.fire({ icon: 'success', title: 'Notificaciones activadas 🔔' });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e) {
+            console.error('Error al suscribir usuario:', e);
+            updateBellUI(false);
+        }
+    }
+
+    async function unsubscribeUser() {
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            
+            if (sub) {
+                await fetch(`${SERVER_URL}/api/push/unsubscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: sub.endpoint })
+                });
+                
+                await sub.unsubscribe();
+            }
+
+            isPushEnabled = false;
+            updateBellUI(false);
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+            Toast.fire({ icon: 'info', title: 'Notificaciones desactivadas 🔕' });
+        } catch (e) {
+            console.error('Error al des-suscribir:', e);
+        }
+    }
+
+    if (pushBellBtn) {
+        pushBellBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const uid = localStorage.getItem('ff_user_id');
+            if (!uid) return;
+
+            if (isPushEnabled) {
+                await unsubscribeUser();
+            } else {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    await subscribeUser(uid);
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Permiso Denegado',
+                        text: 'Debes habilitar los permisos de notificación en tu navegador para usar esta función.',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                }
+            }
+        });
+    }
 
     const updateAccountUI = (id) => {
         if (id) {
@@ -439,9 +594,18 @@ document.addEventListener('DOMContentLoaded', () => {
             loadUserPoints(id).then(points => {
                 headerPointsVal.innerText = points || 0;
             });
+            if (pushBellBtn) {
+                pushBellBtn.style.display = 'flex';
+                checkSubscriptionState().then(() => {
+                    if (Notification.permission === 'granted' && !isPushEnabled) {
+                        subscribeUser(id);
+                    }
+                });
+            }
         } else {
             loginTriggerBtn.style.display = 'flex';
             userDisplay.style.display = 'none';
+            if (pushBellBtn) pushBellBtn.style.display = 'none';
         }
     };
 
@@ -466,111 +630,274 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loginTriggerBtn.addEventListener('click', async () => {
-        // Paso 1: pedir el ID
-        const { value: id } = await Swal.fire({
+        let activeTab = 'login';
+        
+        const { value: result } = await Swal.fire({
             title: '👤 Mi Cuenta',
             html: `
-                <p style="font-size:0.85rem;color:#aaa;margin-bottom:10px;">Ingresa tu ID de Free Fire para acumular puntos.</p>
-                <input id="swal-login-id" type="text" class="swal2-input" placeholder="Ej: 12345678" autocomplete="off">
+                <div class="swal-tabs-container" style="display:flex; justify-content:space-around; border-bottom:2px solid rgba(255,255,255,0.1); margin-bottom:20px; font-family:'Montserrat', sans-serif;">
+                    <button id="swal-tab-login" type="button" style="flex:1; background:none; border:none; color:#00F0FF; padding:10px; font-weight:800; font-size:0.95rem; cursor:pointer; border-bottom:3px solid #00F0FF; transition: all 0.3s ease; outline:none;">Iniciar Sesión</button>
+                    <button id="swal-tab-register" type="button" style="flex:1; background:none; border:none; color:#aaa; padding:10px; font-weight:800; font-size:0.95rem; cursor:pointer; border-bottom:3px solid transparent; transition: all 0.3s ease; outline:none;">Registrarse</button>
+                </div>
+
+                <!-- Sección Iniciar Sesión -->
+                <div id="swal-section-login" style="display:block; text-align:left; font-family:'Inter', sans-serif;">
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">ID de Jugador (UID)</label>
+                        <input id="swal-login-uid" type="text" class="swal2-input" placeholder="Ej: 12345678" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:45px; padding:0 15px; font-size:0.95rem;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Contraseña</label>
+                        <input id="swal-login-password" type="password" class="swal2-input" placeholder="Ingresa tu contraseña" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:45px; padding:0 15px; font-size:0.95rem;">
+                    </div>
+                </div>
+
+                <!-- Sección Registrarse -->
+                <div id="swal-section-register" style="display:none; text-align:left; font-family:'Inter', sans-serif;">
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">ID de Jugador (UID) <span style="color:#00F0FF;">*</span></label>
+                        <input id="swal-reg-uid" type="text" class="swal2-input" placeholder="Ej: 12345678" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        <small style="font-size:0.75rem; color:#666; display:block; margin-top:3px;">Se verificará que exista en Free Fire.</small>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Cédula de Identidad <span style="color:#00F0FF;">*</span></label>
+                        <input id="swal-reg-cedula" type="text" class="swal2-input" placeholder="Solo números (Ej: 25987456)" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Teléfono (WhatsApp) <span style="color:#00F0FF;">*</span></label>
+                        <input id="swal-reg-phone" type="text" class="swal2-input" placeholder="Ej: 04121234567" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Crea una Contraseña <span style="color:#00F0FF;">*</span></label>
+                        <input id="swal-reg-password" type="password" class="swal2-input" placeholder="Mínimo 4 caracteres" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                    </div>
+                </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Continuar',
             cancelButtonText: 'Cancelar',
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
+            confirmButtonColor: '#9D00FF',
             didOpen: () => {
-                const inp = document.getElementById('swal-login-id');
-                if (inp) {
-                    inp.focus();
-                    inp.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') Swal.clickConfirm();
-                    });
-                }
+                const tabLogin = document.getElementById('swal-tab-login');
+                const tabRegister = document.getElementById('swal-tab-register');
+                const secLogin = document.getElementById('swal-section-login');
+                const secRegister = document.getElementById('swal-section-register');
+
+                tabLogin.addEventListener('click', () => {
+                    activeTab = 'login';
+                    tabLogin.style.color = '#00F0FF';
+                    tabLogin.style.borderBottom = '3px solid #00F0FF';
+                    tabRegister.style.color = '#aaa';
+                    tabRegister.style.borderBottom = '3px solid transparent';
+                    secLogin.style.display = 'block';
+                    secRegister.style.display = 'none';
+                    
+                    const inp = document.getElementById('swal-login-uid');
+                    if (inp) inp.focus();
+                });
+
+                tabRegister.addEventListener('click', () => {
+                    activeTab = 'register';
+                    tabRegister.style.color = '#00F0FF';
+                    tabRegister.style.borderBottom = '3px solid #00F0FF';
+                    tabLogin.style.color = '#aaa';
+                    tabLogin.style.borderBottom = '3px solid transparent';
+                    secRegister.style.display = 'block';
+                    secLogin.style.display = 'none';
+                    
+                    const inp = document.getElementById('swal-reg-uid');
+                    if (inp) inp.focus();
+                });
+
+                // Focus inicial
+                const initialInp = document.getElementById('swal-login-uid');
+                if (initialInp) initialInp.focus();
             },
-            preConfirm: () => document.getElementById('swal-login-id').value.trim()
+            preConfirm: () => {
+                if (activeTab === 'login') {
+                    const uid = document.getElementById('swal-login-uid').value.trim();
+                    const password = document.getElementById('swal-login-password').value;
+
+                    if (!uid) {
+                        Swal.showValidationMessage('Por favor ingresa tu ID de jugador');
+                        return false;
+                    }
+                    if (!password) {
+                        Swal.showValidationMessage('Por favor ingresa tu contraseña');
+                        return false;
+                    }
+
+                    return { tab: 'login', uid, password };
+                } else {
+                    const uid = document.getElementById('swal-reg-uid').value.trim();
+                    const cedula = document.getElementById('swal-reg-cedula').value.trim();
+                    const phone = document.getElementById('swal-reg-phone').value.trim();
+                    const password = document.getElementById('swal-reg-password').value;
+
+                    if (!uid) {
+                        Swal.showValidationMessage('Por favor ingresa tu ID de jugador (UID)');
+                        return false;
+                    }
+                    if (!cedula) {
+                        Swal.showValidationMessage('Por favor ingresa tu Cédula de Identidad');
+                        return false;
+                    }
+                    if (!/^\d+$/.test(cedula)) {
+                        Swal.showValidationMessage('La Cédula de Identidad debe contener solo números');
+                        return false;
+                    }
+                    if (!phone) {
+                        Swal.showValidationMessage('Por favor ingresa tu Teléfono (WhatsApp)');
+                        return false;
+                    }
+                    if (!password || password.length < 4) {
+                        Swal.showValidationMessage('La contraseña debe tener al menos 4 caracteres');
+                        return false;
+                    }
+
+                    return { tab: 'register', uid, cedula, phone, password };
+                }
+            }
         });
 
-        if (!id) return;
+        if (!result) return;
 
-        // Verificar si el usuario tiene contraseña configurada
-        Swal.fire({ title: 'Verificando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        let passCheck = null;
-        try {
-            const chkRes = await fetch(`${SERVER_URL}/api/check_password?uid=${id}`);
-            passCheck = await chkRes.json();
-        } catch (e) { passCheck = { success: false }; }
-
-        // Si ya existe y tiene contraseña, pedirla
-        if (passCheck && passCheck.hasPassword) {
-            const { value: pass } = await Swal.fire({
-                title: '🔒 Contraseña',
-                html: `
-                    <p style="font-size:0.85rem;color:#aaa;margin-bottom:10px;">ID: <strong>${id}</strong></p>
-                    <input id="swal-login-pass" type="password" class="swal2-input" placeholder="Tu contraseña">
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Ingresar',
-                cancelButtonText: 'Atrás',
-                background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff',
-                didOpen: () => {
-                    const inp = document.getElementById('swal-login-pass');
-                    if (inp) {
-                        inp.focus();
-                        inp.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') Swal.clickConfirm();
-                        });
-                    }
-                },
-                preConfirm: () => document.getElementById('swal-login-pass').value
+        if (result.tab === 'login') {
+            // PROCESO DE LOGIN
+            Swal.fire({ 
+                title: 'Verificando credenciales...', 
+                allowOutsideClick: false, 
+                didOpen: () => Swal.showLoading() 
             });
 
-            if (!pass) return;
-
-            Swal.fire({ title: 'Verificando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            let authRes = null;
             try {
-                const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${id}&pass=${encodeURIComponent(pass)}`);
-                authRes = await authCheck.json();
-            } catch (e) { authRes = { success: false }; }
+                const chkRes = await fetch(`${SERVER_URL}/api/check_password?uid=${result.uid}&pass=${encodeURIComponent(result.password)}`);
+                const authRes = await chkRes.json();
 
-            if (!authRes || !authRes.success) {
-                return Swal.fire({ icon: 'error', title: 'Contraseña incorrecta', text: 'Verifica tu contraseña e intenta de nuevo.' });
+                if (authRes && authRes.success) {
+                    localStorage.setItem('ff_user_id', result.uid);
+                    updateAccountUI(result.uid);
+                    if (newUserBanner) newUserBanner.style.display = 'none';
+                    playerInput.value = result.uid;
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: `¡Bienvenido, ${authRes.name || result.uid}!`,
+                        text: 'Has iniciado sesión con éxito.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Inicio de Sesión',
+                        text: authRes.message || 'ID o contraseña incorrectos.',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                }
+            } catch (e) {
+                console.error('[LOGIN] Error:', e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo conectar con el servidor.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
             }
-
-            // Login exitoso con contraseña
-            localStorage.setItem('ff_user_id', id);
-            updateAccountUI(id);
-            if (newUserBanner) newUserBanner.style.display = 'none';
-            playerInput.value = id;
-            return Swal.fire({ icon: 'success', title: `¡Bienvenido, ${authRes.name || id}!`, timer: 1800, showConfirmButton: false });
-        }
-
-        // Sin contraseña: verificar contra Garena
-        const name = await checkPlayerId(id);
-        if (name) {
-            localStorage.setItem('ff_user_id', id);
-            updateAccountUI(id);
-            if (newUserBanner) newUserBanner.style.display = 'none';
-            playerInput.value = id;
-
-            // Ofrecer crear contraseña si no tiene una
-            const { isConfirmed } = await Swal.fire({
-                icon: 'success',
-                title: `¡Bienvenido, ${name}!`,
-                html: `<p style="font-size:0.9rem;color:#aaa;">¿Quieres proteger tu cuenta con una <strong>contraseña</strong>?<br><small style="font-size:0.75rem;">Así nadie más podrá usar tus puntos.</small></p>`,
-                showCancelButton: true,
-                confirmButtonText: '🔐 Crear Contraseña',
-                cancelButtonText: 'Ahora no',
-                background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff'
+        } else if (result.tab === 'register') {
+            // PROCESO DE REGISTRO
+            Swal.fire({ 
+                title: 'Verificando con Garena...', 
+                html: '<p style="color:#aaa;font-size:0.85rem;">Estamos validando tu ID en el juego...</p>',
+                allowOutsideClick: false, 
+                didOpen: () => Swal.showLoading() 
             });
 
-            if (isConfirmed) {
-                await promptSetPassword(id);
+            try {
+                // 1. Validar ID en Garena
+                const name = await checkPlayerId(result.uid);
+                if (!name) {
+                    return Swal.fire({
+                        icon: 'error',
+                        title: 'ID de Jugador no encontrado',
+                        text: 'No pudimos verificar tu ID en los servidores de Free Fire. Asegúrate de ingresar un ID real y activo.',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                }
+
+                // 2. ID verificado, proceder al registro
+                Swal.fire({ 
+                    title: 'Creando cuenta...', 
+                    html: `<p style="color:#aaa;font-size:0.85rem;">Registrando a <strong>${name}</strong>...</p>`,
+                    allowOutsideClick: false, 
+                    didOpen: () => Swal.showLoading() 
+                });
+
+                const regRes = await fetch(`${SERVER_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uid: result.uid,
+                        name: name,
+                        cedula: result.cedula,
+                        phone: result.phone,
+                        password: result.password
+                    })
+                });
+
+                const regData = await regRes.json();
+
+                if (regData && regData.success) {
+                    localStorage.setItem('ff_user_id', result.uid);
+                    updateAccountUI(result.uid);
+                    if (newUserBanner) newUserBanner.style.display = 'none';
+                    playerInput.value = result.uid;
+
+                    // Celebración con confetti
+                    confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 },
+                        colors: ['#00F0FF', '#9D00FF', '#ffd700']
+                    });
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Registro Exitoso! 🏆💎',
+                        html: `<p style="color:#fff;font-size:0.95rem;">¡Hola, <strong>${name}</strong>!<br>Tu cuenta ha sido creada y protegida correctamente. Ya estás listo para acumular puntos.</p>`,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al Registrarse',
+                        text: regData.message || 'No se pudo completar el registro.',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                }
+            } catch (e) {
+                console.error('[REGISTRO] Error:', e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ocurrió un error inesperado al procesar el registro.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
             }
-        } else {
-            Swal.fire({ icon: 'error', title: 'ID no encontrado', text: 'Asegúrate de que el ID sea correcto.' });
         }
     });
 
@@ -645,40 +972,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
 
+        // Mostrar cargando mientras obtenemos el perfil actualizado del servidor
+        Swal.fire({ 
+            title: 'Cargando perfil...', 
+            allowOutsideClick: false, 
+            didOpen: () => Swal.showLoading() 
+        });
+
+        let userProfile = { name: 'Jugador', points: 0, cedula: '', phone: '' };
+        try {
+            const res = await fetch(`${SERVER_URL}/perfil?uid=${uid}`);
+            const data = await res.json();
+            if (data.success && data.user) {
+                userProfile = data.user;
+            }
+        } catch (error) {
+            console.error('Error al obtener perfil del usuario:', error);
+        }
+
         await Swal.fire({
-            title: '👤 Mi Cuenta',
+            title: '🎮 Perfil de Jugador',
             html: `
-                <p style="font-size:0.8rem;color:#aaa;margin-bottom:15px;">ID: <code>${uid}</code></p>
-                <div style="display:grid;gap:10px;">
-                    <button class="swal2-confirm swal2-styled" id="btn-share-ref" style="background:linear-gradient(135deg,#25D366,#128C7E);">
-                        🔗 Compartir mi Link de Referido
-                    </button>
-                    <button class="swal2-confirm swal2-styled" id="btn-change-pass" style="background:var(--primary);">
-                        🔐 Cambiar Contraseña
-                    </button>
+                <div class="profile-dashboard" style="text-align:left; font-family:'Inter', sans-serif;">
+                    <!-- Cabecera del Perfil -->
+                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:20px; background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+                        <div style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg, #00F0FF, #9D00FF); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#fff; font-weight:800; text-shadow:0 0 10px rgba(255,255,255,0.5);">
+                            ${(userProfile.name || 'J').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-family:'Montserrat', sans-serif; font-size:1.15rem; color:#fff;">${userProfile.name || 'Jugador'}</h3>
+                            <span style="font-size:0.75rem; color:#00F0FF; font-weight:700; text-transform:uppercase; letter-spacing:1px;"><i class="fa-solid fa-gamepad"></i> Verificado</span>
+                        </div>
+                    </div>
+
+                    <!-- Datos de la Cuenta -->
+                    <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:20px; font-size:0.85rem; color:#ccc;">
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                            <span style="color:#aaa;"><i class="fa-solid fa-id-card"></i> ID de Jugador:</span>
+                            <strong style="color:#fff;">${uid}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                            <span style="color:#aaa;"><i class="fa-solid fa-address-card"></i> Cédula:</span>
+                            <strong style="color:#fff;">${userProfile.cedula || 'No registrada'}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                            <span style="color:#aaa;"><i class="fa-solid fa-phone"></i> Teléfono:</span>
+                            <strong style="color:#fff;">${userProfile.phone || 'No registrado'}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px; align-items:center;">
+                            <span style="color:#aaa;"><i class="fa-solid fa-star"></i> Puntos Acumulados:</span>
+                            <span class="points-badge" style="margin:0; padding:4px 10px; font-size:0.8rem; background:rgba(255, 215, 0, 0.15); border:1px solid rgba(255, 215, 0, 0.4); display:inline-flex; align-items:center; gap:5px; color:#ffd700; border-radius:20px; font-weight:700;"><i class="fa-solid fa-star"></i> ${userProfile.points || 0} pts</span>
+                        </div>
+                    </div>
+
+                    <!-- Enlace de Referido -->
+                    <div style="background:rgba(0, 240, 255, 0.04); border:1px dashed rgba(0, 240, 255, 0.3); border-radius:10px; padding:12px; margin-bottom:20px; text-align:center;">
+                        <p style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">Gana <strong>+10 puntos</strong> cuando un amigo se registre y compre con tu link.</p>
+                        <button id="btn-share-ref" class="swal2-confirm swal2-styled" style="margin:0; width:100%; font-size:0.8rem; padding:8px 12px; background:linear-gradient(135deg, #00F0FF, #00B2FF); border-radius:8px; font-weight:700; border:none; color:#000; box-shadow:0 4px 12px rgba(0,240,255,0.25); cursor:pointer;">
+                            <i class="fa-solid fa-share-nodes"></i> Compartir Link de Referido
+                        </button>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <button id="btn-change-pass" style="background:rgba(255, 255, 255, 0.05); border:1px solid rgba(255, 255, 255, 0.1); color:#fff; padding:10px; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                            <i class="fa-solid fa-key"></i> Contraseña
+                        </button>
+                        <button id="btn-logout-dashboard" style="background:rgba(255, 75, 43, 0.1); border:1px solid rgba(255, 75, 43, 0.3); color:#ff4b2b; padding:10px; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+                        </button>
+                    </div>
                 </div>
-                <p style="font-size:0.7rem;color:#666;margin-top:12px;">Ganas <strong>+10 puntos</strong> por cada amigo nuevo que entre con tu link.</p>
             `,
             showConfirmButton: false,
             showCloseButton: true,
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
             didOpen: () => {
+                // Compartir Link de Referido
                 document.getElementById('btn-share-ref').addEventListener('click', async () => {
                     Swal.close();
                     await navigator.clipboard.writeText(refLink);
+
+                    // Confetti sutil
+                    confetti({ particleCount: 30, spread: 40, origin: { y: 0.8 } });
+
                     Swal.fire({
-                        html: `<p style="font-size:0.8rem;color:#aaa;word-break:break-all;">${refLink}</p>
-                               <p style="font-size:0.85rem;margin-top:10px;">Compártelo con tus amigos. Ganas <strong>+10 puntos</strong> por cada nuevo usuario que haga su primera compra.</p>`,
+                        icon: 'success',
+                        title: '¡Link Copiado! 🔗',
+                        html: `<p style="font-size:0.85rem;color:#aaa;word-break:break-all;margin-bottom:10px;">${refLink}</p>
+                               <p style="font-size:0.85rem;">Compártelo y gana <strong>+10 puntos</strong> cuando hagan su primera compra.</p>`,
                         timer: 4000,
                         showConfirmButton: false,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff'
                     });
                 });
+
+                // Cambiar Contraseña
                 document.getElementById('btn-change-pass').addEventListener('click', async () => {
                     Swal.close();
                     await promptSetPassword(uid);
+                });
+
+                // Cerrar Sesión
+                document.getElementById('btn-logout-dashboard').addEventListener('click', () => {
+                    Swal.close();
+                    logoutBtn.click();
                 });
             }
         });

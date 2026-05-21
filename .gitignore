@@ -7,8 +7,13 @@ pines.json
 recent_reloads.json
 wa_queue.json
 pagos.json
+usuarios.json
+pedidos.json
+pagos_recibidos.json
+recientes.json
 .wwebjs_auth/
 .wwebjs_cache/
+scratch/
 # No ignorar archivos JSON necesarios para el despliegue
 !package.json
 !package-lock.json

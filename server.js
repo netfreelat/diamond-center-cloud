@@ -27,6 +27,79 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
+// --- Web Push Notifications ---
+const webPush = require('web-push');
+const vapidEmail = process.env.VAPID_EMAIL || 'mailto:netfreelat@gmail.com';
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (vapidPublicKey && vapidPrivateKey) {
+    webPush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+    console.log('[PUSH] ✅ Web Push configurado correctamente.');
+} else {
+    console.warn('[PUSH] ⚠️ ADVERTENCIA: Faltan VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY en variables de entorno.');
+}
+
+async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath = '/') {
+    if (!vapidPublicKey || !vapidPrivateKey) {
+        console.warn(`[PUSH] Intentando enviar push a ${uid} pero VAPID no está configurado.`);
+        return;
+    }
+    try {
+        const { data: subscriptions, error } = await supabase
+            .from('ff_push_subscriptions')
+            .select('*')
+            .eq('uid', uid);
+            
+        if (error) {
+            console.error('[PUSH] Error al obtener suscripciones de Supabase:', error.message);
+            return;
+        }
+        
+        if (!subscriptions || subscriptions.length === 0) {
+            console.log(`[PUSH] Sin suscripciones registradas para el usuario: ${uid}`);
+            return;
+        }
+        
+        const payload = JSON.stringify({
+            title,
+            body,
+            icon,
+            badge: icon,
+            data: { url: urlPath }
+        });
+        
+        console.log(`[PUSH] Enviando notificación a ${subscriptions.length} dispositivo(s) del usuario ${uid}...`);
+        
+        for (const sub of subscriptions) {
+            const pushSubscription = {
+                endpoint: sub.endpoint,
+                keys: {
+                    p256dh: sub.keys_p256dh,
+                    auth: sub.keys_auth
+                }
+            };
+            
+            webPush.sendNotification(pushSubscription, payload)
+                .then(() => {
+                    console.log(`[PUSH] Notificación enviada con éxito a endpoint: ${sub.endpoint.slice(0, 40)}...`);
+                })
+                .catch(async (err) => {
+                    console.warn(`[PUSH] Error al enviar a endpoint. Código: ${err.statusCode}`);
+                    if (err.statusCode === 410 || err.statusCode === 404) {
+                        console.log(`[PUSH] Eliminando suscripción inválida (ID: ${sub.id})`);
+                        await supabase
+                            .from('ff_push_subscriptions')
+                            .delete()
+                            .eq('id', sub.id);
+                    }
+                });
+        }
+    } catch (e) {
+        console.error('[PUSH] Error general en sendPushToUser:', e.message);
+    }
+}
+
 const BDV_TOKEN = process.env.BDV_TOKEN;
 const BDV_PASSWORD = process.env.BDV_PASSWORD;
 const BDV_API_URL = 'https://apicentral.pro/apis/movimientos_bdv.jsp';
@@ -155,7 +228,7 @@ async function loadFromSupabase() {
         // Usuarios
         const { data: usersData } = await supabase.from('ff_users').select('*');
         if (usersData) {
-            usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by, referral_claimed: u.referral_claimed }; });
+            usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by, referral_claimed: u.referral_claimed, cedula: u.cedula, phone: u.phone }; });
         }
 
         // Pedidos Pendientes
@@ -308,15 +381,23 @@ async function saveUser(uid) {
     if (!u) return;
     const { error } = await supabase.from('ff_users').upsert({
         uid, name: u.name, points: u.points, password: u.password || null,
+        cedula: u.cedula || null, phone: u.phone || null,
         registered: u.registered, referred_by: u.referred_by || null,
         referral_claimed: u.referral_claimed || false
     });
     if (error) console.error('[SUPABASE] Error guardando usuario:', error.message);
 }
 
+function isUserFullyRegistered(uid) {
+    const user = users[uid];
+    if (!user) return false;
+    return !!(user.cedula && user.phone && user.password);
+}
+
 function addPoints(uid, amountUsdt, name = null) {
-    if (!users[uid]) {
-        users[uid] = { name: name || 'Jugador', points: 0, registered: new Date().toISOString() };
+    if (!isUserFullyRegistered(uid)) {
+        console.log(`[PUNTOS] El usuario ID: ${uid} no acumula puntos por no estar completamente registrado en Cuenta (cédula, teléfono, contraseña).`);
+        return 0;
     }
     const pointsToAdd = Math.floor(amountUsdt * 10);
     users[uid].points += pointsToAdd;
@@ -325,7 +406,7 @@ function addPoints(uid, amountUsdt, name = null) {
     // Lógica de Referidos: 10 pts al referrer en la PRIMERA recarga
     if (users[uid].referred_by && !users[uid].referral_claimed) {
         const referrerUid = users[uid].referred_by;
-        if (users[referrerUid]) {
+        if (users[referrerUid] && isUserFullyRegistered(referrerUid)) {
             users[referrerUid].points = (users[referrerUid].points || 0) + 10;
             users[uid].referral_claimed = true;
             saveUser(referrerUid);
@@ -348,11 +429,20 @@ function addPoints(uid, amountUsdt, name = null) {
                     console.log(`[REFERRAL_NOTIFICATION] Encolada notificación de referidos para ${referrerWa}`);
                 }
             });
+
+            // Push al referidor
+            sendPushToUser(referrerUid, '¡Referido Exitoso! 🎉💎', `Tu referido ${uid} hizo su primera compra. ¡Ganaste +10 puntos!`, '/icon-192.png', '/');
         }
     }
 
     saveUser(uid);
     console.log(`[PUNTOS] Se añadieron ${pointsToAdd} puntos a ID: ${uid}. Total: ${users[uid].points}`);
+    
+    // Push por puntos acumulados en la recarga
+    if (pointsToAdd > 0) {
+        sendPushToUser(uid, '¡Ganaste Puntos! 🎁⭐', `Sumaste +${pointsToAdd} puntos por tu compra. Total: ${users[uid].points} pts.`, '/icon-192.png', '/');
+    }
+    
     return pointsToAdd;
 }
 
@@ -1182,8 +1272,10 @@ const server = http.createServer(async (req, res) => {
                     const orderWithRef = { ...order, ref };
                     if (action === 'reject') {
                         queueWhatsAppMessage(orderWithRef, false);
+                        sendPushToUser(order.login_uid || order.uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${order.pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
                     } else if (action === 'accept' && orders[ref].status === 'approved') {
                         queueWhatsAppMessage(orderWithRef, true, orders[ref].pin);
+                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes están listos! Haz clic para ver tu PIN: ${orders[ref].pin || ''}`, '/icon-192.png', '/historial');
                     }
 
                     // 2. Editar el mensaje original con el resultado
@@ -1348,6 +1440,7 @@ const server = http.createServer(async (req, res) => {
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
                         queueWhatsAppMessage({ ...order, ref }, true, pin);
+                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes están listos! Haz clic para ver tu PIN: ${pin || ''}`, '/icon-192.png', '/historial');
                         updateTelegramStatus(ref);
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, message: 'Aprobado vía PIN' }));
@@ -1382,6 +1475,7 @@ const server = http.createServer(async (req, res) => {
                     orders[ref].status = 'rejected';
                     updateOrderStatus(ref, 'rejected');
                     queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                    sendPushToUser(orders[ref].login_uid || orders[ref].uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${orders[ref].pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
                     updateTelegramStatus(ref);
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true }));
@@ -1434,6 +1528,8 @@ const server = http.createServer(async (req, res) => {
                             console.log(`[ADMIN_POINTS_NOTIFICATION] Encolada notificación de ajuste de puntos para ${userWa}`);
                         }
                     });
+
+                    sendPushToUser(uid, 'Puntos Actualizados ⭐', `Tu saldo de puntos ha sido actualizado. Nuevo balance: ${users[uid].points} pts.`, '/icon-192.png', '/');
 
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true }));
@@ -1613,6 +1709,40 @@ const server = http.createServer(async (req, res) => {
                 }
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
+    } else if (parsedUrl.pathname === '/api/register' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid, name, cedula, phone, password } = JSON.parse(body);
+                if (!uid || !cedula || !phone || !password) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
+                }
+                
+                // Si el usuario no existe en memoria, lo creamos
+                if (!users[uid]) {
+                    users[uid] = { name: name || 'Jugador', points: 0, registered: getVEISO() };
+                }
+                
+                // Guardar los datos completos
+                users[uid].name = name || users[uid].name || 'Jugador';
+                users[uid].cedula = cedula;
+                users[uid].phone = phone;
+                users[uid].password = password;
+                
+                await saveUser(uid);
+                
+                console.log(`[REGISTRO] Usuario registrado con éxito: ID=${uid}, Nombre=${users[uid].name}, Cédula=${cedula}, Teléfono=${phone}`);
+                
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, name: users[uid].name }));
+            } catch (e) { 
+                console.error('[REGISTRO] Error:', e.message);
+                res.writeHead(500); 
+                res.end(JSON.stringify({ success: false, message: 'Error interno del servidor' })); 
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/settings' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(settings));
@@ -1778,6 +1908,8 @@ const server = http.createServer(async (req, res) => {
                             console.log(`[CANJE_NOTIFICATION] Encolada notificación de canje de puntos para ${userWa}`);
                         }
                     });
+
+                    sendPushToUser(uid, '🎁 ¡Canje de Puntos Exitoso! 💎', `Canjeaste ${cost} puntos por ${pack} diamantes. Tu PIN es: ${pin}`, '/icon-192.png', '/historial');
                     
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true, pin: pin, message: '¡Canje exitoso!' }));
@@ -1966,6 +2098,74 @@ const server = http.createServer(async (req, res) => {
             } catch (e) {
                 res.writeHead(400);
                 res.end(JSON.stringify({ success: false }));
+            }
+        });
+    } else if (parsedUrl.pathname === '/api/push/vapid-key') {
+        res.writeHead(200);
+        res.end(JSON.stringify({ publicKey: vapidPublicKey || null }));
+    } else if (parsedUrl.pathname === '/api/push/subscribe' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid, subscription } = JSON.parse(body);
+                if (!uid || !subscription || !subscription.endpoint) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, error: 'Faltan datos de suscripción o uid' }));
+                }
+
+                const { error } = await supabase
+                    .from('ff_push_subscriptions')
+                    .upsert({
+                        uid: uid,
+                        endpoint: subscription.endpoint,
+                        keys_p256dh: subscription.keys.p256dh,
+                        keys_auth: subscription.keys.auth
+                    }, { onConflict: 'endpoint' });
+
+                if (error) {
+                    console.error('[PUSH] Error al registrar suscripción:', error.message);
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, error: error.message }));
+                }
+
+                console.log(`[PUSH] Dispositivo registrado correctamente para el ID: ${uid}`);
+                sendPushToUser(uid, 'Notificaciones Activas 🔔', '¡Listo! Recibirás una alerta cuando se procesen tus pedidos.', '/icon-192.png');
+                
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, error: 'JSON inválido o malformado' }));
+            }
+        });
+    } else if (parsedUrl.pathname === '/api/push/unsubscribe' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { endpoint } = JSON.parse(body);
+                if (!endpoint) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, error: 'Falta el endpoint' }));
+                }
+
+                const { error } = await supabase
+                    .from('ff_push_subscriptions')
+                    .delete()
+                    .eq('endpoint', endpoint);
+
+                if (error) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, error: error.message }));
+                }
+
+                console.log('[PUSH] Dispositivo removido correctamente.');
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, error: 'JSON inválido o malformado' }));
             }
         });
     } else if (parsedUrl.pathname === '/health') {
