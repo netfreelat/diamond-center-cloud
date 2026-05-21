@@ -1367,6 +1367,10 @@ body::before {
         background-size: auto !important;
     }
 
+    .promo-tag {
+        display: none;
+    }
+
     .payment-methods {
         gap: 8px;
         margin-bottom: 10px;
