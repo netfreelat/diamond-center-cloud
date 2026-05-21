@@ -809,51 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Swal.fire({ title: 'Validando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        // 1. Verificar si el usuario tiene contraseña en nuestra DB
-        let passCheck = null;
-        try {
-            const chkRes = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}`);
-            passCheck = await chkRes.json();
-        } catch (e) { passCheck = { success: false }; }
-
-        // 2. Si tiene contraseña, pedirla antes de seguir
-        if (passCheck && passCheck.hasPassword) {
-            const { value: pass } = await Swal.fire({
-                title: '🔒 Cuenta Protegida',
-                html: `<p style="font-size:0.85rem;color:#aaa;margin-bottom:10px;">ID: <strong>${uid}</strong> tiene contraseña.</p>
-                       <input id="swal-verify-pass" type="password" class="swal2-input" placeholder="Ingresa tu contraseña">`,
-                showCancelButton: true,
-                confirmButtonText: 'Ingresar',
-                cancelButtonText: 'Cancelar',
-                background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff',
-                didOpen: () => {
-                    const inp = document.getElementById('swal-verify-pass');
-                    if (inp) {
-                        inp.focus();
-                        inp.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') Swal.clickConfirm();
-                        });
-                    }
-                },
-                preConfirm: () => document.getElementById('swal-verify-pass').value
-            });
-
-            if (!pass) return;
-
-            Swal.fire({ title: 'Autenticando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            let authRes = null;
-            try {
-                const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}&pass=${encodeURIComponent(pass)}`);
-                authRes = await authCheck.json();
-            } catch (e) { authRes = { success: false }; }
-
-            if (!authRes || !authRes.success) {
-                return Swal.fire({ icon: 'error', title: 'Contraseña incorrecta', text: 'No puedes acceder a este ID.' });
-            }
-        }
-
-        // 3. Verificación normal con Garena (si pasó el password o no tiene)
+        // Verificación normal con Garena (sin pedir contraseña para compras)
         Swal.fire({
             title: 'Validando ID...',
             html: `
