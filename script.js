@@ -1411,10 +1411,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    document.getElementById('redeem-btn').addEventListener('click', () => {
+    document.getElementById('redeem-btn').addEventListener('click', async () => {
         const uid = playerInput.value;
         const currentPoints = parseInt(document.getElementById('user-points').innerText);
 
+        Swal.fire({ title: 'Cargando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            // Verificar si el usuario tiene contraseña
+            const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}`);
+            const authRes = await authCheck.json();
+
+            if (authRes.success && authRes.hasPassword) {
+                // El usuario tiene contraseña configurada: solicitarla
+                const { value: enteredPassword } = await Swal.fire({
+                    title: '🔐 Cuenta Protegida',
+                    html: `
+                        <p style="font-size:0.9rem;color:#aaa;margin-bottom:15px;">Ingresa tu contraseña para canjear tus puntos:</p>
+                        <input id="swal-redeem-pass" type="password" class="swal2-input" placeholder="Tu contraseña">
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Verificar',
+                    cancelButtonText: 'Cancelar',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    didOpen: () => {
+                        const inp = document.getElementById('swal-redeem-pass');
+                        if (inp) {
+                            inp.focus();
+                            inp.addEventListener('keydown', (e) => {
+                                if (e.key === 'Enter') Swal.clickConfirm();
+                            });
+                        }
+                    },
+                    preConfirm: () => {
+                        const pass = document.getElementById('swal-redeem-pass').value;
+                        if (!pass) {
+                            Swal.showValidationMessage('Debes ingresar tu contraseña');
+                            return false;
+                        }
+                        return pass;
+                    }
+                });
+
+                if (!enteredPassword) return; // Cancelado
+
+                // Validar la contraseña en el servidor antes de proceder
+                Swal.fire({ title: 'Validando contraseña...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const verifyRes = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}&pass=${encodeURIComponent(enteredPassword)}`);
+                const verifyData = await verifyRes.json();
+
+                if (!verifyData.success) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Contraseña incorrecta. Inténtalo de nuevo.' });
+                    return;
+                }
+
+                // Guardar la contraseña validada para la transacción
+                window.validatedRedeemPassword = enteredPassword;
+
+            } else {
+                // El usuario NO tiene contraseña configurada: sugerir amigablemente crear una
+                const { isConfirmed } = await Swal.fire({
+                    title: '🛡️ Protege tus Puntos',
+                    html: `
+                        <p style="font-size:0.9rem;color:#aaa;line-height:1.4;">
+                            Aún no has configurado una contraseña. Cualquier persona que conozca tu ID de Free Fire podría canjear tus puntos acumulados.<br><br>
+                            ¿Te gustaría crear una contraseña ahora para bloquear tus puntos de forma segura?
+                        </p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: '🔐 Crear Contraseña',
+                    cancelButtonText: '⚡ Canjear sin contraseña',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
+
+                if (isConfirmed) {
+                    // Abrir flujo de creación de contraseña
+                    await promptSetPassword(uid);
+                    return; // Detener flujo actual para que usen su nueva contraseña
+                } else {
+                    // Decidió continuar sin contraseña
+                    window.validatedRedeemPassword = null;
+                }
+            }
+
+            // Mostrar el modal de opciones de canje
+            showRedeemOptions(currentPoints);
+
+        } catch (e) {
+            console.error('Error en el flujo de canje:', e);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo verificar la protección de la cuenta.' });
+        }
+    });
+
+    function showRedeemOptions(currentPoints) {
         Swal.fire({
             title: 'Canjear Puntos',
             html: `
@@ -1430,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', () => {
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff'
         });
-    });
+    }
 
     window.redeem = async (pack) => {
         const uid = playerInput.value;
@@ -1441,7 +1532,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SERVER_URL}/canjear`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid, pack })
+                body: JSON.stringify({ 
+                    uid, 
+                    pack, 
+                    password: window.validatedRedeemPassword || null 
+                })
             });
             const data = await res.json();
 
@@ -1462,6 +1557,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo procesar el canje.' });
+        } finally {
+            // Limpiar la contraseña validada
+            window.validatedRedeemPassword = null;
         }
         if (newUserBanner) newUserBanner.style.display = 'none';
     };

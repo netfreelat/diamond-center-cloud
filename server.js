@@ -1720,14 +1720,25 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const data = JSON.parse(body);
-                const { uid, pack } = data;
+                const { uid, pack, password } = data;
                 const user = users[uid];
+
+                if (!user) {
+                    res.writeHead(404);
+                    return res.end(JSON.stringify({ success: false, message: 'Usuario no encontrado' }));
+                }
+
+                // Verificar contraseña si el usuario tiene una configurada
+                if (user.password && user.password !== password) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Contraseña incorrecta o requerida para canjear' }));
+                }
                 
                 // Definir costos en puntos (ejemplo: 100 diamantes = 500 puntos)
                 const pointCosts = { "100": 500, "310": 1500, "520": 2500 };
                 const cost = pointCosts[pack];
 
-                if (!user || !cost || user.points < cost) {
+                if (!cost || user.points < cost) {
                     res.writeHead(400);
                     return res.end(JSON.stringify({ success: false, message: 'Puntos insuficientes o paquete inválido' }));
                 }
