@@ -1323,7 +1323,7 @@ body::before {
     }
 
     .package-card {
-        padding: 12px 6px;
+        padding: 24px 6px 12px 6px;
         text-align: center;
     }
 
