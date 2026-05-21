@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const priceBs = (data.usdt * tasa).toFixed(2).replace('.', ',');
             const stockCount = APP_CONFIG.stock ? (APP_CONFIG.stock[amount] || 0) : 0;
             const isAvailable = stockCount > 0;
-            const stockLabel = isAvailable ? `<span class="stock-badge available">Disponible (${stockCount})</span>` : '<span class="stock-badge out">Agotado</span>';
+            const stockLabel = isAvailable ? `<span class="stock-badge available">Disponible</span>` : '<span class="stock-badge out">Agotado</span>';
             const disabledClass = isAvailable ? '' : 'out-of-stock';
             
             grid.innerHTML += `
@@ -993,7 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire({
                 icon: 'warning',
                 title: 'Límite de Stock',
-                text: `Solo hay ${stockCount} paquetes disponibles de esta denominación.`,
+                text: `No hay más paquetes disponibles de esta denominación.`,
                 confirmButtonColor: '#9D00FF',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff'
