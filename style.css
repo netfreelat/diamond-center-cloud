@@ -1553,7 +1553,6 @@ body::before {
     z-index: 5;
     white-space: nowrap;
     animation: promoGlow 2.5s ease-in-out infinite;
-    backdrop-filter: blur(4px);
 }
 
 /* 🎮 Para Empezar - Azul suave */
