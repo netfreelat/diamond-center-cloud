@@ -1317,13 +1317,13 @@ body::before {
     }
 
     .packages-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
         margin-bottom: 15px;
     }
 
     .package-card {
-        padding: 8px 4px;
+        padding: 12px 6px;
         text-align: center;
     }
 
