@@ -889,23 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ✅ AUTO-CARGAR historial de compras en tiempo real
                 fetchPlayerHistory(uid);
 
-                // Si no tenía contraseña, ofrecer crear una
-                if (passCheck && !passCheck.hasPassword) {
-                    setTimeout(async () => {
-                        const { isConfirmed } = await Swal.fire({
-                            icon: 'info',
-                            title: '¡Protege tu ID!',
-                            html: `<p style="font-size:0.9rem;color:#aaa;">¿Quieres crear una <strong>contraseña</strong>?<br><small>Evita que otros usen tus puntos.</small></p>`,
-                            showCancelButton: true,
-                            confirmButtonText: '🔐 Crear Contraseña',
-                            cancelButtonText: 'Luego',
-                            background: 'rgba(20, 10, 35, 0.98)',
-                            color: '#fff'
-                        });
-                        if (isConfirmed) await promptSetPassword(uid);
-                    }, 2000);
-                }
-                
+
             } else {
                 throw new Error('Jugador no encontrado');
             }
