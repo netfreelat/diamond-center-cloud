@@ -36,6 +36,40 @@
 <body>
 
     <!-- ========================================== -->
+    <!-- SPLASH SCREEN PREMIUM - GAMER FREE FIRE    -->
+    <!-- ========================================== -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-particles"></div>
+        <div class="splash-content">
+            <!-- Crosshair animado -->
+            <div class="splash-crosshair">
+                <div class="crosshair-ring"></div>
+                <div class="crosshair-ring ring-2"></div>
+                <div class="crosshair-dot"></div>
+                <div class="crosshair-line top"></div>
+                <div class="crosshair-line bottom"></div>
+                <div class="crosshair-line left"></div>
+                <div class="crosshair-line right"></div>
+            </div>
+            <!-- Logo con efecto glitch -->
+            <div class="splash-logo">
+                <span class="splash-logo-text" data-text="DIAMOND CENTER">DIAMOND CENTER</span>
+            </div>
+            <div class="splash-subtitle">FREE FIRE • RECARGA INSTANTÁNEA</div>
+            <!-- Barra de carga -->
+            <div class="splash-loader-bar">
+                <div class="splash-loader-fill"></div>
+            </div>
+            <div class="splash-loading-text">CONECTANDO<span class="splash-dots"></span></div>
+        </div>
+        <!-- Líneas decorativas de HUD -->
+        <div class="splash-hud-corner top-left"></div>
+        <div class="splash-hud-corner top-right"></div>
+        <div class="splash-hud-corner bottom-left"></div>
+        <div class="splash-hud-corner bottom-right"></div>
+    </div>
+
+    <!-- ========================================== -->
     <!-- BARRA INFORMATIVA (Puedes editar el texto) -->
     <!-- ========================================== -->
     <div class="top-banner">
@@ -324,6 +358,36 @@
 
     <!-- Custom Script -->
     <script src="script.js?v=1.1.0"></script>
+
+    <!-- Splash Screen Auto-Dismiss -->
+    <script>
+        (function() {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+            let pageReady = false;
+            let animDone = false;
+
+            function dismissSplash() {
+                if (!pageReady || !animDone) return;
+                splash.classList.add('fade-out');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 700);
+            }
+
+            // Mínimo 2.5s para que la animación se vea completa
+            setTimeout(() => { animDone = true; dismissSplash(); }, 2500);
+
+            // Esperar a que la página esté lista
+            window.addEventListener('load', () => { pageReady = true; dismissSplash(); });
+
+            // Fallback: si algo tarda mucho, cerrar a los 6s
+            setTimeout(() => {
+                splash.classList.add('fade-out');
+                setTimeout(() => { splash.style.display = 'none'; }, 700);
+            }, 6000);
+        })();
+    </script>
 </body>
 
 </html>

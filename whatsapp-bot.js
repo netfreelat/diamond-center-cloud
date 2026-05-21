@@ -6,20 +6,67 @@ const SERVER_URL = process.env.SERVER_URL || RENDER_URL;
 const isHttps = SERVER_URL.startsWith('https');
 const httpMod = isHttps ? require('https') : require('http');
 
+let isProcessingQueue = false;
+let isRestarting = false;
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
+        protocolTimeout: 300000, // 5 minutos de timeout del protocolo
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ? process.env.PUPPETEER_EXECUTABLE_PATH.trim() : undefined,
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
-            '--disable-gpu'
+            '--disable-gpu',
+            // Prevenir suspensión/estrangulamiento en segundo plano (background throttling)
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-ipc-flooding-protection'
         ]
     }
 });
+
+async function restartClient() {
+    if (isRestarting) {
+        console.log('⚠️ [WHATSAPP] Ya hay un proceso de reinicio activo. Ignorando...');
+        return;
+    }
+    isRestarting = true;
+    isProcessingQueue = true; // Pausar cola temporalmente
+    console.log('🔄 [WHATSAPP] Iniciando proceso de reinicio del bot...');
+    updateStatus('Reiniciando');
+
+    try {
+        if (client) {
+            console.log('🔄 [WHATSAPP] Cerrando navegador y limpiando sesión previa...');
+            await client.destroy();
+            console.log('✅ [WHATSAPP] Cliente previo destruido con éxito.');
+        }
+    } catch (destroyErr) {
+        console.error('⚠️ [WHATSAPP] Error al destruir cliente previo:', destroyErr.message);
+    }
+
+    console.log('🔄 [WHATSAPP] Esperando 5 segundos antes de re-inicializar...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    try {
+        console.log('🔄 [WHATSAPP] Inicializando nuevo cliente de WhatsApp...');
+        await client.initialize();
+        console.log('✅ [WHATSAPP] Cliente de WhatsApp inicializado.');
+    } catch (initErr) {
+        console.error('❌ [WHATSAPP] Error en initialize durante reinicio:', initErr.message);
+        isRestarting = false;
+        // Si falla, reintentar automáticamente en 15 segundos
+        setTimeout(restartClient, 15000);
+    } finally {
+        isRestarting = false;
+        isProcessingQueue = false;
+    }
+}
 
 function updateStatus(status, qr = '') {
     const data = JSON.stringify({ status, qr });
@@ -69,17 +116,11 @@ client.on('auth_failure', msg => {
 client.on('disconnected', (reason) => {
     console.log('❌ Bot desconectado:', reason);
     updateStatus('Desconectado');
-    
-    // Intentar reiniciar el cliente después de 5 segundos
-    setTimeout(() => {
-        console.log('🔄 Intentando reiniciar el bot de WhatsApp...');
-        client.initialize();
-    }, 5000);
+    restartClient();
 });
 
 client.initialize();
-
-let isProcessingQueue = false;
+// Lógica de procesamiento de cola
 
 async function checkQueue() {
     if (isProcessingQueue) return; // ⚠️ Evitar llamadas superpuestas
@@ -96,11 +137,7 @@ async function checkQueue() {
                         
                         if (data.restart) {
                             console.log('🔄 [WHATSAPP] Reinicio remoto solicitado desde el servidor.');
-                            client.destroy().then(() => {
-                                console.log('Client destroyed. Re-initializing...');
-                                client.initialize();
-                                isProcessingQueue = false;
-                            });
+                            restartClient();
                             return;
                         }
 
@@ -160,17 +197,15 @@ async function sendMessage(item) {
     } catch (error) {
         console.error(`[WHATSAPP] ❌ Error enviando a ${item.number}:`, error.message);
         
-        // 🛡️ RECOUPERACIÓN: Si el error es un frame desconectado, el navegador está en un estado corrupto
-        if (error.message.includes('detached Frame') || error.message.includes('Execution context was destroyed')) {
-            console.log('🔄 [WHATSAPP] Detectado error de frame/contexto. Intentando refrescar el navegador...');
-            if (client && client.pupPage) {
-                try {
-                    await client.pupPage.reload();
-                    console.log('✅ [WHATSAPP] Navegador refrescado. Reintentando en la próxima vuelta.');
-                } catch (reloadErr) {
-                    console.error('❌ [WHATSAPP] No se pudo refrescar el navegador:', reloadErr.message);
-                }
-            }
+        // 🛡️ RECUPERACIÓN: Si el error es un frame desconectado, contexto destruido o sesión cerrada, reiniciar por completo
+        const isFatalError = error.message.includes('detached Frame') || 
+                             error.message.includes('Execution context was destroyed') || 
+                             error.message.includes('Session closed') ||
+                             error.message.includes('Protocol error');
+                             
+        if (isFatalError) {
+            console.log('🔄 [WHATSAPP] Detectado error fatal en Puppeteer/Navegador. Iniciando reinicio...');
+            restartClient();
         }
     }
 }
