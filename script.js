@@ -1856,10 +1856,42 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Verificar si el usuario tiene contraseña
             const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}`);
+            
+            if (authCheck.status === 404) {
+                // Usuario no registrado
+                const { isConfirmed } = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Registro Requerido',
+                    html: `
+                        <p style="font-size:0.95rem;color:#aaa;line-height:1.5;">
+                            Este ID de jugador no se encuentra registrado en nuestro sistema.<br><br>
+                            Para acumular puntos con tus recargas y poder canjearlos por diamantes gratis, debes registrar tu cuenta primero.
+                        </p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: '👤 Registrarme Ahora',
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
+
+                if (isConfirmed) {
+                    loginTriggerBtn.click();
+                    setTimeout(() => {
+                        const tabRegister = document.getElementById('swal-tab-register');
+                        if (tabRegister) tabRegister.click();
+                        const regUidInput = document.getElementById('swal-reg-uid');
+                        if (regUidInput) regUidInput.value = uid;
+                    }, 500);
+                }
+                return;
+            }
+
             const authRes = await authCheck.json();
 
             if (authRes.success && authRes.hasPassword) {
-                // El usuario tiene contraseña configurada: solicitarla
+                // El usuario tiene contraseña configurada: solicitarla directamente
                 const { value: enteredPassword } = await Swal.fire({
                     title: '🔐 Cuenta Protegida',
                     html: `
@@ -1906,7 +1938,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.validatedRedeemPassword = enteredPassword;
 
             } else {
-                // El usuario NO tiene contraseña configurada: sugerir amigablemente crear una
+                // Fallback para usuarios sin contraseña configurada (legacy)
                 const { isConfirmed } = await Swal.fire({
                     title: '🛡️ Protege tus Puntos',
                     html: `

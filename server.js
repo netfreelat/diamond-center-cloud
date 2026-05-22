@@ -1686,7 +1686,7 @@ const server = http.createServer(async (req, res) => {
         // Solo verificar si tiene contraseña (sin pass en la query)
         if (!pass) {
             res.writeHead(200);
-            return res.end(JSON.stringify({ success: false, hasPassword: true }));
+            return res.end(JSON.stringify({ success: true, hasPassword: true }));
         }
         res.writeHead(200);
         return res.end(JSON.stringify({ success: false, hasPassword: true, message: 'Contraseña incorrecta' }));
