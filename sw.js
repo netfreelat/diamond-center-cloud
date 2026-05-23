@@ -1,4 +1,4 @@
-const CACHE_NAME = 'diamond-center-v1';
+const CACHE_NAME = 'diamond-center-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -7,6 +7,7 @@ const ASSETS_TO_CACHE = [
     '/icon.svg',
     '/icon-192.png',
     '/icon-512.png',
+    '/badge-diamond.png',
     '/manifest.json',
     '/politica-privacidad.html',
     '/terminos-condiciones.html'
@@ -79,7 +80,7 @@ self.addEventListener('push', event => {
     const options = {
         body: data.body,
         icon: data.icon || '/icon-192.png',
-        badge: data.badge || '/icon-192.png',
+        badge: data.badge || '/badge-diamond.png',
         vibrate: [100, 50, 100],
         data: data.data || { url: '/' }
     };
