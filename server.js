@@ -36,8 +36,8 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
 // --- Web Push Notifications ---
 const webPush = require('web-push');
 const vapidEmail = process.env.VAPID_EMAIL || 'mailto:netfreelat@gmail.com';
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY ? process.env.VAPID_PUBLIC_KEY.trim().replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_') : undefined;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY ? process.env.VAPID_PRIVATE_KEY.trim().replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_') : undefined;
 
 if (vapidPublicKey && vapidPrivateKey) {
     webPush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
