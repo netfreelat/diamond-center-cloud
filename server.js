@@ -25,7 +25,13 @@ if (!supabaseUrl || !supabaseKey) {
     console.error('Si estás en Render, asegúrate de configurarlas en el Dashboard.');
 }
 
-const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+const WebSocket = require('ws');
+const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
+    auth: { persistSession: false },
+    realtime: {
+        transport: WebSocket
+    }
+});
 
 // --- Web Push Notifications ---
 const webPush = require('web-push');
