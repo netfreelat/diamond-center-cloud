@@ -46,7 +46,7 @@ if (vapidPublicKey && vapidPrivateKey) {
     console.warn('[PUSH] ⚠️ ADVERTENCIA: Faltan VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY en variables de entorno.');
 }
 
-async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath = '/', badge = '/badge-diamond.png') {
+async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath = '/') {
     if (!vapidPublicKey || !vapidPrivateKey) {
         console.warn(`[PUSH] Intentando enviar push a ${uid} pero VAPID no está configurado.`);
         return;
@@ -71,7 +71,6 @@ async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath 
             title,
             body,
             icon,
-            badge,
             data: { url: urlPath }
         });
         
@@ -1508,7 +1507,6 @@ const server = http.createServer(async (req, res) => {
                     title: title,
                     body: msgBody,
                     icon: '/icon-192.png',
-                    badge: '/badge-diamond.png',
                     data: { url: urlPath || '/' }
                 });
 
