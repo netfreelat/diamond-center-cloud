@@ -2111,3 +2111,49 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+
+// ============================================================
+// BOTÓN "DESCARGAR APLICACIÓN" - PWA Install Prompt
+// ============================================================
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('install-app-btn');
+
+// Capturar el evento antes de que el navegador muestre su propio banner
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // Evitar el banner automático del navegador
+    deferredInstallPrompt = e;
+
+    // Mostrar nuestro botón personalizado
+    if (installBtn) {
+        installBtn.style.display = 'flex';
+    }
+});
+
+// Al hacer clic en el botón, disparar el diálogo de instalación nativo
+if (installBtn) {
+    installBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        if (deferredInstallPrompt) {
+            // Mostrar el diálogo de instalación del navegador
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                console.log('[PWA] Usuario aceptó instalar la app.');
+                installBtn.style.display = 'none'; // Ocultar botón al instalar
+            } else {
+                console.log('[PWA] Usuario rechazó la instalación.');
+            }
+
+            deferredInstallPrompt = null;
+        }
+    });
+}
+
+// Ocultar el botón si la app ya fue instalada
+window.addEventListener('appinstalled', () => {
+    if (installBtn) installBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+    console.log('[PWA] ¡App instalada con éxito!');
+});

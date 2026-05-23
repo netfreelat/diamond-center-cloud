@@ -557,6 +557,37 @@ body::before {
     filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
 }
 
+/* Download App Button */
+.download-app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+    color: white;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    transition: var(--transition);
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.download-app-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5), 0 0 10px rgba(157, 0, 255, 0.3);
+}
+
+.download-app-btn i {
+    font-size: 1.15rem;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
+}
+
 .input-group {
     position: relative;
     margin-bottom: 25px;

@@ -1411,7 +1411,7 @@ const server = http.createServer(async (req, res) => {
             pending: Object.values(orders).filter(o => o.status === 'pending').length,
             approved: Object.values(orders).filter(o => o.status === 'approved').length,
             rejected: Object.values(orders).filter(o => o.status === 'rejected').length,
-            total_users: Object.keys(users).length,
+            total_users: Object.values(users).filter(u => u.password || u.points > 0 || u.cedula || u.phone).length,
             total_pines: Object.values(pines).reduce((acc, curr) => acc + curr.length, 0)
         };
         res.writeHead(200);
@@ -1570,23 +1570,19 @@ const server = http.createServer(async (req, res) => {
         });
     } else if (parsedUrl.pathname === '/admin/usuarios' && req.method === 'GET') {
         try {
-            // Obtener lista de UIDs que tienen al menos un pedido en Supabase
-            const { data: realUids } = await supabase.from('ff_orders').select('uid');
-            const customerSet = new Set(realUids.map(o => o.uid));
-            
-            const filteredUsers = {};
+            // Filtrar y devolver únicamente los usuarios reales (con contraseña, puntos o datos de contacto)
+            // Esto excluye visitas de consulta temporal de ID y mantiene la coherencia total con el Dashboard.
+            const realUsers = {};
             Object.entries(users).forEach(([uid, data]) => {
-                if (customerSet.has(uid) || data.points > 0) {
-                    filteredUsers[uid] = data;
+                if (data.password || data.points > 0 || data.cedula || data.phone) {
+                    realUsers[uid] = data;
                 }
             });
-            
             res.writeHead(200);
-            res.end(JSON.stringify(filteredUsers));
+            res.end(JSON.stringify(realUsers));
         } catch (e) {
-            // Fallback: enviar todos si falla la consulta
-            res.writeHead(200);
-            res.end(JSON.stringify(users));
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, error: 'Error al obtener usuarios' }));
         }
     } else if (parsedUrl.pathname === '/admin/usuarios/update_points' && req.method === 'POST') {
         let body = '';
