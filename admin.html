@@ -481,7 +481,9 @@
                             <tr>
                                 <th>ID Jugador</th>
                                 <th>Nombre</th>
+                                <th>Fecha Registro</th>
                                 <th>Puntos</th>
+                                <th>Seguridad</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -1258,12 +1260,34 @@ PIN789012
             tbody.innerHTML = '';
             Object.entries(usersMap).forEach(([uid, data]) => {
                 const tr = document.createElement('tr');
+                
+                // Formatear fecha de registro de manera premium
+                let dateStr = '<span style="opacity:0.4;">No registrada</span>';
+                if (data.registered) {
+                    try {
+                        const d = new Date(data.registered);
+                        if (!isNaN(d)) {
+                            // Formato dd/mm/aaaa hh:mm AM/PM hora de Venezuela
+                            dateStr = d.toLocaleDateString('es-VE', { 
+                                day: '2-digit', 
+                                month: '2-digit', 
+                                year: 'numeric'
+                            }) + ' <span style="font-size:0.75rem; opacity:0.6;">' + d.toLocaleTimeString('es-VE', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            }) + '</span>';
+                        }
+                    } catch (e) {}
+                }
+
                 tr.innerHTML = `
                     <td><code>${uid}</code></td>
                     <td>${data.name}</td>
+                    <td>${dateStr}</td>
                     <td style="color:var(--secondary); font-weight:800">${data.points}</td>
                     <td style="color:${data.password ? '#25D366' : '#FF3D71'}; font-size:0.8rem; font-weight:600;">
-                        ${data.password ? '<i class="fa-solid fa-lock"></i> Protegido' : '<i class="fa-solid fa-lock-open"></i> SIN CLAVE'}
+                        ${data.password ? '<i class="fa-solid fa-lock" style="color:#25D366;"></i> Protegido' : '<i class="fa-solid fa-lock-open" style="color:#FF3D71;"></i> SIN CLAVE'}
                     </td>
                     <td>
                         <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar Puntos"><i class="fa-solid fa-edit"></i></button>
