@@ -1481,6 +1481,89 @@ const server = http.createServer(async (req, res) => {
                 }
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
+    } else if (parsedUrl.pathname === '/admin/send-push' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { target, uid, title, body: msgBody, urlPath } = JSON.parse(body);
+                
+                if (!title || !msgBody) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Título y mensaje son obligatorios.' }));
+                }
+
+                if (!vapidPublicKey || !vapidPrivateKey) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, message: 'Las notificaciones Push (VAPID) no están configuradas en el servidor.' }));
+                }
+
+                const payload = JSON.stringify({
+                    title: title,
+                    body: msgBody,
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    data: { url: urlPath || '/' }
+                });
+
+                let query = supabase.from('ff_push_subscriptions').select('*');
+                if (target === 'single') {
+                    if (!uid) {
+                        res.writeHead(400);
+                        return res.end(JSON.stringify({ success: false, message: 'Debe especificar el Player ID para enviar una notificación individual.' }));
+                    }
+                    query = query.eq('uid', uid);
+                }
+
+                const { data: subscriptions, error } = await query;
+
+                if (error) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, message: 'Error de base de datos: ' + error.message }));
+                }
+
+                if (!subscriptions || subscriptions.length === 0) {
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({ success: true, sentCount: 0, message: 'No hay dispositivos suscritos para este destinatario.' }));
+                }
+
+                let sentCount = 0;
+                let promises = subscriptions.map(sub => {
+                    const pushSubscription = {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.keys_p256dh,
+                            auth: sub.keys_auth
+                        }
+                    };
+                    return webPush.sendNotification(pushSubscription, payload)
+                        .then(() => {
+                            sentCount++;
+                        })
+                        .catch(async (err) => {
+                            console.warn(`[PUSH-MANUAL] Error en endpoint. Código: ${err.statusCode}`);
+                            if (err.statusCode === 410 || err.statusCode === 404) {
+                                await supabase
+                                    .from('ff_push_subscriptions')
+                                    .delete()
+                                    .eq('id', sub.id);
+                            }
+                        });
+                });
+
+                await Promise.all(promises);
+
+                res.writeHead(200);
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    sentCount: sentCount,
+                    message: `Notificación enviada con éxito a ${sentCount} dispositivo(s).` 
+                }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/usuarios' && req.method === 'GET') {
         try {
             // Obtener lista de UIDs que tienen al menos un pedido en Supabase

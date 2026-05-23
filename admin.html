@@ -414,6 +414,7 @@
             <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Inventario de Pines</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
+            <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Notificaciones Push</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
         </nav>
 
@@ -705,6 +706,47 @@ PIN789012
             </div>
         </div>
 
+        <!-- PUSH TAB -->
+        <div id="push-tab" class="tab-content">
+            <div class="action-card">
+                <h2><i class="fa-solid fa-bell" style="color: var(--secondary);"></i> Enviar Notificación Push</h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Envía alertas push directamente a los navegadores o aplicaciones Android instaladas de tus clientes.</p>
+                
+                <div class="form-group">
+                    <label>Destinatario:</label>
+                    <select id="push-target" onchange="togglePushTarget(this.value)">
+                        <option value="all">Todos los usuarios suscritos</option>
+                        <option value="single">Usuario específico (Player ID)</option>
+                    </select>
+                </div>
+
+                <div id="push-uid-group" class="form-group" style="display: none;">
+                    <label>Player ID (UID) del usuario:</label>
+                    <input type="text" id="push-uid" placeholder="Ej. 123456789">
+                </div>
+
+                <div class="form-group">
+                    <label>Título de la Notificación:</label>
+                    <input type="text" id="push-title" placeholder="Ej. ¡Nueva Oferta! 🔥">
+                </div>
+
+                <div class="form-group">
+                    <label>Mensaje / Cuerpo:</label>
+                    <textarea id="push-body" rows="4" placeholder="Escribe el mensaje aquí..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>URL de Destino (Opcional):</label>
+                    <input type="text" id="push-url" placeholder="Ej. /historial o /canjear.html">
+                    <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 5px;">Ruta a la que se redirigirá al cliente cuando toque la notificación.</p>
+                </div>
+
+                <button onclick="sendPushNotification()" class="btn-main">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Notificación
+                </button>
+            </div>
+        </div>
+
         <a href="index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver a la Tienda</a>
     </div>
 
@@ -796,6 +838,65 @@ PIN789012
                 localStorage.removeItem('admin_token');
                 showLoginOverlay();
                 Swal.close();
+            }
+        }
+
+        function togglePushTarget(val) {
+            const uidGroup = document.getElementById('push-uid-group');
+            if (val === 'single') {
+                uidGroup.style.display = 'block';
+            } else {
+                uidGroup.style.display = 'none';
+            }
+        }
+
+        async function sendPushNotification() {
+            const target = document.getElementById('push-target').value;
+            const uid = document.getElementById('push-uid').value.trim();
+            const title = document.getElementById('push-title').value.trim();
+            const body = document.getElementById('push-body').value.trim();
+            const urlPath = document.getElementById('push-url').value.trim();
+
+            if (!title || !body) {
+                return Swal.fire('Error', 'El título y el mensaje son obligatorios.', 'error');
+            }
+
+            if (target === 'single' && !uid) {
+                return Swal.fire('Error', 'Debes ingresar el Player ID para enviar una notificación individual.', 'error');
+            }
+
+            Swal.fire({
+                title: 'Enviando notificación...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/send-push`, {
+                    method: 'POST',
+                    body: JSON.stringify({ target, uid, title, body, urlPath })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Enviada!',
+                        text: data.message,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                    document.getElementById('push-title').value = '';
+                    document.getElementById('push-body').value = '';
+                    document.getElementById('push-url').value = '';
+                    document.getElementById('push-uid').value = '';
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo enviar la notificación.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
             }
         }
 
