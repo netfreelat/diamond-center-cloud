@@ -1005,11 +1005,10 @@ const server = http.createServer(async (req, res) => {
             }));
         }
         // Verificación secundaria en Supabase (cubre reinicios de Render)
-        const { data: existingOrder } = await supabase.from('ff_orders').select('ref, status').eq('ref', ref).single();
+        const { data: existingOrder } = await supabase.from('ff_orders').select('*').eq('ref', ref).single();
         if (existingOrder) {
             console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en Supabase: Ref ${ref} (status: ${existingOrder.status})`);
-            // Restaurar en memoria para futuros chequeos
-            orders[ref] = { status: existingOrder.status };
+            // NO guardamos en orders para que NO aparezca en el panel de administración
             res.writeHead(200);
             return res.end(JSON.stringify({ 
                 success: false, 
