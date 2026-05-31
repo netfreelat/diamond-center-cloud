@@ -9,6 +9,13 @@ try {
 } catch (e) {
     console.error('[CRÍTICO] No se pudo cargar el servicio de canje automático:', e.message);
 }
+let rechargeViaJadh = null;
+try {
+    const jadhService = require('./jadh-service.js');
+    rechargeViaJadh = jadhService.rechargeViaJadh;
+} catch (e) {
+    console.error('[CRÍTICO] No se pudo cargar el servicio de recarga directa de Jadh:', e.message);
+}
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -671,61 +678,48 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                 pagosValidados[targetFullRef].used = true;
                 savePagos();
                 
-                const { qty } = extractPackInfo(order.pack);
+                const { qty, amountKey } = extractPackInfo(order.pack);
                 
-                if (qty > 1) {
-                    // Si la cantidad es mayor a 1, no usamos la API automatizada (para evitar bloqueos por duplicados)
-                    // y vamos directo a entregar pines
-                    console.log(`[AUTO-APPROVE] Compra múltiple detectada (${qty}x). Usando fallback de PINs.`);
-                    const pin = await getFallbackPin(order.pack);
-                    if (pin) {
+                console.log(`[AUTO-APPROVE] Iniciando recarga automática via Jadh.shop para ${order.uid} | Qty: ${qty}`);
+                
+                (async () => {
+                    let allSuccess = true;
+                    let nick = order.name;
+                    let orderIds = [];
+                    
+                    for (let i = 0; i < qty; i++) {
+                        console.log(`[AUTO-APPROVE] Ejecutando recarga ${i+1}/${qty} en Jadh.shop...`);
+                        const result = await rechargeViaJadh(order.uid, amountKey);
+                        if (result.success) {
+                            if (result.nickname) nick = result.nickname;
+                            if (result.orderId) orderIds.push(result.orderId);
+                        } else {
+                            allSuccess = false;
+                            console.error(`[AUTO-APPROVE] Falló recarga ${i+1}/${qty}: ${result.message}`);
+                            break;
+                        }
+                    }
+                    
+                    if (allSuccess) {
                         orders[targetShortRef].status = 'approved';
-                        orders[targetShortRef].pin = pin;
-                        updateOrderStatus(targetShortRef, 'approved', pin);
-                        saveRecent(order.name, order.pack);
+                        orders[targetShortRef].name = nick;
+                        updateOrderStatus(targetShortRef, 'approved');
+                        saveRecent(nick, order.pack);
+                        
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) {
-                            addPoints(order.uid, usdtPrice, order.name);
+                            addPoints(order.uid, usdtPrice, nick);
                         }
-                        queueWhatsAppMessage(order, true, pin);
+                        
+                        queueWhatsAppMessage({ ...order, name: nick }, true);
                         updateTelegramStatus(targetShortRef);
-                        console.log(`[AUTO-APPROVE] Recarga múltiple exitosa (PINs) para ${order.uid}`);
+                        console.log(`[AUTO-APPROVE] Recarga directa exitosa (Jadh) para ${order.uid}. Órdenes: ${orderIds.join(', ')}`);
                     } else {
-                        console.error(`[AUTO-APPROVE] Error: No hay stock de pines para recarga múltiple de ${order.pack}`);
+                        console.error(`[AUTO-APPROVE] Recarga automática Jadh.shop falló por completo para ID ${order.uid}`);
+                        orders[targetShortRef].status = 'failed';
+                        updateOrderStatus(targetShortRef, 'failed');
                     }
-                } else {
-                    rechargeViaNetfreelat(order, targetShortRef).then(async result => {
-                        if (result.success) {
-                            orders[targetShortRef].status = 'approved';
-                            
-                            saveRecent(order.name, order.pack);
-                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                            if (!isNaN(usdtPrice)) {
-                                addPoints(order.uid, usdtPrice, order.name);
-                            }
-                            queueWhatsAppMessage(order, true);
-                            updateTelegramStatus(targetShortRef);
-                            console.log(`[AUTO-APPROVE] Recarga exitosa para ${order.uid}`);
-                        } else {
-                            const pin = await getFallbackPin(order.pack);
-                            if (pin) {
-                                orders[targetShortRef].status = 'approved';
-                                orders[targetShortRef].pin = pin;
-                                
-                                saveRecent(order.name, order.pack);
-                                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                                if (!isNaN(usdtPrice)) {
-                                    addPoints(order.uid, usdtPrice, order.name);
-                                }
-                                queueWhatsAppMessage(order, true, pin);
-                                updateTelegramStatus(targetShortRef);
-                                console.log(`[AUTO-APPROVE] Recarga exitosa (PIN) para ${order.uid}`);
-                            } else {
-                                console.error(`[AUTO-APPROVE] Error en recarga automática.`);
-                            }
-                        }
-                    });
-                }
+                })();
                 return true;
             } else {
                 // No marcamos como usado para que el admin pueda decidir qué hacer
@@ -1247,39 +1241,80 @@ const server = http.createServer(async (req, res) => {
                         return;
                     }
 
-                    let newText = '';
                     if (action === 'accept') {
-                        const pin = await getFallbackPin(order.pack);
-                        if (pin) {
-                            newText = `🎟️ *RECARGA VÍA PIN ENTREGADA*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔑 *PIN:* \`${pin}\`\n\n⚡ *LINK DE CANJE DIRECTO:* \nhttps://diamond-center-cloud.onrender.com/canjear.html?uid=${order.uid}&pin=${pin}\n\n✅ _Entrega automática exitosa._`;
+                        console.log(`[WEBHOOK] 💎 Ejecutando recarga directa via Jadh.shop para ${order.uid}`);
+                        
+                        (async () => {
+                            const { qty, amountKey } = extractPackInfo(order.pack);
+                            let allSuccess = true;
+                            let nick = order.name;
+                            let orderIds = [];
                             
-                            orders[ref].status = 'approved';
-                            orders[ref].pin = pin;
-                            updateOrderStatus(ref, 'approved', pin);
-                            saveRecent(order.name, order.pack);
-
-                            // Sumar puntos al que inició sesión
-                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                            if (!isNaN(usdtPrice)) {
-                                addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                            for (let i = 0; i < qty; i++) {
+                                const result = await rechargeViaJadh(order.uid, amountKey);
+                                if (result.success) {
+                                    if (result.nickname) nick = result.nickname;
+                                    if (result.orderId) orderIds.push(result.orderId);
+                                } else {
+                                    allSuccess = false;
+                                    console.error(`[WEBHOOK] Falló recarga ${i+1}/${qty}: ${result.message}`);
+                                    break;
+                                }
                             }
-                        } else {
-                            newText = `⚠️ *NO HAY STOCK DE PINES*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Error:* El almacén está vacío para este paquete.\n\n_Por favor, carga pines y aprueba manualmente._`;
-                        }
+                            
+                            let editMessageText = '';
+                            if (allSuccess) {
+                                orders[ref].status = 'approved';
+                                orders[ref].name = nick;
+                                updateOrderStatus(ref, 'approved');
+                                saveRecent(nick, order.pack);
+
+                                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                                if (!isNaN(usdtPrice)) {
+                                    addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                                }
+
+                                editMessageText = `✅ *RECARGA DIRECTA EXITOSA (JADH.SHOP)*\n\n👤 *Jugador:* ${nick}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔢 *Órdenes Jadh:* \`${orderIds.join(', ')}\`\n\n✨ _Acreditado automáticamente en la cuenta del jugador._`;
+                                
+                                queueWhatsAppMessage({ ...order, name: nick, ref }, true);
+                                sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
+                            } else {
+                                orders[ref].status = 'failed';
+                                updateOrderStatus(ref, 'failed');
+                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* Error de conexión o saldo insuficiente en el proveedor.\n\n_El pedido quedó en estado fallido. Revisa manualmente._`;
+                                
+                                queueWhatsAppMessage({ ...order, ref }, false);
+                                sendPushToUser(order.login_uid || order.uid, 'Error en Recarga ❌', `Tuvimos un problema al recargar tus diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
+                            }
+
+                            const editPayload = JSON.stringify({
+                                chat_id: chatId,
+                                message_id: messageId,
+                                text: editMessageText,
+                                parse_mode: 'Markdown'
+                            });
+
+                            const editReq = https.request({
+                                hostname: 'api.telegram.org',
+                                path: `/bot${BOT_TOKEN}/editMessageText`,
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Content-Length': Buffer.byteLength(editPayload)
+                                }
+                            });
+                            editReq.on('error', (err) => console.error('[WEBHOOK] Error editando mensaje final:', err));
+                            editReq.write(editPayload);
+                            editReq.end();
+                        })();
+                        
+                        return;
                     } else {
                         newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n\n⚠️ _El pago no fue aprobado._`;
                         orders[ref].status = 'rejected';
-                        
-                    }
-
-                    // Encolar mensaje de WhatsApp si corresponde (éxito o rechazo final)
-                    const orderWithRef = { ...order, ref };
-                    if (action === 'reject') {
-                        queueWhatsAppMessage(orderWithRef, false);
+                        updateOrderStatus(ref, 'rejected');
+                        queueWhatsAppMessage({ ...order, ref }, false);
                         sendPushToUser(order.login_uid || order.uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${order.pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
-                    } else if (action === 'accept' && orders[ref].status === 'approved') {
-                        queueWhatsAppMessage(orderWithRef, true, orders[ref].pin);
-                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes están listos! Haz clic para ver tu PIN: ${orders[ref].pin || ''}`, '/icon-192.png', '/historial');
                     }
 
                     // 2. Editar el mensaje original con el resultado
@@ -1435,22 +1470,38 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 if (order && order.status === 'pending') {
-                    const pin = await getFallbackPin(order.pack);
-                    if (pin) {
+                    console.log(`[ADMIN-APPROVE] 💎 Iniciando recarga manual via Jadh.shop para ${order.uid}`);
+                    const { qty, amountKey } = extractPackInfo(order.pack);
+                    let allSuccess = true;
+                    let nick = order.name;
+                    let orderIds = [];
+                    
+                    for (let i = 0; i < qty; i++) {
+                        const result = await rechargeViaJadh(order.uid, amountKey);
+                        if (result.success) {
+                            if (result.nickname) nick = result.nickname;
+                            if (result.orderId) orderIds.push(result.orderId);
+                        } else {
+                            allSuccess = false;
+                            res.writeHead(200);
+                            return res.end(JSON.stringify({ success: false, message: `Error en recarga ${i+1}/${qty}: ${result.message}` }));
+                        }
+                    }
+
+                    if (allSuccess) {
                         orders[ref].status = 'approved';
-                        orders[ref].pin = pin;
-                        updateOrderStatus(ref, 'approved', pin);
-                        saveRecent(order.name, order.pack);
+                        orders[ref].name = nick;
+                        updateOrderStatus(ref, 'approved');
+                        saveRecent(nick, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                        if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                        queueWhatsAppMessage({ ...order, ref }, true, pin);
-                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes están listos! Haz clic para ver tu PIN: ${pin || ''}`, '/icon-192.png', '/historial');
+                        if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                        
+                        queueWhatsAppMessage({ ...order, ref, name: nick }, true);
+                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
                         updateTelegramStatus(ref);
+                        
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: true, message: 'Aprobado vía PIN' }));
-                    } else {
-                        res.writeHead(200);
-                        res.end(JSON.stringify({ success: false, message: 'No hay stock de pines para este paquete.' }));
+                        res.end(JSON.stringify({ success: true, message: `Recarga exitosa. Nickname: ${nick}. Órdenes Jadh: ${orderIds.join(', ')}` }));
                     }
                 } else {
                     res.writeHead(404);
