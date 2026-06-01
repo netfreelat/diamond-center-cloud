@@ -21,3 +21,4 @@ scratch/
 *.sql
 *.log
 .DS_Store
+.cache/
