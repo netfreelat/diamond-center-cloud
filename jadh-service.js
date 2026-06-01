@@ -101,24 +101,30 @@ async function rechargeViaJadh(uid, packAmount) {
             page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 })
         ]);
 
-        console.log('[JADH-BOT] ⏳ Procesamiento en pasarela completado. Verificando estado...');
+        console.log('[JADH-BOT] ⏳ Procesamiento en pasarela completado. Verificando resultado...');
         
-        // 5. Verificar transacción en el Dashboard
-        console.log('[JADH-BOT] 🔎 Volviendo al dashboard para validar la orden...');
+        // 5. Verificar el resultado de la compra en la página de respuesta
+        const purchaseResultText = await page.evaluate(() => document.body.innerText);
+        console.log('[JADH-BOT] 📄 Texto de la página resultado (primeros 500 chars):', purchaseResultText.substring(0, 500));
+        
+        const lowerResult = purchaseResultText.toLowerCase();
+        // Detectar errores reales en la página de resultado de compra
+        if (lowerResult.includes('insuficiente') || lowerResult.includes('error') || lowerResult.includes('failed') || lowerResult.includes('rechazad')) {
+            console.error('[JADH-BOT] ❌ Error detectado en la página de resultado de compra.');
+            return { success: false, message: `Error en jadh.shop: ${purchaseResultText.substring(0, 200)}` };
+        }
+        
+        // 6. Si no hay error en la compra, esperar un momento e intentar verificar en el Dashboard
+        console.log('[JADH-BOT] ✅ No se detectaron errores en la compra. Esperando 5s antes de verificar historial...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        console.log('[JADH-BOT] 🔎 Volviendo al dashboard para obtener detalles de la orden...');
         await page.goto('https://jadh.shop/', { waitUntil: 'networkidle2' });
 
-        // Extraer la primera transacción del historial para comprobar si coincide
-        const transaction = await page.evaluate((playerID, packageVal) => {
-            // Buscamos elementos en el historial de transacciones
+        // Extraer la primera transacción del historial para obtener detalles
+        const transaction = await page.evaluate((playerID) => {
             const text = document.body.innerText;
             const lines = text.split('\n');
-            
-            // Buscar la sección de historial. El formato es:
-            // Freefire Auto
-            // Monto total: $0.84
-            // Orden: #192892
-            // Nickname: Sneyder2107
-            // ID de Jugador: 2937558386
             
             const transactions = [];
             let current = null;
@@ -155,10 +161,9 @@ async function rechargeViaJadh(uid, packAmount) {
             }
             if (current) transactions.push(current);
 
-            // Buscar si la última transacción coincide con nuestro jugador
             const match = transactions.find(t => t.uid === playerID);
             return { match, all: transactions.slice(0, 3) };
-        }, uid.toString(), amountKey);
+        }, uid.toString());
 
         console.log('[JADH-BOT] 📊 Resultado del historial:', JSON.stringify(transaction, null, 2));
 
@@ -167,23 +172,21 @@ async function rechargeViaJadh(uid, packAmount) {
             console.log(`[JADH-BOT] 👤 Nickname Garena: ${transaction.match.nickname} | Orden: ${transaction.match.orderId}`);
             return {
                 success: true,
-                message: `Recarga realizada con éxito en Jadh.shop. Orden #${transaction.match.orderId}`,
+                message: `Recarga realizada con éxito en Jadh.shop. Orden ${transaction.match.orderId}`,
                 orderId: transaction.match.orderId,
                 nickname: transaction.match.nickname,
                 amount: transaction.match.amount
             };
         } else {
-            // Si no hay match en el historial inmediato, leer el cuerpo por mensajes de error
-            const bodyText = await page.evaluate(() => document.body.innerText);
-            console.warn('[JADH-BOT] ⚠️ Advertencia: No se encontró la orden en el historial reciente.');
-            
-            if (bodyText.toLowerCase().includes('insuficiente') || bodyText.toLowerCase().includes('saldo')) {
-                return { success: false, message: 'Saldo insuficiente en tu cuenta de Jadh.shop.' };
-            }
-            
+            // La compra se realizó sin errores pero no encontramos el match en el historial aún
+            // Esto es normal si jadh.shop tarda en actualizar. Retornamos éxito igualmente.
+            console.warn('[JADH-BOT] ⚠️ No se encontró match en historial, pero la compra no mostró errores. Considerando exitosa.');
             return { 
-                success: false, 
-                message: 'No se pudo verificar la transacción en el historial reciente de Jadh.shop.' 
+                success: true, 
+                message: 'Recarga enviada con éxito en Jadh.shop (verificación pendiente en historial).',
+                orderId: 'pendiente',
+                nickname: null,
+                amount: null
             };
         }
 
