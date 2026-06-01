@@ -120,6 +120,15 @@ async function rechargeViaJadh(uid, packAmount) {
             
             const transactions = [];
             let current = null;
+
+            const getValue = (lines, index, prefix) => {
+                const line = lines[index].trim();
+                let val = line.substring(prefix.length).trim();
+                if (!val && index + 1 < lines.length) {
+                    val = lines[index + 1].trim();
+                }
+                return val;
+            };
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -128,15 +137,15 @@ async function rechargeViaJadh(uid, packAmount) {
                     current = { type: 'Freefire Auto' };
                 } else if (current) {
                     if (line.startsWith('Monto total:')) {
-                        current.amount = line.replace('Monto total:', '').trim();
+                        current.amount = getValue(lines, i, 'Monto total:');
                     } else if (line.startsWith('Orden:')) {
-                        current.orderId = line.replace('Orden:', '').trim();
+                        current.orderId = getValue(lines, i, 'Orden:');
                     } else if (line.startsWith('Fecha:')) {
-                        current.date = line.replace('Fecha:', '').trim();
+                        current.date = getValue(lines, i, 'Fecha:');
                     } else if (line.startsWith('Nickname:')) {
-                        current.nickname = line.replace('Nickname:', '').trim();
+                        current.nickname = getValue(lines, i, 'Nickname:');
                     } else if (line.startsWith('ID de Jugador:')) {
-                        current.uid = line.replace('ID de Jugador:', '').trim();
+                        current.uid = getValue(lines, i, 'ID de Jugador:');
                         transactions.push(current);
                         current = null;
                     }

@@ -1250,6 +1250,7 @@ const server = http.createServer(async (req, res) => {
                             let nick = order.name;
                             let orderIds = [];
                             
+                            let lastError = 'Error de conexión o saldo insuficiente en el proveedor.';
                             for (let i = 0; i < qty; i++) {
                                 const result = await rechargeViaJadh(order.uid, amountKey);
                                 if (result.success) {
@@ -1257,6 +1258,7 @@ const server = http.createServer(async (req, res) => {
                                     if (result.orderId) orderIds.push(result.orderId);
                                 } else {
                                     allSuccess = false;
+                                    lastError = result.message || 'Error de conexión o saldo insuficiente en el proveedor.';
                                     console.error(`[WEBHOOK] Falló recarga ${i+1}/${qty}: ${result.message}`);
                                     break;
                                 }
@@ -1281,7 +1283,7 @@ const server = http.createServer(async (req, res) => {
                             } else {
                                 orders[ref].status = 'failed';
                                 updateOrderStatus(ref, 'failed');
-                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* Error de conexión o saldo insuficiente en el proveedor.\n\n_El pedido quedó en estado fallido. Revisa manualmente._`;
+                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido quedó en estado fallido. Revisa manualmente._`;
                                 
                                 queueWhatsAppMessage({ ...order, ref }, false);
                                 sendPushToUser(order.login_uid || order.uid, 'Error en Recarga ❌', `Tuvimos un problema al recargar tus diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
