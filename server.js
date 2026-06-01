@@ -1,3 +1,5 @@
+const path = require('path');
+process.env.PUPPETEER_CACHE_DIR = path.join(__dirname, '.cache', 'puppeteer');
 require('dotenv').config();
 // DEPLOYMENT TIMESTAMP: 2026-05-10T12:20:00
 const http = require('http');
@@ -17,7 +19,6 @@ try {
     console.error('[CRÍTICO] No se pudo cargar el servicio de recarga directa de Jadh:', e.message);
 }
 const fs = require('fs');
-const path = require('path');
 const url = require('url');
 const { createClient } = require('@supabase/supabase-js');
 
