@@ -263,8 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const pinBox = order.pin
                     ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                           <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
-                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar</button>
+                           <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
+                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar ID',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar ID</button>
                        </div>`
                     : '';
 
@@ -385,8 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
             const pinBox = order.pin
                 ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                       <span style="font-family:monospace; color:#00f0ff; font-size:0.9rem; font-weight:700;">🔑 ${order.pin}</span>
-                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar</button>
+                       <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
+                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar ID',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar ID</button>
                    </div>`
                 : '';
             historyHtml += `
@@ -1407,7 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Resetear cantidad
                 selectedQty = 1;
-                if (quantitySection) quantitySection.style.display = 'block';
+                if (quantitySection) quantitySection.style.display = 'none';
                 updateTotalsPreview();
                 
                 // Habilitar botón de compra
@@ -1596,13 +1596,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
                             </div>
 
-                            <div id="pin-display-container" style="display: none;">
-                                <p id="assigned-pin"></p>
-                                <button class="btn-copy-pin" onclick="copyPin()"><i class="fa-solid fa-copy"></i> Copiar PIN</button>
-                                <div style="font-size: 0.7rem; color: #fff; margin-top: 10px; background: rgba(0,191,255,0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(0,191,255,0.3); display: flex; flex-direction: column; gap: 5px;">
-                                    <a id="chile-redeem-link" href="https://redeempins.com/" target="_blank" style="color: #00bfff; text-decoration: none; font-weight: 800; text-align: center;"><i class="fa-solid fa-bolt"></i> CANJE SU PIN AQUÍ</a>
-                                </div>
-                            </div>
+                             <!-- Contenedor de PIN ocultado ya que no se trabaja con pines -->
                             
                             <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
                                 <i class="fa-solid fa-shield-halved"></i> Diamond Center Cloud - Transacción Segura
@@ -1658,15 +1652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         colors: ['#ffd700', '#00c853', '#ffffff']
                                     });
 
-                                    // Mostrar PIN si existe
-                                    if (data.pin) {
-                                        const pinContainer = document.getElementById('pin-display-container');
-                                        const pinEl = document.getElementById('assigned-pin');
-                                        
-                                        if (pinEl) pinEl.innerText = data.pin;
-                                        
-                                        if (pinContainer) pinContainer.style.display = 'block';
-                                    }
+                                    // No mostrar PIN ya que no se trabaja con pines
 
                                     const titleEl = document.getElementById('receipt-title');
                                     if (titleEl) {
