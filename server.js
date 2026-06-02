@@ -392,19 +392,43 @@ function saveUsers() {
 async function saveUser(uid) {
     const u = users[uid];
     if (!u) return;
-    const { error } = await supabase.from('ff_users').upsert({
+    
+    const payload = {
         uid, name: u.name, points: u.points, password: u.password || null,
         cedula: u.cedula || null, phone: u.phone || null,
         registered: u.registered, referred_by: u.referred_by || null,
         referral_claimed: u.referral_claimed || false
-    });
-    if (error) console.error('[SUPABASE] Error guardando usuario:', error.message);
+    };
+
+    let { error } = await supabase.from('ff_users').upsert(payload);
+    
+    if (error) {
+        // Reintentar sin columnas extendidas si no existen en la base de datos
+        if (error.code === '42703' || error.message.includes('cedula') || error.message.includes('phone')) {
+            console.warn(`[SUPABASE] ⚠️ Columnas extendidas no existen en ff_users. Reintentando guardar sin cédula/teléfono para el ID: ${uid}...`);
+            const fallbackPayload = {
+                uid, name: u.name, points: u.points, password: u.password || null,
+                registered: u.registered, referred_by: u.referred_by || null,
+                referral_claimed: u.referral_claimed || false
+            };
+            const retry = await supabase.from('ff_users').upsert(fallbackPayload);
+            if (retry.error) {
+                console.error('[SUPABASE] ❌ Error crítico al guardar usuario (fallback):', retry.error.message);
+            } else {
+                console.log(`[SUPABASE] ✅ Usuario ${uid} guardado con éxito (modo fallback).`);
+            }
+        } else {
+            console.error('[SUPABASE] ❌ Error guardando usuario:', error.message);
+        }
+    }
 }
 
 function isUserFullyRegistered(uid) {
     const user = users[uid];
     if (!user) return false;
-    return !!(user.cedula && user.phone && user.password);
+    // Si tiene contraseña en la cuenta, se considera registrado y apto para ganar puntos.
+    // Esto previene que se bloqueen los puntos si las columnas de cédula/teléfono no existen en la base de datos.
+    return !!(user.password);
 }
 
 function addPoints(uid, amountUsdt, name = null) {
@@ -710,7 +734,7 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                         
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) {
-                            addPoints(order.uid, usdtPrice, nick);
+                            addPoints(order.login_uid || order.uid, usdtPrice, nick);
                         }
                         
                         queueWhatsAppMessage({ ...order, name: nick }, true);
