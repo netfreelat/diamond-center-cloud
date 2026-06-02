@@ -412,7 +412,7 @@
                 <span id="pending-badge" class="badge">0</span>
             </button>
             <button class="tab-btn" onclick="showTab('historial-ventas', this)"><i class="fa-solid fa-receipt"></i> Ventas</button>
-            <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Inventario de Pines</button>
+            <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-bolt"></i> Recarga Auto</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
             <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Notificaciones Push</button>
@@ -528,104 +528,52 @@
             </div>
         </div>
 
-        <!-- PINES TAB -->
+        <!-- RECARGA AUTOMÁTICA TAB -->
         <div id="pines" class="tab-content">
-                <div class="grid">
-                    <div class="action-card">
-                        <h3><i class="fa-solid fa-plus-circle"></i> Cargar Nuevos Pines</h3>
-                        <div class="input-group">
-                            <label>Monto del Paquete</label>
-                            <select id="pin-amount">
-                                <option value="100">100 + 10 Diamantes</option>
-                                <option value="310">310 + 31 Diamantes</option>
-                                <option value="520">520 + 52 Diamantes</option>
-                                <option value="1060">1060 + 106 Diamantes</option>
-                                <option value="2180">2180 + 218 Diamantes</option>
-                                <option value="5600">5600 + 560 Diamantes</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Pegar Códigos (Uno por línea)</label>
-                            <textarea id="pin-codes" rows="10" placeholder="Ej:
-PIN123456
-PIN789012
-..."></textarea>
-                        </div>
-                        <button class="btn-main" onclick="addPines()">
-                            <i class="fa-solid fa-cloud-upload"></i> Cargar al Inventario
-                        </button>
+            <div class="action-card" style="border: 1px solid rgba(0,240,255,0.3); background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(157,0,255,0.05));">
+                <h2><i class="fa-solid fa-bolt" style="color: var(--secondary);"></i> Estado de Recargas Automáticas</h2>
+                <p style="color: var(--text-gray); margin-bottom: 25px; font-size: 0.95rem;">
+                    El sistema procesa todas las recargas automáticamente a través de <strong style="color: var(--secondary);">Jadh.shop</strong>. No se requiere inventario manual de pines.
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">100 + 10 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
-                    <div class="action-card">
-                        <h3><i class="fa-solid fa-boxes-stacked"></i> Stock por Paquete</h3>
-                        <div id="pines-stats" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
-                            <!-- Pines por monto -->
-                        </div>
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">310 + 31 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
-                </div>
-
-                <!-- Fin de Grid de Carga y Stock -->
-
-                <div class="action-card" style="margin-top: 20px; border: 1px solid var(--secondary);">
-                    <h3>
-                        <i class="fa-solid fa-list-check" style="color: var(--secondary);"></i> Gestión de Pines Disponibles 
-                        <span style="background: var(--secondary); color: var(--dark); font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: 800; vertical-align: middle;">NUEVO</span>
-                    </h3>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <select id="manage-pin-amount" style="flex: 1; background: rgba(20, 10, 35, 0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px;">
-                            <option value="100">100 Diamantes</option>
-                            <option value="310">310 Diamantes</option>
-                            <option value="520">520 Diamantes</option>
-                            <option value="1060">1060 Diamantes</option>
-                            <option value="2180">2180 Diamantes</option>
-                            <option value="5600">5600 Diamantes</option>
-                        </select>
-                        <button class="btn-main" onclick="loadAvailablePines()" style="width: auto; padding: 0 20px;">
-                            <i class="fa-solid fa-sync"></i> Ver Pines
-                        </button>
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">520 + 52 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
-                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Código PIN</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="available-pines-table-body">
-                                <tr><td colspan="3" style="text-align:center; opacity:0.5;">Selecciona un paquete y pulsa "Ver Pines"</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">1060 + 106 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
+                    </div>
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">2180 + 218 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
+                    </div>
+                    <div class="stat-card success" style="padding: 15px; min-height: 90px;">
+                        <span class="label" style="font-size: 0.6rem;">5600 + 560 💎</span>
+                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                 </div>
-
-                <div class="action-card" style="margin-top: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-                        <h3 style="margin: 0;"><i class="fa-solid fa-history"></i> Últimos 50 Pines Entregados</h3>
-                        <div class="search-box">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" id="pin-history-search" placeholder="Buscar jugador, control, PIN..." onkeyup="filterUsedPines()">
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Control</th>
-                                    <th>Jugador</th>
-                                    <th>Monto</th>
-                                    <th>Referencia</th>
-                                    <th>Código PIN</th>
-                                </tr>
-                            </thead>
-                            <tbody id="used-pines-table-body">
-                                <!-- Pines usados -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div style="background: rgba(0,255,148,0.05); border: 1px solid rgba(0,255,148,0.2); border-radius: 12px; padding: 20px; text-align: center;">
+                    <i class="fa-solid fa-circle-check" style="color: #00FF94; font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                    <p style="color: #00FF94; font-weight: 800; font-size: 1rem; margin-bottom: 5px;">Sistema Operativo al 100%</p>
+                    <p style="color: var(--text-gray); font-size: 0.85rem;">Las recargas se procesan de forma instantánea y automática via Jadh.shop las 24 horas del día, los 7 días de la semana.</p>
                 </div>
             </div>
+        </div>
 
         <!-- SETTINGS TAB -->
         <div id="settings" class="tab-content">
@@ -983,9 +931,9 @@ PIN789012
                         <span class="label"><i class="fa-solid fa-user-friends"></i> USUARIOS</span>
                         <span class="value" style="color:var(--primary)">${stats.total_users}</span>
                     </div>
-                    <div class="stat-card">
-                        <span class="label"><i class="fa-solid fa-box"></i> STOCK TOTAL</span>
-                        <span class="value" style="color:var(--secondary)">${stats.total_pines}</span>
+                    <div class="stat-card success">
+                        <span class="label"><i class="fa-solid fa-bolt"></i> RECARGA AUTO</span>
+                        <span class="value" style="color:#00FF94">∞</span>
                     </div>
                 `;
             } catch (e) { console.error(e); }
@@ -1092,7 +1040,7 @@ PIN789012
                     <td><span style="color:#25D366; font-weight:700;">${order.price || 'N/A'}</span></td>
                     <td><span class="status-badge status-${order.status}">${order.status}</span></td>
                     <td><code style="color:var(--secondary); font-size:0.8rem;">${order.pin || '-'}</code></td>
-                    <td><span style="font-family:monospace; font-size:0.8rem; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${order.ip_address || 'N/A'}</span></td>
+                    <td><span style="font-family:monospace; font-size:0.8rem; ${order.ip_address ? 'background:rgba(0,240,255,0.08); color:#00F0FF; border:1px solid rgba(0,240,255,0.2);' : 'color:rgba(255,255,255,0.25);'} padding:2px 6px; border-radius:4px;">${order.ip_address || '—'}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
