@@ -411,6 +411,7 @@
                 <i class="fa-solid fa-shopping-cart"></i> Pedidos
                 <span id="pending-badge" class="badge">0</span>
             </button>
+            <button class="tab-btn" onclick="showTab('historial-ventas', this)"><i class="fa-solid fa-receipt"></i> Ventas</button>
             <button class="tab-btn" onclick="showTab('pines', this)"><i class="fa-solid fa-key"></i> Inventario de Pines</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
@@ -459,6 +460,38 @@
                             </tr>
                         </thead>
                         <tbody id="orders-table-body">
+                            <!-- Cargado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORIAL DE VENTAS TAB -->
+        <div id="historial-ventas" class="tab-content">
+            <div class="action-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h2 style="margin: 0;"><i class="fa-solid fa-receipt" style="color: var(--secondary);"></i> Historial de Ventas</h2>
+                    <div style="width: 100%; max-width: 300px;">
+                        <input type="text" id="ventas-search" placeholder="🔍 Buscar por ID, Nombre o Ref..." onkeyup="filterVentas()" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>N° Control</th>
+                                <th>Referencia</th>
+                                <th>Jugador</th>
+                                <th>Paquete</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th>ID Orden Proveedor</th>
+                                <th>IP Comprador</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ventas-table-body">
                             <!-- Cargado por JS -->
                         </tbody>
                     </table>
@@ -923,6 +956,7 @@ PIN789012
 
             if (tabId === 'dashboard') loadDashboardStats();
             if (tabId === 'pedidos') loadOrders();
+            if (tabId === 'historial-ventas') loadAllTransactions();
             if (tabId === 'pines') loadPinStats();
             if (tabId === 'usuarios') loadUsers();
             if (tabId === 'wa-bot-tab') checkWaStatus();
@@ -1008,6 +1042,73 @@ PIN789012
                 (o.name && o.name.toLowerCase().includes(query))
             );
             renderOrders(filtered);
+        }
+
+        let allTransactions = [];
+        async function loadAllTransactions() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/orders/all`);
+                const result = await res.json();
+                if (result.success) {
+                    allTransactions = result.orders;
+                    renderAllTransactions(allTransactions);
+                } else {
+                    console.error('Error al obtener transacciones:', result.error);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderAllTransactions(list) {
+            const tbody = document.getElementById('ventas-table-body');
+            tbody.innerHTML = '';
+            
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; opacity:0.5;">No hay ventas registradas aún.</td></tr>';
+                return;
+            }
+
+            list.forEach(order => {
+                const tr = document.createElement('tr');
+                
+                let dateStr = 'N/A';
+                let timeStr = '';
+                try {
+                    const d = new Date(order.time);
+                    if (!isNaN(d)) {
+                        dateStr = d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Caracas' });
+                        timeStr = d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' });
+                    }
+                } catch(e) {}
+
+                tr.innerHTML = `
+                    <td><small>${dateStr}</small><br><strong>${timeStr}</strong></td>
+                    <td><span style="color:var(--secondary); font-weight:700;">${order.control_num || '-'}</span></td>
+                    <td><code>${order.ref}</code><br><small style="color:var(--text-gray)">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small></td>
+                    <td>
+                        ${order.name}<br>
+                        <small>ID: ${order.uid}</small>
+                    </td>
+                    <td>${order.pack}</td>
+                    <td><span style="color:#25D366; font-weight:700;">${order.price || 'N/A'}</span></td>
+                    <td><span class="status-badge status-${order.status}">${order.status}</span></td>
+                    <td><code style="color:var(--secondary); font-size:0.8rem;">${order.pin || '-'}</code></td>
+                    <td><span style="font-family:monospace; font-size:0.8rem; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${order.ip_address || 'N/A'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterVentas() {
+            const query = document.getElementById('ventas-search').value.toLowerCase();
+            const filtered = allTransactions.filter(o => 
+                o.ref.toLowerCase().includes(query) || 
+                (o.control_num && o.control_num.toLowerCase().includes(query)) ||
+                o.uid.toLowerCase().includes(query) || 
+                (o.name && o.name.toLowerCase().includes(query)) ||
+                (o.pin && o.pin.toLowerCase().includes(query)) ||
+                (o.ip_address && o.ip_address.toLowerCase().includes(query))
+            );
+            renderAllTransactions(filtered);
         }
 
         async function approveOrder(ref) {

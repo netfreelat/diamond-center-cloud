@@ -130,10 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         Object.entries(precios).forEach(([amount, data]) => {
             const priceBs = (data.usdt * tasa).toFixed(2).replace('.', ',');
-            const stockCount = APP_CONFIG.stock ? (APP_CONFIG.stock[amount] || 0) : 0;
-            const isAvailable = stockCount > 0;
-            const stockLabel = isAvailable ? `<span class="stock-badge available">Disponible</span>` : '<span class="stock-badge out">Agotado</span>';
-            const disabledClass = isAvailable ? '' : 'out-of-stock';
+            const isAvailable = true; // Todos los paquetes disponibles
+            const stockLabel = `<span class="stock-badge available">Disponible</span>`;
+            const disabledClass = '';
 
             // Etiqueta promocional
             const promo = PROMO_TAGS[amount];
@@ -1376,15 +1375,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('qty-plus').addEventListener('click', () => {
         if (!selectedPackage) return;
-        const stockCount = APP_CONFIG.stock ? (APP_CONFIG.stock[selectedPackage.amount] || 0) : 0;
+        const stockCount = 99; // Límite razonable por compra, sin depender del stock del almacén
         if (selectedQty < stockCount) {
             selectedQty++;
             updateTotalsPreview();
         } else {
             Swal.fire({
                 icon: 'warning',
-                title: 'Límite de Stock',
-                text: `No hay más paquetes disponibles de esta denominación.`,
+                title: 'Límite de compra',
+                text: `Puedes comprar hasta 99 paquetes por pedido.`,
                 confirmButtonColor: '#9D00FF',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff'

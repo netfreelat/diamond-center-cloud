@@ -1,0 +1,43 @@
+1. 🌐 Enlace del Repositorio en GitHub
+Si quieres ver el código de tu proyecto o subir cambios más adelante de forma manual: 👉 https://github.com/netfreelat/diamond-center-cloud
+
+2. 🚀 Enlace del Servidor en Producción (Render)
+El servidor en vivo donde está alojado tu backend actualmente: 👉 https://diamond-center-cloud.onrender.com
+
+3. 💻 Enlace Local (Desarrollo en tu Máquina)
+Si ejecutas el archivo INICIAR_SERVIDOR.bat, el servidor local iniciará y podrás acceder a él en: 👉 http://localhost:3500
+
+Nota: Para ver el sitio web localmente con la tienda interactiva, puedes abrir el archivo 
+
+index.html
+ en tu navegador web.
+
+1. 🚀 Panel Administrativo en Producción (En vivo)
+👉 https://diamond-center-cloud.onrender.com/admin.html
+
+2. 💻 Panel Administrativo en Local (Desarrollo)
+Cuando ejecutas el servidor en tu máquina local (mediante el archivo INICIAR_SERVIDOR.bat): 👉 http://localhost:3500/admin.html
+
+🔑 Credenciales de Acceso
+Por si no las recuerdas, según tu configuración en el archivo 
+
+.env
+, las credenciales actuales para entrar al panel administrativo son:
+
+Usuario: admin
+Contraseña: 1234
+
+
+
+3. ¿Cómo controlar el Modo Prueba?
+Puedes gestionar si deseas realizar transacciones reales o simuladas directamente desde tu archivo 
+
+.env
+:
+
+Para Simular (Modo Seguro - No gasta saldo):
+env
+TEST_MODE=true
+Para Producción (Modo Real - Sí gasta saldo):
+env
+TEST_MODE=false

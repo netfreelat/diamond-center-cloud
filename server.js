@@ -704,7 +704,8 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                     if (allSuccess) {
                         orders[targetShortRef].status = 'approved';
                         orders[targetShortRef].name = nick;
-                        updateOrderStatus(targetShortRef, 'approved');
+                        const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
+                        updateOrderStatus(targetShortRef, 'approved', jadhOrdersStr);
                         saveRecent(nick, order.pack);
                         
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
@@ -1021,9 +1022,12 @@ const server = http.createServer(async (req, res) => {
 
         // Guardar pedido como pendiente
         const currentTime = getVEISO();
-        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num };
+        const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const ip_address = rawIp.split(',')[0].trim() || 'N/A';
+
+        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address };
         const { error: insertError } = await supabase.from('ff_orders').insert({
-            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num
+            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address
         });
         if (insertError) {
             // Si Supabase rechaza por restricción de unicidad, también bloqueamos
@@ -1269,7 +1273,8 @@ const server = http.createServer(async (req, res) => {
                             if (allSuccess) {
                                 orders[ref].status = 'approved';
                                 orders[ref].name = nick;
-                                updateOrderStatus(ref, 'approved');
+                                const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
+                                updateOrderStatus(ref, 'approved', jadhOrdersStr);
                                 saveRecent(nick, order.pack);
 
                                 const usdtPrice = parseFloat(order.price.split('USDT')[0]);
@@ -1454,6 +1459,20 @@ const server = http.createServer(async (req, res) => {
         };
         res.writeHead(200);
         res.end(JSON.stringify(stats));
+    } else if (parsedUrl.pathname === '/admin/orders/all' && req.method === 'GET') {
+        try {
+            const { data, error } = await supabase
+                .from('ff_orders')
+                .select('ref, control_num, uid, login_uid, name, pack, method, price, status, time, pin, ip_address')
+                .order('time', { ascending: false });
+            if (error) throw error;
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: true, orders: data || [] }));
+        } catch (e) {
+            console.error('[ADMIN-ALL-ORDERS] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, error: 'Error al obtener todas las transacciones' }));
+        }
     } else if (parsedUrl.pathname === '/admin/pedidos' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(Object.entries(orders).map(([ref, data]) => ({ ref, ...data }))));
@@ -1494,7 +1513,8 @@ const server = http.createServer(async (req, res) => {
                     if (allSuccess) {
                         orders[ref].status = 'approved';
                         orders[ref].name = nick;
-                        updateOrderStatus(ref, 'approved');
+                        const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
+                        updateOrderStatus(ref, 'approved', jadhOrdersStr);
                         saveRecent(nick, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, nick);
@@ -1962,7 +1982,7 @@ const server = http.createServer(async (req, res) => {
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
             stock: Object.keys(settings.precios).reduce((acc, amount) => {
-                acc[amount] = pines[amount] ? pines[amount].length : 0;
+                acc[amount] = 99; // Siempre disponible con stock simulado alto
                 return acc;
             }, {})
         };

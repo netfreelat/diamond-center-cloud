@@ -40,7 +40,7 @@ async function rechargeViaJadh(uid, packAmount) {
     let browser = null;
     try {
         console.log('[JADH-BOT] 🌐 Lanzando navegador Puppeteer...');
-        browser = await puppeteer.launch({
+        const launchOptions = {
             headless: "new",
             args: [
                 '--no-sandbox',
@@ -50,7 +50,13 @@ async function rechargeViaJadh(uid, packAmount) {
                 '--no-zygote',
                 '--single-process'
             ]
-        });
+        };
+
+        if (process.platform === 'win32') {
+            launchOptions.executablePath = path.join(__dirname, '.cache', 'puppeteer', 'chrome', 'win64-121.0.6167.85', 'chrome-win64', 'chrome.exe');
+        }
+
+        browser = await puppeteer.launch(launchOptions);
 
         const page = await browser.newPage();
         await page.setDefaultNavigationTimeout(60000);
@@ -93,6 +99,18 @@ async function rechargeViaJadh(uid, packAmount) {
         await page.type('#gameAccountId', uid.toString());
 
         // 4. Click en Recargar
+        if (process.env.TEST_MODE === 'true') {
+            console.log('[JADH-BOT] 🧪 [MODO PRUEBA] Simulación activa. Evitando el click de compra final para no consumir saldo.');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            return {
+                success: true,
+                message: 'Recarga simulada con éxito en Jadh.shop (Modo Prueba)',
+                orderId: 'SIM_' + Math.floor(100000 + Math.random() * 900000),
+                nickname: 'JugadorPruebaFF',
+                amount: amountKey
+            };
+        }
+
         console.log('[JADH-BOT] 💎 Enviando solicitud de recarga...');
         
         // Esperamos navegación ya que el action hace POST a /purchase
