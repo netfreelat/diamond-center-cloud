@@ -238,11 +238,44 @@ async function loadFromSupabase() {
         // Cargar Pines
         await reloadPines();
         
-        // Usuarios
-        const { data: usersData } = await supabase.from('ff_users').select('*');
-        if (usersData) {
-            usersData.forEach(u => { users[u.uid] = { name: u.name, points: u.points, password: u.password, registered: u.registered, referred_by: u.referred_by, referral_claimed: u.referral_claimed, cedula: u.cedula, phone: u.phone }; });
+        // Usuarios con paginación para evitar el límite de 1000 filas
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        let loadedCount = 0;
+        
+        while (hasMore) {
+            const { data: usersData, error: usersError } = await supabase
+                .from('ff_users')
+                .select('*')
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+            
+            if (usersError) throw usersError;
+            
+            if (usersData && usersData.length > 0) {
+                usersData.forEach(u => {
+                    users[u.uid] = { 
+                        name: u.name, 
+                        points: u.points, 
+                        password: u.password, 
+                        registered: u.registered, 
+                        referred_by: u.referred_by, 
+                        referral_claimed: u.referral_claimed, 
+                        cedula: u.cedula, 
+                        phone: u.phone 
+                    };
+                });
+                loadedCount += usersData.length;
+                if (usersData.length < pageSize) {
+                    hasMore = false;
+                } else {
+                    page++;
+                }
+            } else {
+                hasMore = false;
+            }
         }
+        console.log(`[SUPABASE] 📥 ${loadedCount} usuarios cargados en memoria.`);
 
         // Pedidos Pendientes
         const { data: ordersData } = await supabase.from('ff_orders').select('*').eq('status', 'pending');
@@ -431,22 +464,52 @@ function isUserFullyRegistered(uid) {
     return !!(user.password);
 }
 
-function addPoints(uid, amountUsdt, name = null) {
-    if (!isUserFullyRegistered(uid)) {
-        console.log(`[PUNTOS] El usuario ID: ${uid} no acumula puntos por no estar completamente registrado en Cuenta (cédula, teléfono, contraseña).`);
-        return 0;
+async function ensureUserLoaded(uid) {
+    if (!users[uid]) {
+        try {
+            const { data, error } = await supabase
+                .from('ff_users')
+                .select('*')
+                .eq('uid', uid)
+                .single();
+            if (!error && data) {
+                users[uid] = {
+                    name: data.name,
+                    points: data.points || 0,
+                    password: data.password || null,
+                    registered: data.registered,
+                    referred_by: data.referred_by || null,
+                    referral_claimed: data.referral_claimed || false,
+                    cedula: data.cedula || null,
+                    phone: data.phone || null
+                };
+                console.log(`[SUPABASE] 📥 Usuario ${uid} cargado dinámicamente en memoria.`);
+            } else {
+                users[uid] = { name: 'Jugador', points: 0, registered: getVEISO() };
+                console.log(`[MEMORIA] 🆕 Usuario ${uid} inicializado en memoria.`);
+            }
+        } catch (e) {
+            console.error(`[SUPABASE] Error cargando usuario ${uid}:`, e.message);
+            users[uid] = { name: 'Jugador', points: 0, registered: getVEISO() };
+        }
     }
+    return users[uid];
+}
+
+async function addPoints(uid, amountUsdt, name = null) {
+    const userObj = await ensureUserLoaded(uid);
     const pointsToAdd = Math.floor(amountUsdt * 10);
-    users[uid].points += pointsToAdd;
-    if (name) users[uid].name = name;
+    userObj.points = (userObj.points || 0) + pointsToAdd;
+    if (name) userObj.name = name;
 
     // Lógica de Referidos: 10 pts al referrer en la PRIMERA recarga
-    if (users[uid].referred_by && !users[uid].referral_claimed) {
-        const referrerUid = users[uid].referred_by;
-        if (users[referrerUid] && isUserFullyRegistered(referrerUid)) {
-            users[referrerUid].points = (users[referrerUid].points || 0) + 10;
-            users[uid].referral_claimed = true;
-            saveUser(referrerUid);
+    if (userObj.referred_by && !userObj.referral_claimed) {
+        const referrerUid = userObj.referred_by;
+        const referrerObj = await ensureUserLoaded(referrerUid);
+        if (referrerObj && isUserFullyRegistered(referrerUid)) {
+            referrerObj.points = (referrerObj.points || 0) + 10;
+            userObj.referral_claimed = true;
+            await saveUser(referrerUid);
             console.log(`[REFERRAL_REWARD] ${referrerUid} gana 10 pts por la 1ra recarga de ${uid}`);
 
             // Encolar mensaje de WhatsApp para el referidor
@@ -456,7 +519,7 @@ function addPoints(uid, amountUsdt, name = null) {
                     const refMsg = `🎉 *¡FELICIDADES! HAS GANADO PUNTOS* 🎉\n\n` +
                                    `¡Hola! Tu referido con ID *${uid}* ha realizado su primera compra. 🚀\n\n` +
                                    `🎁 *Puntos ganados:* +10 pts\n` +
-                                   `⭐ *Tu total acumulado:* ${users[referrerUid].points} pts\n\n` +
+                                   `⭐ *Tu total acumulado:* ${referrerObj.points} pts\n\n` +
                                    `¡Sigue compartiendo tu enlace para ganar más premios! 💎✨`;
                     
                     const waItem = { id: refMsgId, number: referrerWa, message: refMsg };
@@ -472,12 +535,12 @@ function addPoints(uid, amountUsdt, name = null) {
         }
     }
 
-    saveUser(uid);
-    console.log(`[PUNTOS] Se añadieron ${pointsToAdd} puntos a ID: ${uid}. Total: ${users[uid].points}`);
+    await saveUser(uid);
+    console.log(`[PUNTOS] Se añadieron ${pointsToAdd} puntos a ID: ${uid}. Total: ${userObj.points}`);
     
     // Push por puntos acumulados en la recarga
     if (pointsToAdd > 0) {
-        sendPushToUser(uid, '¡Ganaste Puntos! 🎁⭐', `Sumaste +${pointsToAdd} puntos por tu compra. Total: ${users[uid].points} pts.`, '/icon-192.png', '/');
+        sendPushToUser(uid, '¡Ganaste Puntos! 🎁⭐', `Sumaste +${pointsToAdd} puntos por tu compra. Total: ${userObj.points} pts.`, '/icon-192.png', '/');
     }
     
     return pointsToAdd;
@@ -734,7 +797,7 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                         
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) {
-                            addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                             await addPoints(order.login_uid || order.uid, usdtPrice, nick);
                         }
                         
                         queueWhatsAppMessage({ ...order, name: nick }, true);
@@ -1303,7 +1366,7 @@ const server = http.createServer(async (req, res) => {
 
                                 const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                                 if (!isNaN(usdtPrice)) {
-                                    addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                                     await addPoints(order.login_uid || order.uid, usdtPrice, nick);
                                 }
 
                                 editMessageText = `✅ *RECARGA DIRECTA EXITOSA (JADH.SHOP)*\n\n👤 *Jugador:* ${nick}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔢 *Órdenes Jadh:* \`${orderIds.join(', ')}\`\n\n✨ _Acreditado automáticamente en la cuenta del jugador._`;
@@ -1541,7 +1604,7 @@ const server = http.createServer(async (req, res) => {
                         updateOrderStatus(ref, 'approved', jadhOrdersStr);
                         saveRecent(nick, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                        if (!isNaN(usdtPrice)) addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                        if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, nick);
                         
                         queueWhatsAppMessage({ ...order, ref, name: nick }, true);
                         sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
@@ -1848,11 +1911,42 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/api/check_password') {
         const uid = parsedUrl.searchParams.get('uid');
         const pass = parsedUrl.searchParams.get('pass');
-        if (!uid || !users[uid]) {
+        if (!uid) {
+            res.writeHead(400);
+            return res.end(JSON.stringify({ success: false, message: 'Falta uid' }));
+        }
+        // Primero buscar en memoria; si no está, consultar Supabase directamente
+        // sin crear un stub falso (evita logins de usuarios inexistentes)
+        let user = users[uid] || null;
+        if (!user) {
+            try {
+                const { data, error } = await supabase
+                    .from('ff_users')
+                    .select('*')
+                    .eq('uid', uid)
+                    .single();
+                if (!error && data) {
+                    users[uid] = {
+                        name: data.name,
+                        points: data.points || 0,
+                        password: data.password || null,
+                        registered: data.registered,
+                        referred_by: data.referred_by || null,
+                        referral_claimed: data.referral_claimed || false,
+                        cedula: data.cedula || null,
+                        phone: data.phone || null
+                    };
+                    user = users[uid];
+                    console.log(`[SUPABASE] 📥 Usuario ${uid} cargado dinámicamente (check_password).`);
+                }
+            } catch (e) {
+                console.error(`[SUPABASE] Error buscando usuario ${uid} en check_password:`, e.message);
+            }
+        }
+        if (!user) {
             res.writeHead(404);
             return res.end(JSON.stringify({ success: false, message: 'Usuario no encontrado' }));
         }
-        const user = users[uid];
         const hasPassword = !!user.password;
         if (!hasPassword) {
             // No tiene contraseña, puede entrar libre
@@ -2015,15 +2109,11 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/perfil') {
         const uid = parsedUrl.searchParams.get('uid');
         const ref = parsedUrl.searchParams.get('ref'); // referido por
-        if (uid && users[uid]) {
+        if (uid) {
+            const userObj = await ensureUserLoaded(uid);
+            const isNew = !userObj.password && !userObj.phone;
             res.writeHead(200);
-            res.end(JSON.stringify({ success: true, user: users[uid], isNew: false }));
-        } else if (uid) {
-            // Mantener en memoria temporalmente, pero NO guardar en Supabase todavía
-            // Solo se guardará si realiza una compra (vía addPoints)
-            users[uid] = { name: 'Jugador', points: 0, registered: getVEISO() };
-            res.writeHead(200);
-            res.end(JSON.stringify({ success: true, user: users[uid], isNew: true }));
+            res.end(JSON.stringify({ success: true, user: userObj, isNew: isNew }));
         } else {
             res.writeHead(400);
             res.end(JSON.stringify({ error: 'Falta uid' }));
