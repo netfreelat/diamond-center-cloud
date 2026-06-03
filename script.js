@@ -1333,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire({ 
                 icon: 'error', 
                 title: 'ERROR', 
-                text: 'ID NO ENCONTRADO EN GARENA. FAVOR CHEQUEAR SU ID, GRACIAS.', 
+                text: 'id no existe en garena', 
                 confirmButtonText: 'Reintentar',
                 background: 'rgba(20, 10, 35, 0.95)',
                 color: '#fff'
