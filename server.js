@@ -768,6 +768,9 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                 
                 const { qty, amountKey } = extractPackInfo(order.pack);
                 
+                // Cambiar estado a processing para bloquear aprobaciones manuales simultáneas
+                orders[targetShortRef].status = 'processing';
+                
                 console.log(`[AUTO-APPROVE] Iniciando recarga automática via Jadh.shop para ${order.uid} | Qty: ${qty}`);
                 
                 (async () => {
@@ -784,6 +787,8 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                         } else {
                             allSuccess = false;
                             console.error(`[AUTO-APPROVE] Falló recarga ${i+1}/${qty}: ${result.message}`);
+                            // Revertimos estado en caso de fallo para permitir intervención manual
+                            orders[targetShortRef].status = 'pending';
                             break;
                         }
                     }
@@ -1334,6 +1339,8 @@ const server = http.createServer(async (req, res) => {
                     }
 
                     if (action === 'accept') {
+                        // Cambiar estado a processing para evitar ejecución simultánea
+                        order.status = 'processing';
                         console.log(`[WEBHOOK] 💎 Ejecutando recarga directa via Jadh.shop para ${order.uid}`);
                         
                         (async () => {
@@ -1374,9 +1381,9 @@ const server = http.createServer(async (req, res) => {
                                 queueWhatsAppMessage({ ...order, name: nick, ref }, true);
                                 sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
                             } else {
-                                orders[ref].status = 'failed';
-                                updateOrderStatus(ref, 'failed');
-                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido quedó en estado fallido. Revisa manualmente._`;
+                                orders[ref].status = 'pending'; // Revertimos a pending para reintento manual
+                                updateOrderStatus(ref, 'pending');
+                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido volvió a estado pendiente. Revisa manualmente._`;
                                 
                                 queueWhatsAppMessage({ ...order, ref }, false);
                                 sendPushToUser(order.login_uid || order.uid, 'Error en Recarga ❌', `Tuvimos un problema al recargar tus diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
@@ -1573,12 +1580,17 @@ const server = http.createServer(async (req, res) => {
                 
                 // --- SEGURIDAD: NO APROBAR DOS VECES ---
                 if (order && order.status !== 'pending') {
-                    console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${ref}`);
+                    console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${ref} (status actual: ${order.status})`);
                     res.writeHead(200);
-                    return res.end(JSON.stringify({ success: false, message: 'Este pedido ya fue procesado.' }));
+                    return res.end(JSON.stringify({ success: false, message: 'Este pedido ya está siendo procesado o fue procesado.' }));
                 }
 
                 if (order && order.status === 'pending') {
+                    // Cambiar estado a processing de inmediato para evitar doble click
+                    order.status = 'processing';
+                    // Nota: No llamamos updateOrderStatus('processing') en Supabase para no enviar notificaciones raras,
+                    // solo bloqueamos a nivel de memoria RAM hasta que termine y se llame con 'approved' o vuelva a 'pending'.
+                    
                     console.log(`[ADMIN-APPROVE] 💎 Iniciando recarga manual via Jadh.shop para ${order.uid}`);
                     const { qty, amountKey } = extractPackInfo(order.pack);
                     let allSuccess = true;
@@ -1592,6 +1604,7 @@ const server = http.createServer(async (req, res) => {
                             if (result.orderId) orderIds.push(result.orderId);
                         } else {
                             allSuccess = false;
+                            order.status = 'pending'; // Revertimos para permitir reintento manual
                             res.writeHead(200);
                             return res.end(JSON.stringify({ success: false, message: `Error en recarga ${i+1}/${qty}: ${result.message}` }));
                         }
