@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadLastIdBtn = document.getElementById('load-last-id');
     const historyBtn = document.getElementById('history-btn');
     const favoritesBtn = document.getElementById('favorites-btn');
+    const pricesBtn = document.getElementById('prices-btn');
     const addFavoriteBtn = document.getElementById('add-favorite-btn');
     const changeIdBtn = document.getElementById('change-id-btn');
     const resetUiBtn = document.getElementById('reset-ui-btn');
@@ -424,6 +425,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.isConfirmed) historyBtn.click();
         });
     });
+
+    // Manejar Botón de Precios
+    if (pricesBtn) {
+        pricesBtn.addEventListener('click', () => {
+            if (!APP_CONFIG.precios) {
+                Swal.fire({ icon: 'warning', title: 'Cargando...', text: 'Los precios aún se están cargando. Intenta de nuevo en unos segundos.', background: 'rgba(20, 10, 35, 0.95)', color: '#fff' });
+                return;
+            }
+
+            let htmlContent = '<div style="text-align: left; font-size: 0.9rem; margin-top: 10px;">';
+            
+            Object.entries(APP_CONFIG.precios).forEach(([amount, data]) => {
+                const priceBs = (data.usdt * DOLAR_RATE).toFixed(2).replace('.', ',');
+                htmlContent += `
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight: bold; color: #fff;">💎 ${amount} <span style="color:var(--secondary); font-size:0.8em;">+ ${(parseInt(amount)*0.1).toFixed(0)}</span></div>
+                        <div style="text-align: right;">
+                            <div style="color: #25D366; font-weight: bold;">${priceBs} Bs</div>
+                            <div style="color: #aaa; font-size: 0.8em;">${data.usdt.toFixed(2)} USDT</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            htmlContent += '</div>';
+
+            Swal.fire({
+                title: '<i class="fa-solid fa-tag"></i> Lista de Precios',
+                html: htmlContent,
+                showConfirmButton: true,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+        });
+    }
 
     // --- LÓGICA DE CUENTA ---
     const loginTriggerBtn = document.getElementById('login-trigger-btn');
