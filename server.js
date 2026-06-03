@@ -403,12 +403,13 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
             return;
         }
-        msg += `\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
+        msg += `\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
     } else {
         msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
               `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
-              `❌ *Motivo:* Error en la verificación del pago.\n\n` +
-              `Envía captura de tu pago a soporte. 🛠️\n🆔 *ID:* ${order.uid}\n\n¡Estamos aquí para ayudarte! 🤝`;
+              `❌ *Motivo:* Error en la verificación del pago o problema con el proveedor.\n\n` +
+              `Envía captura de tu pago a soporte al *+584125322412*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
+              `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
     }
 
     const waItem = { id: singleId, number: order.wa, message: msg };
