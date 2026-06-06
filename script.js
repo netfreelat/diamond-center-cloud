@@ -1364,17 +1364,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
             } else {
-                throw new Error('Jugador no encontrado');
+                throw new Error('ID_INVALIDO');
             }
         } catch (error) {
-            console.error('Error:', error);
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'ERROR', 
-                text: 'id no existe en garena', 
-                confirmButtonText: 'Reintentar',
-                background: 'rgba(20, 10, 35, 0.95)',
-                color: '#fff'
+            console.error('Error verificación ID:', error);
+
+            // Resetear UI para bloquear el acceso al siguiente paso
+            resetUI();
+
+            // Animación de shake en el campo de ID para feedback visual
+            if (playerInput) {
+                playerInput.classList.add('input-shake');
+                setTimeout(() => playerInput.classList.remove('input-shake'), 600);
+                playerInput.focus();
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: '❌ ID Inválido',
+                html: `
+                    <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
+                        El ID que ingresaste <strong style="color:#ff4b2b;">no existe</strong> en los servidores de Garena.
+                    </p>
+                    <p style="color:#aaa; font-size:0.82rem;">
+                        ⚠️ Por favor, verifica tu ID e intenta de nuevo.<br>
+                        <span style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Puedes encontrar tu ID dentro del juego, en tu perfil.</span>
+                    </p>
+                `,
+                confirmButtonText: '🔄 Intentar de nuevo',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                allowOutsideClick: true
             });
         }
     });
