@@ -5,9 +5,9 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.onrender.diamond_center_cloud.twa",
+      "package_name": "com.recargasney.twa",
       "sha256_cert_fingerprints": [
-        "AB:4D:B3:FC:1E:CE:E4:48:A4:66:4A:11:19:11:08:31:12:FB:0B:57:55:F1:43:13:A3:B3:31:28:B4:56:6B:3C"
+        "45:A9:EA:84:FC:72:D5:8C:16:9D:1C:92:23:55:2D:8A:4F:E7:DA:82:8A:31:5C:07:61:A2:AF:C2:50:66:CE:AA"
       ]
     }
   }

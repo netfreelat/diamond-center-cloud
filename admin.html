@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrativo | Diamond Center</title>
+    <title>Panel Administrativo | RECARGASNEY.COM</title>
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#07030D">
@@ -401,7 +401,7 @@
 
     <div class="admin-container" style="display: none;">
         <div class="header">
-            <h1>DIAMOND CENTER ADMIN</h1>
+            <h1>RECARGASNEY.COM ADMIN</h1>
             <p>Control total de pedidos, pines y usuarios</p>
         </div>
 
@@ -422,6 +422,11 @@
         <div id="dashboard" class="tab-content active">
             <div class="stats-grid" id="dashboard-stats">
                 <!-- Cargado por JS -->
+            </div>
+            
+            <div class="action-card" style="margin-top: 20px;">
+                <h2><i class="fa-solid fa-chart-area" style="color: var(--secondary);"></i> Ingresos de los Últimos 7 Días</h2>
+                <canvas id="salesChart" height="80"></canvas>
             </div>
             
             <div class="action-card">
@@ -686,6 +691,34 @@
                 </button>
                 <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 10px;">Usa esto si el bot aparece desconectado pero el script sigue ejecutándose.</p>
             </div>
+
+            <!-- ENVIAR WHATSAPP MASIVO / ESPECÍFICO -->
+            <div class="action-card" style="margin-top: 20px;">
+                <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enviar Mensaje WhatsApp</h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Envía mensajes de WhatsApp a través del bot a tus usuarios.</p>
+                
+                <div class="form-group">
+                    <label>Destinatario:</label>
+                    <select id="wa-broadcast-target" onchange="toggleWaBroadcastTarget(this.value)">
+                        <option value="all">Todos los usuarios registrados (con teléfono)</option>
+                        <option value="single">Número de teléfono específico</option>
+                    </select>
+                </div>
+
+                <div id="wa-broadcast-phone-group" class="form-group" style="display: none;">
+                    <label>Número de teléfono (con código de área, ej. 584121234567):</label>
+                    <input type="text" id="wa-broadcast-phone" placeholder="Ej. 584121234567">
+                </div>
+
+                <div class="form-group">
+                    <label>Mensaje a enviar:</label>
+                    <textarea id="wa-broadcast-message" rows="5" placeholder="Escribe tu mensaje aquí... Puedes usar *negritas*, _cursivas_ y emojis." style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
+                </div>
+
+                <button onclick="sendWaBroadcast()" class="btn-main" style="background: linear-gradient(135deg, #25D366, #128C7E); box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Mensaje(s)
+                </button>
+            </div>
         </div>
 
         <!-- PUSH TAB -->
@@ -732,10 +765,10 @@
         <a href="index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver a la Tienda</a>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const RENDER_URL = 'https://diamond-center-cloud.onrender.com';
-        const SERVER_URL = isLocal ? 'http://localhost:3500' : RENDER_URL;
+        const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
 
         // Helper para inyectar token de sesión en las peticiones
         async function adminFetch(url, options = {}) {
@@ -935,6 +968,7 @@
                         <span class="value" style="color:#00FF94">∞</span>
                     </div>
                 `;
+                updateSalesChart();
             } catch (e) { console.error(e); }
         }
 
@@ -1068,6 +1102,7 @@
                 });
                 const result = await res.json();
                 if (result.success) {
+                    new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(e => {});
                     Swal.fire('¡Éxito!', result.message || 'Pedido aprobado.', 'success');
                     loadOrders();
                 } else {
@@ -1085,6 +1120,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ref })
                 });
+                new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
                 loadOrders();
             } catch (e) { console.error(e); }
         }
@@ -1306,7 +1342,15 @@
         function renderUsers(usersMap) {
             const tbody = document.getElementById('users-table-body');
             tbody.innerHTML = '';
-            Object.entries(usersMap).forEach(([uid, data]) => {
+            
+            // Ordenar por fecha de registro (más nuevos arriba, más antiguos abajo)
+            const sortedUsers = Object.entries(usersMap).sort((a, b) => {
+                const dateA = new Date(a[1].registered || 0).getTime();
+                const dateB = new Date(b[1].registered || 0).getTime();
+                return dateB - dateA;
+            });
+
+            sortedUsers.forEach(([uid, data]) => {
                 const tr = document.createElement('tr');
                 
                 // Formatear fecha de registro de manera premium
@@ -1544,7 +1588,53 @@
                     statusEl.style.color = '#FFC107'; qrContainer.style.display = 'block';
                     if (data.qr) { qrContainer.innerHTML = ''; new QRCode(qrContainer, { text: data.qr, width: 200, height: 200 }); }
                 } else { statusEl.style.color = '#ff4b2b'; qrContainer.style.display = 'none'; }
-            } catch (e) { console.error(e); }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function toggleWaBroadcastTarget(val) {
+            document.getElementById('wa-broadcast-phone-group').style.display = (val === 'single') ? 'block' : 'none';
+        }
+
+        async function sendWaBroadcast() {
+            const targetType = document.getElementById('wa-broadcast-target').value;
+            const targetPhone = document.getElementById('wa-broadcast-phone').value.trim();
+            const message = document.getElementById('wa-broadcast-message').value.trim();
+
+            if (!message) return Swal.fire('Error', 'Debes escribir un mensaje.', 'error');
+            if (targetType === 'single' && !targetPhone) return Swal.fire('Error', 'Ingresa un número de teléfono válido.', 'error');
+
+            const confirm = await Swal.fire({
+                title: '¿Confirmar envío?',
+                text: targetType === 'all' 
+                      ? 'Esto añadirá el mensaje a la cola para TODOS los usuarios con teléfono registrado.' 
+                      : `Se enviará el mensaje al número ${targetPhone}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, enviar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({ title: 'Enviando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                const res = await adminFetch(`${SERVER_URL}/api/admin/wa_broadcast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetType, targetPhone, message })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('¡Éxito!', `${data.enqueued} mensaje(s) añadido(s) a la cola de envío.`, 'success');
+                    document.getElementById('wa-broadcast-message').value = '';
+                } else {
+                    Swal.fire('Error', data.message || 'Error al enviar.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Error de conexión con el servidor.', 'error');
+            }
         }
 
         async function clearWaQueue() {
@@ -1644,7 +1734,7 @@
             if (titleFlashInterval) {
                 clearInterval(titleFlashInterval);
                 titleFlashInterval = null;
-                document.title = 'Panel Administrativo | Diamond Center';
+                document.title = 'Panel Administrativo | RECARGASNEY.COM';
             }
         }
 
@@ -1683,6 +1773,47 @@
                 });
             });
         }
+        async function updateSalesChart() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/orders/all`);
+                const result = await res.json();
+                if (!result.success) return;
+                const orders = result.orders.filter(o => o.status === 'approved');
+                const last7Days = [];
+                for(let i=6; i>=0; i--) {
+                    const d = new Date(); d.setDate(d.getDate() - i);
+                    last7Days.push(d.toLocaleDateString('es-VE', { month: 'short', day: 'numeric' }));
+                }
+                const dataValues = new Array(7).fill(0);
+                orders.forEach(o => {
+                    const d = new Date(o.time);
+                    if (isNaN(d)) return;
+                    const dateStr = d.toLocaleDateString('es-VE', { month: 'short', day: 'numeric' });
+                    const idx = last7Days.indexOf(dateStr);
+                    if (idx !== -1) {
+                        const price = parseFloat((o.price || '0').replace(/[^0-9.]/g, ''));
+                        dataValues[idx] += price || 0;
+                    }
+                });
+                const ctx = document.getElementById('salesChart').getContext('2d');
+                if (window.salesChartInstance) window.salesChartInstance.destroy();
+                Chart.defaults.color = '#a0a0b5';
+                window.salesChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: last7Days,
+                        datasets: [{
+                            label: 'Ingresos (Bs)', data: dataValues,
+                            borderColor: '#00F0FF', backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#9D00FF', pointBorderColor: '#fff', pointRadius: 5
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                });
+            } catch (e) {}
+        }
     </script>
 </body>
 </html>
+

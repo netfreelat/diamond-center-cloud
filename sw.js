@@ -1,4 +1,4 @@
-const CACHE_NAME = 'diamond-center-v2';
+﻿const CACHE_NAME = 'diamond-center-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -67,13 +67,13 @@ self.addEventListener('fetch', event => {
 
 // --- LÓGICA DE NOTIFICACIONES PUSH PWA ---
 self.addEventListener('push', event => {
-    let data = { title: 'Diamond Center', body: 'Nueva notificación.' };
+    let data = { title: 'RECARGASNEY.COM', body: 'Nueva notificación.' };
     
     if (event.data) {
         try {
             data = event.data.json();
         } catch (e) {
-            data = { title: 'Diamond Center', body: event.data.text() };
+            data = { title: 'RECARGASNEY.COM', body: event.data.text() };
         }
     }
 
@@ -114,3 +114,4 @@ self.addEventListener('notificationclick', event => {
         })
     );
 });
+

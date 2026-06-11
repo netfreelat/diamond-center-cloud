@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     let DOLAR_RATE = 635.00;
     let APP_CONFIG = {};
     let adminMarqueeText = "";
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let combinedText = parts.join(' ⚡ ');
         if (!combinedText) {
-            combinedText = "¡BIENVENIDOS A DIAMOND CENTER! Recargas automáticas 24/7. ¡Booyah! 💎";
+            combinedText = "¡BIENVENIDOS A RECARGASNEY.COM! Recargas automáticas 24/7. ¡Booyah! 💎";
         }
         
         if (marquee.innerText !== combinedText) {
@@ -100,6 +100,91 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carga inicial y sondeo automático cada 5 segundos
     loadConfig();
     setInterval(loadConfig, 5000);
+
+    // ===== SECCIÓN DE RESEÑAS =====
+    async function loadReviews() {
+        try {
+            const res = await fetch(`${SERVER_URL}/api/reviews`);
+            const data = await res.json();
+            if (!data.success || !data.reviews || data.reviews.length === 0) return;
+
+            const section = document.getElementById('reviews-section');
+            const carousel = document.getElementById('reviews-carousel');
+            const avgScoreEl = document.getElementById('reviews-avg-score');
+            const avgStarsEl = document.getElementById('reviews-avg-stars');
+            const totalCountEl = document.getElementById('reviews-total-count');
+            if (!section || !carousel) return;
+
+            const reviews = data.reviews;
+            // Calcular promedio
+            const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+            avgScoreEl.textContent = avg.toFixed(1);
+            avgStarsEl.innerHTML = renderStars(Math.round(avg));
+            totalCountEl.textContent = `${reviews.length} reseña${reviews.length !== 1 ? 's' : ''}`;
+
+            // Renderizar tarjetas (máximo 8)
+            carousel.innerHTML = '';
+            reviews.slice(0, 8).forEach((r, idx) => {
+                const initials = (r.name || '?').charAt(0).toUpperCase();
+                const timeAgo = getTimeAgo(r.created_at);
+                const card = document.createElement('div');
+                card.className = 'review-card';
+                card.style.animationDelay = `${idx * 0.08}s`;
+                card.innerHTML = `
+                    <div class="review-card-header">
+                        <div class="review-avatar">${initials}</div>
+                        <div class="review-meta">
+                            <span class="review-name">${maskName(r.name)}</span>
+                            <span class="review-pack">💎 ${r.pack || 'Diamantes'}</span>
+                        </div>
+                        <small style="color:var(--text-gray);font-size:0.65rem;white-space:nowrap;">${timeAgo}</small>
+                    </div>
+                    <div class="review-card-stars">${renderStars(r.rating)}</div>
+                    <p class="review-text">${r.comment || getDefaultComment(r.rating)}</p>
+                    <div class="review-verified"><i class="fa-solid fa-circle-check"></i> Compra verificada</div>
+                `;
+                carousel.appendChild(card);
+            });
+
+            section.style.display = 'block';
+        } catch (e) { /* sin reseñas aún */ }
+    }
+
+    function renderStars(count) {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            html += `<i class="fa-${i <= count ? 'solid' : 'regular'} fa-star"></i>`;
+        }
+        return html;
+    }
+
+    function maskName(name) {
+        if (!name || name.length < 3) return name || '***';
+        return name.charAt(0).toUpperCase() + '*'.repeat(Math.min(name.length - 2, 4)) + name.charAt(name.length - 1).toUpperCase();
+    }
+
+    function getTimeAgo(isoDate) {
+        if (!isoDate) return '';
+        const diff = Date.now() - new Date(isoDate).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return `hace ${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `hace ${hrs}h`;
+        return `hace ${Math.floor(hrs / 24)}d`;
+    }
+
+    function getDefaultComment(rating) {
+        const comments = {
+            5: ['¡Súper rápido, lo recomiendo! 🔥', '¡Excelente servicio! Los diamantes llegaron al instante.', '¡Increíble, el mejor servicio de recargas!', 'Seguro y rápido, 100% recomendado 💎'],
+            4: ['Muy buen servicio, llegaron rápido.', 'Todo perfecto, los diamantes llegaron en minutos.'],
+            3: ['Bien, llegaron mis diamantes sin problemas.']
+        };
+        const opts = comments[rating] || comments[4];
+        return opts[Math.floor(Math.random() * opts.length)];
+    }
+
+    loadReviews();
+
 
     // Mostrar banner de bienvenida si nunca ha iniciado sesión
     const newUserBanner = document.getElementById('new-user-banner');
@@ -696,13 +781,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input id="swal-reg-uid" type="text" class="swal2-input" placeholder="Ej: 12345678" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
                         <small style="font-size:0.75rem; color:#666; display:block; margin-top:3px;">Se verificará que exista en Free Fire.</small>
                     </div>
-                    <div style="margin-bottom:12px;">
-                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Cédula de Identidad <span style="color:#00F0FF;">*</span></label>
-                        <input id="swal-reg-cedula" type="text" class="swal2-input" placeholder="Solo números (Ej: 25987456)" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Nombre <span style="color:#00F0FF;">*</span></label>
+                            <input id="swal-reg-nombre" type="text" class="swal2-input" placeholder="Tu nombre" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Apellido <span style="color:#00F0FF;">*</span></label>
+                            <input id="swal-reg-apellido" type="text" class="swal2-input" placeholder="Tu apellido" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        </div>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Teléfono (WhatsApp) <span style="color:#00F0FF;">*</span></label>
-                        <input id="swal-reg-phone" type="text" class="swal2-input" placeholder="Ej: 04121234567" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Teléfono WhatsApp <span style="color:#00F0FF;">*</span></label>
+                        <input id="swal-reg-phone" type="text" inputmode="numeric" class="swal2-input" placeholder="Ej: 04121234567" style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
                     </div>
                     <div style="margin-bottom:15px;">
                         <label style="font-size:0.8rem; color:#aaa; display:block; margin-bottom:5px;">Crea una Contraseña <span style="color:#00F0FF;">*</span></label>
@@ -769,7 +860,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return { tab: 'login', uid, password };
                 } else {
                     const uid = document.getElementById('swal-reg-uid').value.trim();
-                    const cedula = document.getElementById('swal-reg-cedula').value.trim();
+                    const nombre = document.getElementById('swal-reg-nombre').value.trim();
+                    const apellido = document.getElementById('swal-reg-apellido').value.trim();
                     const phone = document.getElementById('swal-reg-phone').value.trim();
                     const password = document.getElementById('swal-reg-password').value;
 
@@ -777,16 +869,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         Swal.showValidationMessage('Por favor ingresa tu ID de jugador (UID)');
                         return false;
                     }
-                    if (!cedula) {
-                        Swal.showValidationMessage('Por favor ingresa tu Cédula de Identidad');
+                    if (!nombre) {
+                        Swal.showValidationMessage('Por favor ingresa tu Nombre');
                         return false;
                     }
-                    if (!/^\d+$/.test(cedula)) {
-                        Swal.showValidationMessage('La Cédula de Identidad debe contener solo números');
+                    if (!apellido) {
+                        Swal.showValidationMessage('Por favor ingresa tu Apellido');
                         return false;
                     }
                     if (!phone) {
-                        Swal.showValidationMessage('Por favor ingresa tu Teléfono (WhatsApp)');
+                        Swal.showValidationMessage('Por favor ingresa tu Teléfono WhatsApp');
                         return false;
                     }
                     if (!password || password.length < 4) {
@@ -794,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return false;
                     }
 
-                    return { tab: 'register', uid, cedula, phone, password };
+                    return { tab: 'register', uid, nombre, apellido, phone, password };
                 }
             }
         });
@@ -859,8 +951,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // 1. Validar ID en Garena
-                const name = await checkPlayerId(result.uid);
-                if (!name) {
+                const playerInfo = await checkPlayerId(result.uid);
+                
+                if (!playerInfo.found && playerInfo.networkError) {
+                    return Swal.fire({
+                        icon: 'warning',
+                        title: '⚠️ Error de Conexión',
+                        text: 'No se pudo verificar tu ID con Garena en este momento. Por favor, intenta de nuevo.',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                }
+
+                if (!playerInfo.found) {
                     return Swal.fire({
                         icon: 'error',
                         title: 'ID de Jugador no encontrado',
@@ -874,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 2. ID verificado, proceder al registro
                 Swal.fire({ 
                     title: 'Creando cuenta...', 
-                    html: `<p style="color:#aaa;font-size:0.85rem;">Registrando a <strong>${name}</strong>...</p>`,
+                    html: `<p style="color:#aaa;font-size:0.85rem;">Registrando a <strong>${playerInfo.name || 'Jugador'}</strong>...</p>`,
                     allowOutsideClick: false, 
                     didOpen: () => Swal.showLoading() 
                 });
@@ -884,8 +988,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         uid: result.uid,
-                        name: name,
-                        cedula: result.cedula,
+                        name: playerInfo.name || 'Jugador',
+                        apellido: result.apellido,
                         phone: result.phone,
                         password: result.password
                     })
@@ -1084,14 +1188,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span style="color:#aaa;"><i class="fa-solid fa-id-card"></i> ID de Jugador:</span>
                             <strong style="color:#fff;">${uid}</strong>
                         </div>
-                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-                            <span style="color:#aaa;"><i class="fa-solid fa-address-card"></i> Cédula:</span>
-                            <strong style="color:#fff;">${userProfile.cedula || 'No registrada'}</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-                            <span style="color:#aaa;"><i class="fa-solid fa-phone"></i> Teléfono:</span>
-                            <strong style="color:#fff;">${userProfile.phone || 'No registrado'}</strong>
-                        </div>
                         <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px; align-items:center;">
                             <span style="color:#aaa;"><i class="fa-solid fa-star"></i> Puntos Acumulados:</span>
                             <span class="points-badge" style="margin:0; padding:4px 10px; font-size:0.8rem; background:rgba(255, 215, 0, 0.15); border:1px solid rgba(255, 215, 0, 0.4); display:inline-flex; align-items:center; gap:5px; color:#ffd700; border-radius:20px; font-weight:700;"><i class="fa-solid fa-star"></i> ${userProfile.points || 0} pts</span>
@@ -1107,10 +1203,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <!-- Botones de Acción -->
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                        <button id="btn-change-pass" style="background:rgba(255, 255, 255, 0.05); border:1px solid rgba(255, 255, 255, 0.1); color:#fff; padding:10px; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
-                            <i class="fa-solid fa-key"></i> Contraseña
-                        </button>
+                    <div style="display:grid; grid-template-columns:1fr; gap:10px;">
                         <button id="btn-logout-dashboard" style="background:rgba(255, 75, 43, 0.1); border:1px solid rgba(255, 75, 43, 0.3); color:#ff4b2b; padding:10px; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
                             <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
                         </button>
@@ -1142,12 +1235,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
-                // Cambiar Contraseña
-                document.getElementById('btn-change-pass').addEventListener('click', async () => {
-                    Swal.close();
-                    await promptSetPassword(uid);
-                });
-
                 // Cerrar Sesión
                 document.getElementById('btn-logout-dashboard').addEventListener('click', () => {
                     Swal.close();
@@ -1162,6 +1249,191 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAccountUI(null);
         location.reload();
     });
+
+    // --- BOTÓN PERFIL (ícono usuario-lápiz en el header) ---
+    const perfilBtn = document.getElementById('perfil-btn');
+    if (perfilBtn) {
+        perfilBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const uid = localStorage.getItem('ff_user_id');
+            if (!uid) return;
+
+            // Solicitar contraseña antes de abrir el perfil
+            Swal.fire({ title: 'Verificando seguridad...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                const authCheck = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}`);
+                const authRes = await authCheck.json();
+
+                if (authRes.success && authRes.hasPassword) {
+                    const { value: enteredPassword } = await Swal.fire({
+                        title: '🔐 Perfil Protegido',
+                        html: `
+                            <p style="font-size:0.9rem;color:#aaa;margin-bottom:15px;">Ingresa tu contraseña para acceder a tu perfil:</p>
+                            <input id="swal-perfil-pass" type="password" class="swal2-input" placeholder="Tu contraseña">
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Ingresar',
+                        cancelButtonText: 'Cancelar',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        didOpen: () => {
+                            const inp = document.getElementById('swal-perfil-pass');
+                            if (inp) {
+                                inp.focus();
+                                inp.addEventListener('keydown', (e) => {
+                                    if (e.key === 'Enter') Swal.clickConfirm();
+                                });
+                            }
+                        },
+                        preConfirm: () => {
+                            const pass = document.getElementById('swal-perfil-pass').value;
+                            if (!pass) {
+                                Swal.showValidationMessage('Debes ingresar tu contraseña');
+                                return false;
+                            }
+                            return pass;
+                        }
+                    });
+
+                    if (!enteredPassword) return; // Cancelado
+
+                    Swal.fire({ title: 'Validando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    const verifyRes = await fetch(`${SERVER_URL}/api/check_password?uid=${uid}&pass=${encodeURIComponent(enteredPassword)}`);
+                    const verifyData = await verifyRes.json();
+
+                    if (!verifyData.success) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Contraseña incorrecta. Inténtalo de nuevo.' });
+                        return;
+                    }
+                } else if (authCheck.status !== 404) {
+                    // Si el usuario existe pero no tiene contraseña (usuarios viejos), debería crear una
+                    const { isConfirmed } = await Swal.fire({
+                        title: '🛡️ Protege tu Cuenta',
+                        text: 'Aún no tienes una contraseña. Para proteger tus puntos y perfil, por favor crea una contraseña.',
+                        icon: 'info',
+                        showCancelButton: true,
+                        confirmButtonText: 'Crear Contraseña',
+                        cancelButtonText: 'Cancelar',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    });
+                    if (isConfirmed && typeof promptSetPassword === 'function') {
+                        await promptSetPassword(uid);
+                        return; // Detenemos aquí, que vuelva a entrar luego
+                    } else {
+                        return; // Si no crea, no entra
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo verificar la seguridad de la cuenta.' });
+                return;
+            }
+
+            // Si pasa la contraseña, cargar datos actuales del perfil
+            Swal.fire({ title: 'Cargando perfil...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            let perfil = { name: '', apellido: '', phone: '' };
+            try {
+                const res = await fetch(`${SERVER_URL}/perfil?uid=${uid}`);
+                const data = await res.json();
+                if (data.success && data.user) {
+                    perfil = data.user;
+                }
+            } catch (e) { console.error(e); }
+
+            const { value: formData } = await Swal.fire({
+                title: '👤 Mi Perfil',
+                html: `
+                    <div style="text-align:left; font-family:'Inter', sans-serif;">
+                        <div style="background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.15); border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:0.8rem; color:#aaa;">
+                            <i class="fa-solid fa-gamepad" style="color:#00F0FF;"></i>
+                            ID de Jugador: <strong style="color:#fff; font-family:monospace;">${uid}</strong>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                            <div>
+                                <label style="font-size:0.78rem; color:#aaa; display:block; margin-bottom:4px;">Nombre <span style="color:#00F0FF;">*</span></label>
+                                <input id="p-nombre" type="text" class="swal2-input" value="${perfil.name || ''}" placeholder="Tu nombre"
+                                    style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.78rem; color:#aaa; display:block; margin-bottom:4px;">Apellido <span style="color:#00F0FF;">*</span></label>
+                                <input id="p-apellido" type="text" class="swal2-input" value="${perfil.apellido || ''}" placeholder="Tu apellido"
+                                    style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <label style="font-size:0.78rem; color:#aaa; display:block; margin-bottom:4px;"><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Teléfono WhatsApp <span style="color:#00F0FF;">*</span></label>
+                            <input id="p-phone" type="text" inputmode="numeric" class="swal2-input" value="${perfil.phone || ''}" placeholder="Ej: 04121234567"
+                                style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        </div>
+                        <div style="margin-bottom:4px;">
+                            <label style="font-size:0.78rem; color:#aaa; display:block; margin-bottom:4px;"><i class="fa-solid fa-key"></i> Nueva Contraseña <span style="color:#666; font-size:0.72rem;">(dejar vacío para no cambiar)</span></label>
+                            <input id="p-password" type="password" class="swal2-input" placeholder="Mínimo 4 caracteres"
+                                style="margin:0; width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; height:40px; padding:0 12px; font-size:0.9rem;">
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-solid fa-floppy-disk"></i> Guardar Perfil',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                preConfirm: () => {
+                    const nombre = document.getElementById('p-nombre').value.trim();
+                    const apellido = document.getElementById('p-apellido').value.trim();
+                    const phone = document.getElementById('p-phone').value.trim();
+                    const password = document.getElementById('p-password').value;
+
+                    if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+                    if (!apellido) { Swal.showValidationMessage('El apellido es obligatorio'); return false; }
+                    if (!phone) { Swal.showValidationMessage('El teléfono WhatsApp es obligatorio'); return false; }
+                    if (password && password.length < 4) { Swal.showValidationMessage('La contraseña debe tener al menos 4 caracteres'); return false; }
+
+                    return { nombre, apellido, phone, password };
+                }
+            });
+
+            if (!formData) return;
+
+            Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const body = {
+                    uid,
+                    name: formData.nombre,
+                    apellido: formData.apellido,
+                    phone: formData.phone
+                };
+                // Solo enviar contraseña si el usuario escribió una nueva
+                if (formData.password) body.password = formData.password;
+
+                const res = await fetch(`${SERVER_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ Perfil Actualizado',
+                        text: `¡Hola, ${formData.nombre} ${formData.apellido}! Tu perfil ha sido guardado correctamente.`,
+                        timer: 2500,
+                        showConfirmButton: false,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo guardar el perfil.', background: 'rgba(20, 10, 35, 0.98)', color: '#fff' });
+                }
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Error de conexión', text: 'No se pudo conectar con el servidor.', background: 'rgba(20, 10, 35, 0.98)', color: '#fff' });
+            }
+        });
+    }
     // --- FIN LÓGICA DE CUENTA ---
 
     favoritesBtn.addEventListener('click', () => {
@@ -1253,11 +1525,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (r.type === 'canje') {
                         return `🎁 ${r.name} CANJEÓ ${r.pack} diamantes con sus puntos!`;
                     }
-                    return `✅ ${r.name} compró PIN de ${r.pack} diamantes`;
+                    return `✅ ${r.name} recargó ${r.pack} diamantes`;
                 }).join(' | ');
                 recentReloadsText = `ÚLTIMAS COMPRAS: ${text} | ¡Únete a los miles de jugadores que confían en nosotros!`;
             } else {
-                recentReloadsText = "¡BIENVENIDOS A LA TIENDA DE PINES! – Selecciona tu paquete y recibe tu código al instante.";
+                recentReloadsText = "¡BIENVENIDOS AL CENTRO DE RECARGAS! – Selecciona tu paquete y recibe tus diamantes al instante.";
             }
             updateMarqueeDisplay();
         } catch (e) {
@@ -1266,6 +1538,114 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     loadRecentReloads();
     setInterval(loadRecentReloads, 30000); // Actualizar cada 30 segundos
+
+    // ===== SISTEMA DE ALERTAS FOMO (Compras en Vivo) =====
+    (function initFOMO() {
+        // Crear el contenedor de notificaciones
+        const fomoEl = document.createElement('div');
+        fomoEl.id = 'fomo-toast';
+        fomoEl.innerHTML = `
+            <div class="fomo-icon">🔥</div>
+            <div class="fomo-body">
+                <div class="fomo-title" id="fomo-title"></div>
+                <div class="fomo-sub" id="fomo-sub"></div>
+            </div>
+            <button class="fomo-close" id="fomo-close" title="Cerrar">✕</button>
+        `;
+        document.body.appendChild(fomoEl);
+
+        document.getElementById('fomo-close').addEventListener('click', () => {
+            fomoEl.classList.remove('fomo-show');
+        });
+
+        let fomoQueue = [];
+        let fomoTimer = null;
+
+        function maskFomoName(name) {
+            if (!name || name.length < 3) return name || 'Un jugador';
+            return name.charAt(0).toUpperCase() + '*'.repeat(Math.min(name.length - 2, 3)) + name.charAt(name.length - 1).toUpperCase();
+        }
+
+        function getRelativeTime(timeStr) {
+            // timeStr viene como "HH:MM AM/PM DD/MM/YYYY" o similar
+            // Intentamos interpretarlo; si falla usamos tiempos genéricos
+            const opts = ['hace 1 min', 'hace 2 min', 'hace 5 min', 'hace 8 min', 'hace 12 min', 'hace 18 min', 'hace 25 min'];
+            return opts[Math.floor(Math.random() * opts.length)];
+        }
+
+        function showFomoToast(item) {
+            const titleEl = document.getElementById('fomo-title');
+            const subEl = document.getElementById('fomo-sub');
+            if (!titleEl || !subEl) return;
+
+            const name = maskFomoName(item.name);
+            const when = getRelativeTime(item.time);
+
+            // Variador de paquetes para marketing (Efecto FOMO de paquetes altos)
+            let displayPack = item.pack;
+            if (displayPack && displayPack.includes('100')) {
+                // 60% de probabilidad de mostrar un paquete más alto para animar compras grandes
+                if (Math.random() > 0.4) {
+                    const marketingPacks = ['310 + 31', '520 + 52', '1060 + 106', '310 + 31', '520 + 52', '2180 + 218'];
+                    displayPack = marketingPacks[Math.floor(Math.random() * marketingPacks.length)];
+                }
+            }
+
+            if (item.type === 'canje') {
+                fomoEl.querySelector('.fomo-icon').textContent = '🎁';
+                titleEl.textContent = `${name} canjeó ${displayPack} 💎`;
+                subEl.textContent = `con sus puntos acumulados · ${when}`;
+            } else {
+                fomoEl.querySelector('.fomo-icon').textContent = '🔥';
+                titleEl.textContent = `${name} compró ${displayPack} 💎`;
+                subEl.textContent = `recarga exitosa · ${when}`;
+            }
+
+            fomoEl.classList.add('fomo-show');
+
+            // Auto-ocultar después de 5 segundos
+            clearTimeout(fomoTimer);
+            fomoTimer = setTimeout(() => {
+                fomoEl.classList.remove('fomo-show');
+            }, 5000);
+        }
+
+        async function fetchAndQueueFomo() {
+            try {
+                const res = await fetch(`${SERVER_URL}/recientes`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    fomoQueue = [...data]; // Rellenar cola con datos reales
+                }
+            } catch (e) { /* silent */ }
+        }
+
+        function showNextFomo() {
+            if (fomoQueue.length === 0) return;
+            // Tomar uno aleatorio de la cola
+            const idx = Math.floor(Math.random() * fomoQueue.length);
+            showFomoToast(fomoQueue[idx]);
+        }
+
+        // Inicializar: cargar datos y luego mostrar la primera notificación a los 8 segundos
+        fetchAndQueueFomo();
+        setTimeout(() => {
+            showNextFomo();
+            // Seguir mostrando cada 20-35 segundos aleatoriamente
+            function scheduleNext() {
+                const delay = (Math.random() * 15000) + 20000; // entre 20s y 35s
+                setTimeout(() => {
+                    if (fomoQueue.length > 0) showNextFomo();
+                    scheduleNext();
+                }, delay);
+            }
+            scheduleNext();
+        }, 8000);
+
+        // Re-cargar datos frescos cada 2 minutos
+        setInterval(fetchAndQueueFomo, 120000);
+    })();
+
 
     // Permitir verificar presionando Enter
     playerInput.addEventListener('keydown', (e) => {
@@ -1300,7 +1680,60 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            const playerName = await checkPlayerId(uid);
+            const result = await checkPlayerId(uid);
+
+            if (!result.found && result.networkError) {
+                // Error de red / timeout — no bloquear, pedir reintento
+                Swal.fire({
+                    icon: 'warning',
+                    title: '⚠️ Error de Conexión',
+                    html: `
+                        <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
+                            No se pudo conectar con los servidores de Garena.<br>
+                            <strong style="color:#ffd700;">Tu ID puede ser válido.</strong>
+                        </p>
+                        <p style="color:#aaa; font-size:0.82rem;">
+                            Por favor verifica tu conexión a internet e intenta de nuevo.
+                        </p>
+                    `,
+                    confirmButtonText: '🔄 Intentar de nuevo',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    allowOutsideClick: true
+                });
+                return;
+            }
+
+            if (!result.found) {
+                // ID definitivamente no existe en Garena — bloquear acceso
+                if (playerInput) {
+                    playerInput.classList.add('input-shake');
+                    setTimeout(() => playerInput.classList.remove('input-shake'), 600);
+                    playerInput.focus();
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ ID No Válido',
+                    html: `
+                        <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
+                            El ID <strong style="color:#ff4b2b;">${uid}</strong> no existe en los servidores de Garena.
+                        </p>
+                        <p style="color:#aaa; font-size:0.82rem;">
+                            ⚠️ Verifica que el ID sea correcto e intenta de nuevo.<br>
+                            <span style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Puedes encontrar tu ID en tu perfil dentro del juego.</span>
+                        </p>
+                    `,
+                    confirmButtonText: '🔄 Intentar de nuevo',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    allowOutsideClick: true
+                });
+                return;
+            }
+
+            const playerName = result.name;
 
             if (playerName) {
                 // --- TÉRMINOS Y CONDICIONES ---
@@ -1363,39 +1796,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchPlayerHistory(uid);
 
 
-            } else {
-                throw new Error('ID_INVALIDO');
             }
         } catch (error) {
-            console.error('Error verificación ID:', error);
-
-            // Resetear UI para bloquear el acceso al siguiente paso
+            console.error('Error inesperado en verificación ID:', error);
             resetUI();
-
-            // Animación de shake en el campo de ID para feedback visual
-            if (playerInput) {
-                playerInput.classList.add('input-shake');
-                setTimeout(() => playerInput.classList.remove('input-shake'), 600);
-                playerInput.focus();
-            }
-
             Swal.fire({
                 icon: 'error',
-                title: '❌ ID Inválido',
-                html: `
-                    <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
-                        El ID que ingresaste <strong style="color:#ff4b2b;">no existe</strong> en los servidores de Garena.
-                    </p>
-                    <p style="color:#aaa; font-size:0.82rem;">
-                        ⚠️ Por favor, verifica tu ID e intenta de nuevo.<br>
-                        <span style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Puedes encontrar tu ID dentro del juego, en tu perfil.</span>
-                    </p>
-                `,
-                confirmButtonText: '🔄 Intentar de nuevo',
+                title: 'Error Inesperado',
+                text: 'Ocurrió un error al verificar el ID. Por favor intenta de nuevo.',
+                confirmButtonText: '🔄 Reintentar',
                 confirmButtonColor: '#9D00FF',
                 background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff',
-                allowOutsideClick: true
+                color: '#fff'
             });
         }
     });
@@ -1645,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         <div class="receipt-card">
                             <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FREE F<span>I</span>RE</div>
-                            <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">DIAMOND CENTER CLOUD</div>
+                            <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">RECARGASNEY.COM</div>
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
                                 <p><strong>PLAN:</strong> <span class="val">${selectedPackage.amount} + ${selectedPackage.bonus} Bonus</span></p>
@@ -1658,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
                              <!-- Contenedor de PIN ocultado ya que no se trabaja con pines -->
                             
                             <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
-                                <i class="fa-solid fa-shield-halved"></i> Diamond Center Cloud - Transacción Segura
+                                <i class="fa-solid fa-shield-halved"></i> RECARGASNEY.COM - Transacción Segura
                             </div>
                         </div>
                         
@@ -1703,13 +2115,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                     successIcon.style.color = '#25D366';
                                     successIcon.style.borderColor = '#25D366';
                                     
-                                    // Lanzar confeti de celebración
-                                    confetti({
-                                        particleCount: 150,
-                                        spread: 70,
-                                        origin: { y: 0.6 },
-                                        colors: ['#ffd700', '#00c853', '#ffffff']
-                                    });
+                                    // Lanzar confeti (EFECTO JACKPOT)
+                                    const duration = 3 * 1000;
+                                    const animationEnd = Date.now() + duration;
+                                    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+                                    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+                                    const interval = setInterval(function() {
+                                        const timeLeft = animationEnd - Date.now();
+                                        if (timeLeft <= 0) return clearInterval(interval);
+                                        const particleCount = 50 * (timeLeft / duration);
+                                        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: ['#ffd700', '#00c853', '#ffffff'] }));
+                                        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#ffd700', '#00c853', '#ffffff'] }));
+                                    }, 250);
 
                                     // No mostrar PIN ya que no se trabaja con pines
 
@@ -1798,13 +2215,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Respuesta del servidor:', data);
 
             if (data.success && data.nombre) {
-                return data.nombre;
+                return { found: true, name: data.nombre, networkError: false };
             }
 
-            return null;
+            // El servidor respondió pero el ID no existe en Garena
+            return { found: false, name: null, networkError: false };
         } catch (e) {
             console.error('Error al consultar servidor local:', e);
-            return null;
+            // Error de red, timeout, etc.
+            return { found: false, name: null, networkError: true };
         }
     }
     
@@ -2201,3 +2620,4 @@ window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     console.log('[PWA] ¡App instalada con éxito!');
 });
+

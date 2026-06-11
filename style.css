@@ -1795,3 +1795,308 @@ body::before {
     border: 2px solid rgba(255, 75, 43, 0.8) !important;
     box-shadow: 0 0 16px rgba(255, 75, 43, 0.4) !important;
 }
+
+/* ============================================ */
+/* SECCIÓN DE TESTIMONIOS / RESEÑAS             */
+/* ============================================ */
+.reviews-section {
+    width: 100%;
+    max-width: 480px;
+    margin: 24px auto 0;
+    padding: 0 10px 30px;
+    box-sizing: border-box;
+}
+
+.reviews-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.reviews-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    color: #FFD700;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+}
+
+.reviews-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 8px 0 4px;
+    background: linear-gradient(to right, #fff, var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.reviews-subtitle {
+    color: var(--text-gray);
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+}
+
+.reviews-stats {
+    display: flex;
+    justify-content: center;
+}
+
+.reviews-avg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.reviews-avg > span:first-child {
+    font-size: 2.5rem;
+    font-weight: 900;
+    font-family: 'Montserrat', sans-serif;
+    color: #FFD700;
+    line-height: 1;
+}
+
+.reviews-count {
+    font-size: 0.78rem;
+    color: var(--text-gray);
+}
+
+.star-row {
+    display: flex;
+    gap: 3px;
+}
+
+.star-row i, .review-card-stars i {
+    color: #FFD700;
+    font-size: 0.95rem;
+    filter: drop-shadow(0 0 4px rgba(255,215,0,0.5));
+}
+
+.reviews-carousel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.review-card {
+    background: rgba(20, 10, 35, 0.7);
+    border: 1px solid rgba(255, 215, 0, 0.12);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    animation: reviewFadeIn 0.5s ease-out both;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.review-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+.review-card::before {
+    content: '"';
+    position: absolute;
+    top: -5px;
+    right: 14px;
+    font-size: 5rem;
+    color: rgba(255, 215, 0, 0.07);
+    font-family: Georgia, serif;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.review-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.review-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(157, 0, 255, 0.3);
+}
+
+.review-meta {
+    flex: 1;
+}
+
+.review-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    display: block;
+}
+
+.review-pack {
+    font-size: 0.72rem;
+    color: var(--secondary);
+    display: block;
+    margin-top: 1px;
+}
+
+.review-card-stars {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.review-text {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.review-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    color: #25D366;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+@keyframes reviewFadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================ */
+/* FOMO TOAST — Alertas de Compras en Vivo      */
+/* ============================================ */
+#fomo-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 16px;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(14, 7, 28, 0.92);
+    border: 1px solid rgba(157, 0, 255, 0.35);
+    border-left: 3px solid var(--primary);
+    border-radius: 14px;
+    padding: 12px 14px 12px 14px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(157, 0, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    max-width: 290px;
+    width: calc(100vw - 32px);
+    /* Oculto por defecto */
+    transform: translateY(120%) scale(0.9);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.35s ease;
+}
+
+#fomo-toast.fomo-show {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+}
+
+.fomo-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    animation: fomoIconPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes fomoIconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+.fomo-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.fomo-title {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.2px;
+}
+
+.fomo-sub {
+    font-size: 0.7rem;
+    color: var(--text-gray);
+    margin-top: 2px;
+    font-family: 'Inter', sans-serif;
+}
+
+.fomo-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.fomo-close:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Indicador de pulso "en vivo" */
+#fomo-toast::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: #ff4b2b;
+    border-radius: 50%;
+    position: absolute;
+    top: 10px;
+    right: 30px;
+    box-shadow: 0 0 6px #ff4b2b;
+    animation: fomoLivePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fomoLivePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+@media (max-width: 400px) {
+    #fomo-toast {
+        bottom: 16px;
+        left: 10px;
+        max-width: calc(100vw - 20px);
+        padding: 10px 12px;
+    }
+    .fomo-title { font-size: 0.78rem; }
+    .fomo-sub { font-size: 0.65rem; }
+}

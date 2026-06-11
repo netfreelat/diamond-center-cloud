@@ -1,7 +1,7 @@
-{
+﻿{
     "id": "/?source=pwa",
-    "name": "Diamond Center",
-    "short_name": "Diamond Center",
+    "name": "RECARGASNEY.COM",
+    "short_name": "RECARGASNEY.COM",
     "description": "Tienda premium e independiente de recarga de diamantes con entrega instantánea y sistema de lealtad.",
     "start_url": "/",
     "display": "standalone",
@@ -79,16 +79,17 @@
         {
             "src": "/fondo.jpg",
             "sizes": "1280x720",
-            "type": "image/jpeg",
+            "type": "image/webp",
             "form_factor": "wide",
-            "label": "Diamond Center - Recargas al Instante"
+            "label": "RECARGASNEY.COM - Recargas al Instante"
         },
         {
             "src": "/fondo.jpg",
             "sizes": "1280x720",
-            "type": "image/jpeg",
+            "type": "image/webp",
             "form_factor": "narrow",
             "label": "Compra pines y acumula puntos de lealtad"
         }
     ]
 }
+

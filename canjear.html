@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro de Canje - Diamond Center</title>
+    <title>Centro de Canje - RECARGASNEY.COM</title>
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
@@ -132,7 +132,7 @@
 <body>
     <div class="redeem-card">
         <h1 class="redeem-title">💎 CANJE</h1>
-        <p style="color:#aaa;font-size:0.85rem;margin-bottom:5px;">FREE FIRE • DIAMOND CENTER</p>
+        <p style="color:#aaa;font-size:0.85rem;margin-bottom:5px;">FREE FIRE • RECARGASNEY.COM</p>
 
         <div class="step-indicator">
             <div id="step1" class="step active">1</div>
@@ -218,7 +218,8 @@
     </div>
 
     <script>
-        const SERVER_URL = 'https://diamond-center-cloud.onrender.com';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
         const btnVerify = document.getElementById('btn-verify');
         const btnRedeem = document.getElementById('btn-redeem-final');
         const sectionId = document.getElementById('section-id');
@@ -343,3 +344,4 @@
     </script>
 </body>
 </html>
+

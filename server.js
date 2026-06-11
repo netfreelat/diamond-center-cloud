@@ -195,7 +195,7 @@ let pagosValidados = {};
 let users = {};
 let settings = {
     tasa_del_dia: 635.00,
-    barra_informativa: "🔥 ¡Bienvenidos a Diamond Center! 💎",
+    barra_informativa: "🔥 ¡Bienvenidos a RECARGASNEY.COM! 💎",
     precios: {
         "100":  { "usdt": 1.00,  "label": "100 + 10 Diamantes" },
         "310":  { "usdt": 3.10,  "label": "310 + 31 Diamantes" },
@@ -256,6 +256,7 @@ async function loadFromSupabase() {
                 usersData.forEach(u => {
                     users[u.uid] = { 
                         name: u.name, 
+                        apellido: u.apellido || '',
                         points: u.points, 
                         password: u.password, 
                         registered: u.registered, 
@@ -324,7 +325,7 @@ async function loadFromSupabase() {
 
         // Cola WA
         const { data: waData } = await supabase.from('ff_wa_queue').select('*').eq('sent', false);
-        if (waData) whatsappQueue = waData.map(w => ({ id: w.id, number: w.number, message: w.message }));
+        if (waData) whatsappQueue = waData.map(w => ({ id: w.id, number: w.number, message: w.message, delay: w.delay }));
 
         // Pagos validados
         const { data: pagosData } = await supabase.from('ff_pagos_recibidos').select('*');
@@ -403,7 +404,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
             return;
         }
-        msg += `\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *Diamond Center*! 🎯🛡️`;
+        msg += `\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
     } else {
         msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
               `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
@@ -419,6 +420,74 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
     console.log(`[WA-QUEUE] ✅ 1 mensaje encolado para ${order.wa} (ref: ${orderRef})`);
 }
 
+// --- NOTIFICACIÓN A ADMINS: Nuevo pedido recibido ---
+// Números de WhatsApp de los administradores que recibirán alertas de nuevos pedidos
+const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
+
+function notifyAdminsNewOrder(order) {
+    const now = getVEString();
+    const msg =
+        `🛒 *NUEVO PEDIDO RECIBIDO* 🛒\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 *Jugador:* ${order.name}\n` +
+        `🆔 *ID Free Fire:* ${order.uid}\n` +
+        `💎 *Paquete:* ${order.pack}\n` +
+        `💰 *Total:* ${order.price}\n` +
+        `💳 *Método:* ${order.method === 'pagomovil' ? 'Pago Móvil BDV 📲' : 'Binance Pay 🟡'}\n` +
+        `📝 *Referencia:* \`${order.ref}\`\n` +
+        `🔢 *N° Control:* \`${order.control_num}\`\n` +
+        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⏰ *Hora:* ${now}\n` +
+        `\n💡 *Responde a este mensaje con:*\n` +
+        `👉 *Aprobar* (para procesar recarga)\n` +
+        `👉 *Rechazar* (para cancelar y notificar al cliente)`;
+
+    for (const adminNumber of ADMIN_WA_NUMBERS) {
+        const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
+        // Evitar duplicado si ya está en cola
+        if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
+
+        const waItem = { id: adminMsgId, number: adminNumber, message: msg };
+        whatsappQueue.push(waItem);
+        supabase.from('ff_wa_queue').insert(waItem)
+            .then(({ error }) => {
+                if (error && error.code !== '23505') {
+                    console.error(`[WA-ADMIN] Error encolando alerta para ${adminNumber}:`, error.message);
+                }
+            });
+        console.log(`[WA-ADMIN] 📲 Alerta de nuevo pedido encolada para admin: ${adminNumber} (ref: ${order.ref})`);
+    }
+}
+
+// Programa un mensaje de solicitud de calificación 15 min después de una recarga aprobada
+const pendingReviewRequests = new Map(); // wa_number -> { uid, name, pack }
+
+function scheduleReviewRequest(order) {
+    if (!order.wa || order.wa === 'No provisto') return;
+    const delay = 15 * 60 * 1000; // 15 minutos
+    setTimeout(() => {
+        const reviewId = `wa_review_${order.ref}_${Date.now()}`;
+        const msg = `⭐ *¿Cómo fue tu experiencia con RECARGASNEY.COM?* ⭐\n\n` +
+                    `Hola *${order.name}*, hace unos minutos recibiste tu recarga de *${order.pack}*. 💎\n\n` +
+                    `¿Podrías calificarnos respondiendo con un número del *1 al 5*?\n\n` +
+                    `1️⃣ Malo\n2️⃣ Regular\n3️⃣ Bueno\n4️⃣ Muy bueno\n5️⃣ ¡Excelente!\n\n` +
+                    `¡Tu opinión nos ayuda a seguir mejorando! 🙏`;
+
+        // Registrar solicitud pendiente por número de WA (válida por 30 min)
+        const waKey = order.wa.replace(/\D/g, '');
+        pendingReviewRequests.set(waKey, { uid: order.login_uid || order.uid, name: order.name, pack: order.pack });
+        setTimeout(() => pendingReviewRequests.delete(waKey), 30 * 60 * 1000); // Expira en 30 min
+
+        const waItem = { id: reviewId, number: order.wa, message: msg };
+        whatsappQueue.push(waItem);
+        supabase.from('ff_wa_queue').insert(waItem)
+            .then(({ error }) => { if (error && error.code !== '23505') console.error('[REVIEW-WA] Error encolando reseña:', error.message); });
+        console.log(`[REVIEW-WA] ✅ Solicitud de reseña encolada para ${order.wa} (ref: ${order.ref})`);
+    }, delay);
+}
+
+
 function saveUsers() {
     // No-op: se usa saveUser(uid) para guardar usuario individual
 }
@@ -428,7 +497,7 @@ async function saveUser(uid) {
     if (!u) return;
     
     const payload = {
-        uid, name: u.name, points: u.points, password: u.password || null,
+        uid, name: u.name, apellido: u.apellido || null, points: u.points, password: u.password || null,
         cedula: u.cedula || null, phone: u.phone || null,
         registered: u.registered, referred_by: u.referred_by || null,
         referral_claimed: u.referral_claimed || false
@@ -437,9 +506,15 @@ async function saveUser(uid) {
     let { error } = await supabase.from('ff_users').upsert(payload);
     
     if (error) {
-        // Reintentar sin columnas extendidas si no existen en la base de datos
-        if (error.code === '42703' || error.message.includes('cedula') || error.message.includes('phone')) {
-            console.warn(`[SUPABASE] ⚠️ Columnas extendidas no existen en ff_users. Reintentando guardar sin cédula/teléfono para el ID: ${uid}...`);
+        // Reintentar sin columnas extendidas si no existen en la base de datos (p. ej. PGRST204 o 42703)
+        const isColumnError = error.code === '42703' || 
+                              error.code === 'PGRST204' || 
+                              error.message.includes('cedula') || 
+                              error.message.includes('phone') || 
+                              error.message.includes('apellido');
+                              
+        if (isColumnError) {
+            console.warn(`[SUPABASE] ⚠️ Columnas extendidas o no existentes (apellido/cédula/teléfono) no existen en ff_users. Reintentando guardar sin ellas para el ID: ${uid}...`);
             const fallbackPayload = {
                 uid, name: u.name, points: u.points, password: u.password || null,
                 registered: u.registered, referred_by: u.referred_by || null,
@@ -677,7 +752,8 @@ function updateTelegramStatus(ref) {
         chat_id: order.tg_chat_id,
         message_id: order.tg_message_id,
         text: newText,
-        parse_mode: 'Markdown'
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [] }
     });
 
     const editReq = https.request({
@@ -833,9 +909,12 @@ setInterval(async () => {
     // 1. Obtener pagos recientes de Binance (si hay pedidos pendientes)
     let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance');
     let binanceEmails = [];
+    // DESACTIVADO TEMPORALMENTE
+    /*
     if (pendingBinanceOrders.length > 0) {
         binanceEmails = await checkBinanceEmails();
     }
+    */
 
     for (let ref in orders) {
         if (orders[ref].status === 'pending') {
@@ -882,7 +961,8 @@ setInterval(async () => {
             }
             */
 
-            // --- AUTO APROBACIÓN BINANCE ---
+            // --- AUTO APROBACIÓN BINANCE (DESACTIVADA TEMPORALMENTE) ---
+            /*
             if (orders[ref].method === 'binance' && binanceEmails.length > 0) {
                 let expectedUsdt = 0;
                 try {
@@ -919,6 +999,7 @@ setInterval(async () => {
                     }
                 }
             }
+            */
         }
     }
 
@@ -938,6 +1019,13 @@ function checkAdminAuth(req, res) {
         if (parts.length === 2 && parts[0] === 'Bearer') {
             token = parts[1];
         }
+    }
+    
+    // Permitir acceso si se provee el header X-WA-Secret con la contraseña de admin
+    const waSecret = req.headers['x-wa-secret'];
+    const expectedSecret = process.env.ADMIN_PASS || 'Sneyder12345*#';
+    if (waSecret && waSecret === expectedSecret) {
+        return true;
     }
     
     // Validar token contra el guardado en memoria
@@ -1031,8 +1119,15 @@ const server = http.createServer(async (req, res) => {
                             }
                         }
 
-                        if (data && (data.alerta === 'green' || data.Nickname || data.perfil)) {
-                            const nombre = data.Nickname || data.perfil || data.mensaje;
+                        // VALIDACIÓN ESTRICTA: solo aceptar si alerta es 'green' (ID real en Garena)
+                        const invalidNicknames = ['jugador inválido', 'jugador invalido', 'invalid player', 'not found', ''];
+                        const isValidPlayer = data && 
+                                              data.alerta === 'green' && 
+                                              data.Nickname && 
+                                              !invalidNicknames.includes(data.Nickname.toLowerCase().trim());
+
+                        if (isValidPlayer) {
+                            const nombre = data.Nickname || data.perfil;
                             console.log(`[OK] ID ${uid} verificado como: ${nombre}`);
                             res.writeHead(200);
                             res.end(JSON.stringify({ success: true, nombre: nombre }));
@@ -1132,6 +1227,9 @@ const server = http.createServer(async (req, res) => {
             }
             console.error('[SUPABASE] Error guardando pedido:', insertError.message);
         }
+
+        // --- NOTIFICAR A ADMINS VÍA WHATSAPP ---
+        notifyAdminsNewOrder({ uid, login_uid, name, pack, method, price, wa, ref, control_num });
 
         /* 
         // Auto-aprobación desactivada por seguridad a petición del usuario
@@ -1287,7 +1385,8 @@ const server = http.createServer(async (req, res) => {
                                 chat_id: chatId,
                                 message_id: messageId,
                                 text: `⚠️ *PEDIDO YA PROCESADO*\n\nEste pedido (Ref: \`${ref}\`) ya fue *${dbOrder.status === 'approved' ? '✅ APROBADO' : '❌ RECHAZADO'}* anteriormente.\n\n_Clic ignorado por seguridad._`,
-                                parse_mode: 'Markdown'
+                                parse_mode: 'Markdown',
+                                reply_markup: { inline_keyboard: [] }
                             });
                             const warnReq = https.request({
                                 hostname: 'api.telegram.org',
@@ -1380,6 +1479,7 @@ const server = http.createServer(async (req, res) => {
                                 editMessageText = `✅ *RECARGA DIRECTA EXITOSA (JADH.SHOP)*\n\n👤 *Jugador:* ${nick}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔢 *Órdenes Jadh:* \`${orderIds.join(', ')}\`\n\n✨ _Acreditado automáticamente en la cuenta del jugador._`;
                                 
                                 queueWhatsAppMessage({ ...order, name: nick, ref }, true);
+                                scheduleReviewRequest({ ...order, name: nick, ref });
                                 sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
                             } else {
                                 orders[ref].status = 'pending'; // Revertimos a pending para reintento manual
@@ -1577,11 +1677,31 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const { ref } = JSON.parse(body);
-                const order = orders[ref];
+                let targetRef = ref;
+                let order = orders[targetRef];
+                
+                // Si la referencia recibida es corta (ej: 4 dígitos) y no coincide directamente,
+                // buscar entre los pedidos pendientes uno que termine con esos dígitos.
+                if (!order && ref && ref.length >= 4) {
+                    const matches = Object.keys(orders).filter(k => 
+                        orders[k].status === 'pending' && k.endsWith(ref)
+                    );
+                    if (matches.length === 1) {
+                        targetRef = matches[0];
+                        order = orders[targetRef];
+                        console.log(`[ADMIN-RESOLVE] Referencia parcial '${ref}' resuelta a: '${targetRef}'`);
+                    } else if (matches.length > 1) {
+                        res.writeHead(200);
+                        return res.end(JSON.stringify({ 
+                            success: false, 
+                            message: `Múltiples pedidos pendientes coinciden con '${ref}': ${matches.join(', ')}. Usa la referencia completa.` 
+                        }));
+                    }
+                }
                 
                 // --- SEGURIDAD: NO APROBAR DOS VECES ---
                 if (order && order.status !== 'pending') {
-                    console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${ref} (status actual: ${order.status})`);
+                    console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${targetRef} (status actual: ${order.status})`);
                     res.writeHead(200);
                     return res.end(JSON.stringify({ success: false, message: 'Este pedido ya está siendo procesado o fue procesado.' }));
                 }
@@ -1612,20 +1732,21 @@ const server = http.createServer(async (req, res) => {
                     }
 
                     if (allSuccess) {
-                        orders[ref].status = 'approved';
-                        orders[ref].name = nick;
+                        orders[targetRef].status = 'approved';
+                        orders[targetRef].name = nick;
                         const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
-                        updateOrderStatus(ref, 'approved', jadhOrdersStr);
+                        updateOrderStatus(targetRef, 'approved', jadhOrdersStr);
                         saveRecent(nick, order.pack);
                         const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                         if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, nick);
                         
-                        queueWhatsAppMessage({ ...order, ref, name: nick }, true);
+                        queueWhatsAppMessage({ ...order, ref: targetRef, name: nick }, true);
+                        scheduleReviewRequest({ ...order, ref: targetRef, name: nick });
                         sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅💎', `¡Tus ${order.pack} diamantes fueron recargados directamente a tu ID!`, '/icon-192.png', '/historial');
-                        updateTelegramStatus(ref);
+                        updateTelegramStatus(targetRef);
                         
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: true, message: `Recarga exitosa. Nickname: ${nick}. Órdenes Jadh: ${orderIds.join(', ')}` }));
+                        res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: `Recarga exitosa. Nickname: ${nick}. Órdenes Jadh: ${orderIds.join(', ')}` }));
                     }
                 } else {
                     res.writeHead(404);
@@ -1650,16 +1771,44 @@ const server = http.createServer(async (req, res) => {
         req.on('end', () => {
             try {
                 const { ref } = JSON.parse(body);
-                if (orders[ref]) {
-                    orders[ref].status = 'rejected';
-                    updateOrderStatus(ref, 'rejected');
-                    queueWhatsAppMessage({ ...orders[ref], ref }, false);
-                    sendPushToUser(orders[ref].login_uid || orders[ref].uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${orders[ref].pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
-                    updateTelegramStatus(ref);
-                    res.writeHead(200);
-                    res.end(JSON.stringify({ success: true }));
+                let targetRef = ref;
+                let order = orders[targetRef];
+                
+                // Si la referencia recibida es corta (ej: 4 dígitos) y no coincide directamente,
+                // buscar entre los pedidos pendientes uno que termine con esos dígitos.
+                if (!order && ref && ref.length >= 4) {
+                    const matches = Object.keys(orders).filter(k => 
+                        orders[k].status === 'pending' && k.endsWith(ref)
+                    );
+                    if (matches.length === 1) {
+                        targetRef = matches[0];
+                        order = orders[targetRef];
+                        console.log(`[ADMIN-RESOLVE] Referencia parcial '${ref}' resuelta a: '${targetRef}'`);
+                    } else if (matches.length > 1) {
+                        res.writeHead(200);
+                        return res.end(JSON.stringify({ 
+                            success: false, 
+                            message: `Múltiples pedidos pendientes coinciden con '${ref}': ${matches.join(', ')}. Usa la referencia completa.` 
+                        }));
+                    }
                 }
-            } catch (e) { res.writeHead(400); res.end('Error'); }
+
+                if (order) {
+                    orders[targetRef].status = 'rejected';
+                    updateOrderStatus(targetRef, 'rejected');
+                    queueWhatsAppMessage({ ...orders[targetRef], ref: targetRef }, false);
+                    sendPushToUser(orders[targetRef].login_uid || orders[targetRef].uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${orders[targetRef].pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
+                    updateTelegramStatus(targetRef);
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: 'Pedido rechazado con éxito.' }));
+                } else {
+                    res.writeHead(404);
+                    res.end(JSON.stringify({ success: false, message: 'Pedido no encontrado.' }));
+                }
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, message: 'Error: ' + e.message }));
+            }
         });
     } else if (parsedUrl.pathname === '/admin/send-push' && req.method === 'POST') {
         let body = '';
@@ -1776,7 +1925,7 @@ const server = http.createServer(async (req, res) => {
                             const adminUpdateMsg = `⭐ *ACTUALIZACIÓN DE PUNTOS* ⭐\n\n` +
                                                    `¡Hola! Tu saldo de puntos ha sido actualizado por el administrador. ⚙️\n\n` +
                                                    `📊 *Tu nuevo balance:* ${users[uid].points} pts\n\n` +
-                                                   `¡Gracias por formar parte de *Diamond Center*! 💎✨`;
+                                                   `¡Gracias por formar parte de *RECARGASNEY.COM*! 💎✨`;
                             
                             const waItem = { id: adminUpdateMsgId, number: userWa, message: adminUpdateMsg };
                             whatsappQueue.push(waItem);
@@ -2002,10 +2151,10 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
-                const { uid, name, cedula, phone, password } = JSON.parse(body);
-                if (!uid || !cedula || !phone || !password) {
+                const { uid, name, apellido, cedula, phone, password } = JSON.parse(body);
+                if (!uid || !name || !phone || !password) {
                     res.writeHead(400);
-                    return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
+                    return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios (ID, nombre, teléfono y contraseña son requeridos)' }));
                 }
                 
                 // Si el usuario no existe en memoria, lo creamos
@@ -2015,19 +2164,20 @@ const server = http.createServer(async (req, res) => {
                 
                 // Guardar los datos completos
                 users[uid].name = name || users[uid].name || 'Jugador';
-                users[uid].cedula = cedula;
+                users[uid].apellido = apellido || '';
+                users[uid].cedula = cedula || '';
                 users[uid].phone = phone;
                 users[uid].password = password;
                 
                 await saveUser(uid);
                 
-                const nombreRegistrado = users[uid].name || 'Jugador';
-                console.log(`[REGISTRO] Usuario registrado con éxito: ID=${uid}, Nombre=${nombreRegistrado}, Cédula=${cedula}, Teléfono=${phone}`);
+                const nombreRegistrado = `${users[uid].name} ${users[uid].apellido || ''}`.trim();
+                console.log(`[REGISTRO] Usuario registrado con éxito: ID=${uid}, Nombre=${nombreRegistrado}, Teléfono=${phone}`);
 
                 // ─── 🔔 NOTIFICACIÓN PUSH DE BIENVENIDA ──────────────────────
                 sendPushToUser(
                     uid,
-                    '🎉 ¡Bienvenido a Diamond Center!',
+                    '🎉 ¡Bienvenido a RECARGASNEY.COM!',
                     `¡Hola ${nombreRegistrado}! Tu cuenta está activa. Acumula puntos en cada compra y canjéalos por diamantes gratis. 💎`,
                     '/icon-192.png',
                     '/'
@@ -2039,15 +2189,15 @@ const server = http.createServer(async (req, res) => {
                 const yaEnviadoBienvenida = whatsappQueue.some(i => i.id === waWelcomeId);
                 if (!yaEnviadoBienvenida) {
                     const waWelcomeMsg =
-                        `🔥 *¡BIENVENIDO A DIAMOND CENTER!* 🔥\n\n` +
+                        `🔥 *¡BIENVENIDO A RECARGASNEY.COM!* 🔥\n\n` +
                         `¡Hola, *${nombreRegistrado}*! Tu cuenta ha sido creada exitosamente. 🎉\n\n` +
                         `━━━━━━━━━━━━━━━\n` +
                         `👤 *Jugador:* ${nombreRegistrado}\n` +
                         `🆔 *ID Garena:* ${uid}\n` +
                         `━━━━━━━━━━━━━━━\n\n` +
                         `✅ Ya puedes *acumular puntos* en cada recarga y canjearlos por diamantes gratis. 💎\n\n` +
-                        `🌐 *Tu tienda:* https://diamond-center-cloud.onrender.com\n\n` +
-                        `¡Gracias por unirte a *Diamond Center*! 🚀`;
+                        `🌐 *Tu tienda:* https://recargasney.com\n\n` +
+                        `¡Gracias por unirte a *RECARGASNEY.COM*! 🚀`;
 
                     const waWelcome = { id: waWelcomeId, number: phoneClean, message: waWelcomeMsg };
                     whatsappQueue.push(waWelcome);
@@ -2216,7 +2366,7 @@ const server = http.createServer(async (req, res) => {
                                                  `\`${pin}\`\n\n` +
                                                  `🔗 Canjéalo aquí directamente:\n` +
                                                  `https://redeempins.com/\n\n` +
-                                                 `¡Gracias por usar *Diamond Center*! 🎯🛡️`;
+                                                 `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
                             
                             const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
                             whatsappQueue.push(waItem);
@@ -2368,6 +2518,88 @@ const server = http.createServer(async (req, res) => {
         
         res.writeHead(200);
         res.end(JSON.stringify({ success: true, message: 'Todas las sesiones cerradas' }));
+    } else if (parsedUrl.pathname === '/api/admin/wa_broadcast' && req.method === 'POST') {
+        if (!checkAdminAuth(req, res)) return;
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { targetType, targetPhone, message } = JSON.parse(body);
+                if (!message) return res.end(JSON.stringify({ success: false, message: 'Mensaje vacío' }));
+
+                let enqueued = 0;
+                
+                if (targetType === 'single') {
+                    if (!targetPhone) return res.end(JSON.stringify({ success: false, message: 'Falta el número de teléfono' }));
+                    const waItem = { id: `broadcast_${Date.now()}_single`, number: targetPhone, message };
+                    whatsappQueue.push(waItem);
+                    supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error) console.error('Supabase wa_queue err:', error.message); });
+                    enqueued++;
+                } else if (targetType === 'all') {
+                    // ═══════════════════════════════════════════════════════════════
+                    // BROADCAST MASIVO: Usuarios registrados + Todos los compradores
+                    // ═══════════════════════════════════════════════════════════════
+                    const numbersSet = new Set(); // Para evitar duplicados
+
+                    // 1. Usuarios registrados que tienen teléfono en su perfil
+                    for (const uid in users) {
+                        const u = users[uid];
+                        if (u.phone && u.phone.trim() !== '') {
+                            numbersSet.add(u.phone.trim());
+                        }
+                    }
+
+                    // 2. Todos los compradores que pusieron su WA en algún pedido aprobado
+                    try {
+                        const { data: ordersWa, error: ordersErr } = await supabase
+                            .from('ff_orders')
+                            .select('wa')
+                            .eq('status', 'approved')
+                            .not('wa', 'is', null)
+                            .neq('wa', '')
+                            .neq('wa', 'No provisto');
+
+                        if (!ordersErr && ordersWa) {
+                            for (const o of ordersWa) {
+                                if (o.wa && o.wa.trim() !== '') {
+                                    numbersSet.add(o.wa.trim());
+                                }
+                            }
+                            console.log(`[BROADCAST] 🗒️ Compradores encontrados en pedidos: ${ordersWa.length}`);
+                        } else if (ordersErr) {
+                            console.error('[BROADCAST] Error consultando pedidos para WA:', ordersErr.message);
+                        }
+                    } catch (dbErr) {
+                        console.error('[BROADCAST] Error inesperado consultando ff_orders:', dbErr.message);
+                    }
+
+                    console.log(`[BROADCAST] 📲 Enviando mensaje masivo a ${numbersSet.size} números únicos...`);
+
+                    let i = 0;
+                    for (const number of numbersSet) {
+                        // Generar delay aleatorio entre 45 y 90 segundos (en ms) para evitar bloqueos por spam
+                        const randomDelay = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
+                        const waItem = { 
+                            id: `broadcast_${Date.now()}_${i++}`, 
+                            number, 
+                            message,
+                            delay: randomDelay
+                        };
+                        whatsappQueue.push(waItem);
+                        supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error && error.code !== '23505') console.error('Supabase wa_queue err:', error.message); });
+                        enqueued++;
+                    }
+
+                    console.log(`[BROADCAST] ✅ ${enqueued} mensajes encolados en total.`);
+                }
+
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, enqueued }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, message: 'Error procesando solicitud' }));
+            }
+        });
     } else if (parsedUrl.pathname === '/api/whatsapp_queue') {
         res.writeHead(200);
         res.end(JSON.stringify({ 
@@ -2488,6 +2720,60 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/health') {
         res.writeHead(200);
         res.end(JSON.stringify({ status: 'ok' }));
+
+    // ===== REVIEWS API =====
+    } else if (parsedUrl.pathname === '/api/reviews/check' && req.method === 'GET') {
+        const waNum = (parsedUrl.searchParams.get('wa') || '').replace(/\D/g, '');
+        const pending = pendingReviewRequests.get(waNum);
+        if (pending) {
+            pendingReviewRequests.delete(waNum); // Consumir una sola vez
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ eligible: true, ...pending }));
+        } else {
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ eligible: false }));
+        }
+    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'GET') {
+        try {
+            const { data, error } = await supabase
+                .from('ff_reviews')
+                .select('name, rating, pack, comment, created_at')
+                .gte('rating', 4)
+                .order('created_at', { ascending: false })
+                .limit(30);
+            if (error) throw error;
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ success: true, reviews: data || [] }));
+        } catch (e) {
+            res.writeHead(500, corsHeaders);
+            res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid, rating, name, pack } = JSON.parse(body);
+                const stars = parseInt(rating);
+                if (!uid || isNaN(stars) || stars < 1 || stars > 5) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                }
+                const { error } = await supabase.from('ff_reviews').insert({
+                    uid,
+                    name: name || uid,
+                    pack: pack || 'Diamantes',
+                    rating: stars,
+                    comment: `${stars === 5 ? '¡Excelente servicio!' : stars === 4 ? 'Muy buen servicio' : 'Buen servicio'}`
+                });
+                if (error) throw error;
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true }));
+            } catch(e) {
+                res.writeHead(400, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
     } else {
         // Servir archivos estáticos (index.html, style.css, script.js, etc.)
         let filePath = '.' + parsedUrl.pathname;
@@ -2536,7 +2822,7 @@ if (process.env.VERCEL) {
 } else {
     server.listen(PORT, async () => {
         console.log('=========================================');
-        console.log('  Diamond Center FF - Servidor');
+        console.log('  RECARGASNEY.COM - Servidor');
         console.log(`  Corriendo en: http://localhost:${PORT}`);
         console.log('  Cargando datos desde Supabase...');
         console.log('=========================================');
@@ -2544,3 +2830,4 @@ if (process.env.VERCEL) {
         console.log('[SERVER] ✅ Listo para recibir solicitudes.');
     });
 }
+
