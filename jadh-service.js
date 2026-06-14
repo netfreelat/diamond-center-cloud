@@ -311,8 +311,8 @@ async function rechargeViaJadhPaquetes(uid, packName) {
         await page.waitForSelector('#packageSelect', { timeout: 15000 });
         await page.select('#packageSelect', packageId);
 
-        await page.waitForSelector('#gameAccountId', { timeout: 15000 });
-        await page.type('#gameAccountId', uid.toString());
+        await page.waitForSelector('input[name="gp_input1"]', { timeout: 15000 });
+        await page.type('input[name="gp_input1"]', uid.toString());
 
         // 4. Click en Comprar
         if (process.env.TEST_MODE === 'true') {
