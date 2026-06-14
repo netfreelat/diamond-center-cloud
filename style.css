@@ -331,17 +331,18 @@ body {
     color: var(--text-white);
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     overflow-x: hidden;
     background: radial-gradient(circle at center, #1b0a3a 0%, #0A0514 100%);
-    padding-top: 40px; /* Espacio para la barra fija */
+    padding-top: 50px; /* Espacio para la barra fija */
 }
 
 /* Background Elements */
 body::before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -399,6 +400,7 @@ body::before {
     max-width: 450px;
     padding: 20px;
     animation: fadeIn 0.8s ease-out;
+    margin: 0 auto;
 }
 
 @keyframes fadeIn {
@@ -844,6 +846,22 @@ body::before {
     max-width: 800px;
 }
 
+.packages-container {
+    background: linear-gradient(135deg, rgba(157, 0, 255, 0.12) 0%, rgba(0, 240, 255, 0.08) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    border-radius: 24px;
+    padding: 25px 20px;
+    margin-top: 25px;
+    box-shadow: inset 0 0 30px rgba(0, 240, 255, 0.05), 0 10px 35px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.packages-container .section-header {
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+
 .section-title {
     font-family: 'Montserrat', sans-serif;
     font-size: 1.2rem;
@@ -861,8 +879,8 @@ body::before {
 }
 
 .package-card {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     padding: 24px 15px;
     cursor: pointer;
@@ -872,6 +890,8 @@ body::before {
     align-items: center;
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 
 .package-card:hover {
@@ -1347,6 +1367,12 @@ body::before {
         font-size: 1rem;
     }
 
+    .packages-container {
+        padding: 15px 10px;
+        margin-top: 15px;
+        border-radius: 16px;
+    }
+
     .packages-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
@@ -1802,9 +1828,20 @@ body::before {
 .reviews-section {
     width: 100%;
     max-width: 480px;
-    margin: 24px auto 0;
-    padding: 0 10px 30px;
+    margin: 16px auto 40px;
+    padding: 24px 20px 24px;
     box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(13, 6, 24, 0.75) 0%, rgba(13, 6, 24, 0.95) 100%), 
+                url('reviews_banner.png') no-repeat center center;
+    background-size: cover;
+    border: 1px solid rgba(157, 0, 255, 0.25);
+    border-radius: 24px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
 }
 
 .reviews-header {
@@ -1881,20 +1918,36 @@ body::before {
 
 .reviews-carousel {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    padding: 8px 4px 16px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+}
+
+.reviews-carousel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .review-card {
-    background: rgba(20, 10, 35, 0.7);
-    border: 1px solid rgba(255, 215, 0, 0.12);
+    background: rgba(13, 6, 24, 0.9); /* Fondo más oscuro para que resalte contra el fondo de la sección */
+    border: 1px solid rgba(255, 215, 0, 0.15);
     border-radius: 16px;
-    padding: 16px;
+    padding: 14px 16px;
     backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
     animation: reviewFadeIn 0.5s ease-out both;
     transition: transform 0.2s, border-color 0.2s;
+    flex: 0 0 260px; /* Ancho fijo para cada tarjeta en horizontal */
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 130px; /* Altura uniforme */
 }
 
 .review-card:hover {
@@ -1907,8 +1960,8 @@ body::before {
     position: absolute;
     top: -5px;
     right: 14px;
-    font-size: 5rem;
-    color: rgba(255, 215, 0, 0.07);
+    font-size: 4rem;
+    color: rgba(255, 215, 0, 0.05);
     font-family: Georgia, serif;
     line-height: 1;
     pointer-events: none;
@@ -1917,20 +1970,20 @@ body::before {
 .review-card-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .review-avatar {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: #fff;
     flex-shrink: 0;
     box-shadow: 0 0 10px rgba(157, 0, 255, 0.3);
@@ -1942,13 +1995,13 @@ body::before {
 
 .review-name {
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #fff;
     display: block;
 }
 
 .review-pack {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     color: var(--secondary);
     display: block;
     margin-top: 1px;
@@ -1957,24 +2010,30 @@ body::before {
 .review-card-stars {
     display: flex;
     gap: 2px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+}
+
+.review-card-stars i {
+    font-size: 0.75rem;
 }
 
 .review-text {
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     color: rgba(255,255,255,0.7);
-    line-height: 1.5;
+    line-height: 1.4;
     font-style: italic;
+    margin-bottom: 8px;
+    flex-grow: 1;
 }
 
 .review-verified {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: #25D366;
     font-weight: 600;
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 @keyframes reviewFadeIn {
@@ -2099,4 +2158,156 @@ body::before {
     }
     .fomo-title { font-size: 0.78rem; }
     .fomo-sub { font-size: 0.65rem; }
+}
+
+/* ================================================ */
+/* REFERRAL BANNER PREMIUM                          */
+/* ================================================ */
+.referral-banner-premium {
+    position: relative;
+    margin-top: 12px;
+    background: linear-gradient(135deg,
+        rgba(37, 211, 102, 0.18) 0%,
+        rgba(18, 140, 126, 0.14) 50%,
+        rgba(37, 211, 102, 0.10) 100%);
+    border: 2px solid rgba(37, 211, 102, 0.65);
+    border-radius: 14px;
+    padding: 12px 16px 12px;
+    text-align: center;
+    overflow: hidden;
+    animation: referralPulse 3s ease-in-out infinite;
+    box-shadow:
+        0 0 24px rgba(37, 211, 102, 0.22),
+        inset 0 0 32px rgba(37, 211, 102, 0.06);
+}
+
+@keyframes referralPulse {
+    0%, 100% {
+        box-shadow: 0 0 24px rgba(37,211,102,0.22), inset 0 0 32px rgba(37,211,102,0.06);
+        border-color: rgba(37, 211, 102, 0.65);
+    }
+    50% {
+        box-shadow: 0 0 44px rgba(37,211,102,0.50), inset 0 0 44px rgba(37,211,102,0.12);
+        border-color: rgba(37, 211, 102, 1);
+    }
+}
+
+/* Resplandor superior decorativo */
+.referral-banner-glow {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 80px;
+    background: radial-gradient(ellipse, rgba(37, 211, 102, 0.40), transparent 70%);
+    pointer-events: none;
+}
+
+/* Píldora "💎 GRATIS" */
+.referral-banner-top {
+    margin-bottom: 5px;
+}
+.referral-badge-pill {
+    display: inline-block;
+    background: linear-gradient(135deg, #25D366, #128C7E);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 10px rgba(37, 211, 102, 0.4);
+}
+
+/* Ícono animado */
+.referral-banner-icon {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+    animation: referralBounce 2.2s ease-in-out infinite;
+    display: block;
+    line-height: 1;
+}
+@keyframes referralBounce {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50%       { transform: translateY(-8px) rotate(3deg); }
+}
+
+/* Título */
+.referral-banner-title {
+    margin: 0 0 5px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    letter-spacing: 0.4px;
+    text-shadow: 0 0 12px rgba(37, 211, 102, 0.5);
+}
+
+/* Descripción */
+.referral-banner-desc {
+    margin: 0 0 10px;
+    font-size: 0.78rem;
+    color: #ccc;
+    line-height: 1.45;
+}
+.referral-banner-desc strong {
+    color: #25D366;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+.referral-no-limit {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.73rem;
+    color: rgba(37, 211, 102, 0.75);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Botón con efecto shine */
+.referral-copy-btn {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+    border: none;
+    color: #fff;
+    border-radius: 13px;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 0.5px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 5px 22px rgba(37, 211, 102, 0.45);
+    font-family: 'Montserrat', sans-serif;
+}
+.referral-copy-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(37, 211, 102, 0.65);
+}
+.referral-copy-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 12px rgba(37, 211, 102, 0.35);
+}
+
+/* Destello animado sobre el botón */
+.referral-btn-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 65%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.28),
+        transparent);
+    animation: referralShine 2.4s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes referralShine {
+    0%       { left: -100%; }
+    50%, 100% { left: 160%; }
 }
