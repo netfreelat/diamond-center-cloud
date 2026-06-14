@@ -12,9 +12,11 @@ try {
     console.error('[CRÍTICO] No se pudo cargar el servicio de canje automático:', e.message);
 }
 let rechargeViaJadh = null;
+let rechargeViaJadhPaquetes = null;
 try {
     const jadhService = require('./jadh-service.js');
     rechargeViaJadh = jadhService.rechargeViaJadh;
+    rechargeViaJadhPaquetes = jadhService.rechargeViaJadhPaquetes;
 } catch (e) {
     console.error('[CRÍTICO] No se pudo cargar el servicio de recarga directa de Jadh:', e.message);
 }
@@ -143,7 +145,16 @@ async function verifyBDVPayment(montoReportado, referencia4) {
     }
 }
 
-const { checkBinanceEmails, markEmailAsRead } = require('./binance-service.js');
+const { checkBinanceEmails, markEmailAsRead: originalMarkEmailAsRead } = require('./binance-service.js');
+let simulatedBinanceEmails = [];
+const markEmailAsRead = async (uid) => {
+    if (typeof uid === 'string' && uid.startsWith('mock-')) {
+        console.log(`[BINANCE] Correo simulado ${uid} marcado como leído.`);
+        simulatedBinanceEmails = simulatedBinanceEmails.filter(e => e.uid !== uid);
+        return;
+    }
+    return originalMarkEmailAsRead(uid);
+};
 
 // --- Helper de Hora Venezuela (UTC-4) ---
 function getVEISO() {
@@ -197,12 +208,28 @@ let settings = {
     tasa_del_dia: 635.00,
     barra_informativa: "🔥 ¡Bienvenidos a RECARGASNEY.COM! 💎",
     precios: {
-        "100":  { "usdt": 1.00,  "label": "100 + 10 Diamantes" },
-        "310":  { "usdt": 3.10,  "label": "310 + 31 Diamantes" },
-        "520":  { "usdt": 5.20,  "label": "520 + 52 Diamantes" },
-        "1060": { "usdt": 10.60, "label": "1060 + 106 Diamantes" },
-        "2180": { "usdt": 21.80, "label": "2180 + 218 Diamantes" },
-        "5600": { "usdt": 56.00, "label": "5600 + 560 Diamantes" }
+        "100":     { "usdt": 1.00,  "label": "100 + 10 Diamantes" },
+        "310":     { "usdt": 3.10,  "label": "310 + 31 Diamantes" },
+        "520":     { "usdt": 5.20,  "label": "520 + 52 Diamantes" },
+        "1060":    { "usdt": 10.60, "label": "1060 + 106 Diamantes" },
+        "2180":    { "usdt": 21.80, "label": "2180 + 218 Diamantes" },
+        "5600":    { "usdt": 56.00, "label": "5600 + 560 Diamantes" },
+        "basica":  { "usdt": 0.75,  "label": "🃏 Tarjeta Básica" },
+        "semanal": { "usdt": 2.80,  "label": "📅 Tarjeta Semanal" },
+        "mensual": { "usdt": 13.50, "label": "👑 Tarjeta Mensual" },
+        "booyah":  { "usdt": 4.20,  "label": "🏆 Pase Booyah" }
+    },
+    juegos: {
+        "freefire": {
+            "nombre": "Free Fire",
+            "inputLabel": "ID de Jugador",
+            "inputPlaceholder": "Ej: 123456789",
+            "icono": "fa-fire",
+            "paquetes": {
+                "100": { "usdt": 1.0, "label": "100 Diamantes" },
+                "310": { "usdt": 3.0, "label": "310 Diamantes" }
+            }
+        }
     },
     admin: { 
         username: process.env.ADMIN_USER || "admin", 
@@ -287,7 +314,7 @@ async function loadFromSupabase() {
         // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
         const { data: settingsData, error: settingsError } = await supabase
             .from('ff_settings')
-            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios')
+            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos')
             .eq('id', 1)
             .single();
         if (settingsError) {
@@ -300,6 +327,9 @@ async function loadFromSupabase() {
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.precios = settingsData.precios;
+            if (settingsData.juegos) {
+                settings.juegos = settingsData.juegos;
+            }
             console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
         }
         
@@ -429,8 +459,9 @@ function notifyAdminsNewOrder(order) {
     const msg =
         `🛒 *NUEVO PEDIDO RECIBIDO* 🛒\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
         `👤 *Jugador:* ${order.name}\n` +
-        `🆔 *ID Free Fire:* ${order.uid}\n` +
+        `🆔 *ID/Usuario:* ${order.uid}\n` +
         `💎 *Paquete:* ${order.pack}\n` +
         `💰 *Total:* ${order.price}\n` +
         `💳 *Método:* ${order.method === 'pagomovil' ? 'Pago Móvil BDV 📲' : 'Binance Pay 🟡'}\n` +
@@ -709,6 +740,12 @@ function extractPackInfo(packStr) {
     return { qty, amountKey };
 }
 
+// Paquetes especiales de jadh.shop/producto/freefire-paquetes
+const PAQUETES_ESPECIALES = ['basica', 'semanal', 'mensual', 'booyah'];
+function isPaqueteEspecial(amountKey) {
+    return PAQUETES_ESPECIALES.includes(amountKey.toString().toLowerCase());
+}
+
 async function getFallbackPin(amount) {
     const { qty, amountKey } = extractPackInfo(amount);
     
@@ -771,6 +808,11 @@ function updateTelegramStatus(ref) {
 }
 
 async function processPendingOrder(inputFullRef, inputShortRef) {
+    // Sólo auto-aprobar pedidos de Free Fire. Otros juegos requieren aprobación manual.
+    if (inputShortRef && orders[inputShortRef] && orders[inputShortRef].juego && orders[inputShortRef].juego !== 'freefire') {
+        console.log(`[AUTO-APPROVE] ⏭️ Pedido ${inputShortRef} es de juego '${orders[inputShortRef].juego}'. Se requiere aprobación manual.`);
+        return false;
+    }
     let targetFullRef = inputFullRef;
     let targetShortRef = inputShortRef;
 
@@ -857,7 +899,9 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                     
                     for (let i = 0; i < qty; i++) {
                         console.log(`[AUTO-APPROVE] Ejecutando recarga ${i+1}/${qty} en Jadh.shop...`);
-                        const result = await rechargeViaJadh(order.uid, amountKey);
+                        const result = isPaqueteEspecial(amountKey)
+                            ? await rechargeViaJadhPaquetes(order.uid, amountKey)
+                            : await rechargeViaJadh(order.uid, amountKey);
                         if (result.success) {
                             if (result.nickname) nick = result.nickname;
                             if (result.orderId) orderIds.push(result.orderId);
@@ -901,20 +945,27 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
     return false;
 }
 
-// --- AUTO-APROBACIÓN Y LIMPIADOR AUTOMÁTICO DE PEDIDOS (Cada 1 minuto) ---
-setInterval(async () => {
+// --- AUTO-APROBACIÓN Y LIMPIADOR AUTOMÁTICO DE PEDIDOS ---
+async function runAutoApprovalCycle() {
     const NOW = new Date();
     let changed = false;
 
-    // 1. Obtener pagos recientes de Binance (si hay pedidos pendientes)
-    let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance');
+    // 1. Obtener pagos recientes de Binance (si hay pedidos pendientes de Free Fire)
+    let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance' && (!o.juego || o.juego === 'freefire'));
     let binanceEmails = [];
-    // DESACTIVADO TEMPORALMENTE
-    /*
     if (pendingBinanceOrders.length > 0) {
-        binanceEmails = await checkBinanceEmails();
+        try {
+            binanceEmails = await checkBinanceEmails();
+        } catch (e) {
+            console.error('[AUTO-BINANCE] Error al verificar correos:', e.message);
+        }
+        if (simulatedBinanceEmails.length > 0) {
+            binanceEmails = binanceEmails.concat(simulatedBinanceEmails);
+        }
+        if (binanceEmails.length > 0) {
+            console.log(`[AUTO-BINANCE] 📧 ${binanceEmails.length} correo(s) de pago encontrado(s) (incluyendo simulados).`);
+        }
     }
-    */
 
     for (let ref in orders) {
         if (orders[ref].status === 'pending') {
@@ -924,58 +975,25 @@ setInterval(async () => {
             if (diffMinutes > 10) {
                 console.log(`[AUTO-CLEAN] Rechazando pedido ${ref} por inactividad (10+ min).`);
                 orders[ref].status = 'rejected';
+                updateOrderStatus(ref, 'rejected');
                 changed = true;
                 continue;
             }
 
-            // --- AUTO APROBACIÓN BDV (DESACTIVADA TEMPORALMENTE) ---
-            /*
-            if (orders[ref].method === 'pagomovil') {
-                let expectedBs = 0;
-                try {
-                    const parts = orders[ref].price.split('/');
-                    if (parts[1]) expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
-                } catch (e) {}
-
-                if (expectedBs > 0) {
-                    const check = await verifyBDVPayment(expectedBs, ref);
-                    if (check.success && check.movimiento) {
-                        const fullRef = check.movimiento.referencia;
-                        
-                        // Agregar a pagosValidados si no existe
-                        if (!pagosValidados[fullRef]) {
-                            pagosValidados[fullRef] = {
-                                amount: parseFloat(check.movimiento.importe.replace(/\./g, '').replace(',', '.')),
-                                date: check.movimiento.fecha,
-                                used: false
-                            };
-                            savePagos();
-                        }
-                        
-                        if (!pagosValidados[fullRef].used) {
-                            console.log(`[AUTO-BDV] ¡Pago encontrado! Procediendo a aprobar ${ref}`);
-                            processPendingOrder(fullRef, ref);
-                        }
-                    }
-                }
-            }
-            */
-
-            // --- AUTO APROBACIÓN BINANCE (DESACTIVADA TEMPORALMENTE) ---
-            /*
-            if (orders[ref].method === 'binance' && binanceEmails.length > 0) {
+            // --- AUTO APROBACIÓN BINANCE (ACTIVA) ---
+            if (orders[ref].method === 'binance' && binanceEmails.length > 0 && (!orders[ref].juego || orders[ref].juego === 'freefire')) {
                 let expectedUsdt = 0;
                 try {
                     expectedUsdt = parseFloat(orders[ref].price.split('USDT')[0].trim());
                 } catch (e) {}
 
                 if (expectedUsdt > 0) {
-                    // Buscar un correo que coincida con el monto exacto o mayor
+                    // Buscar un correo cuyo monto sea igual o mayor al esperado
                     const matchingEmail = binanceEmails.find(email => email.amount >= expectedUsdt);
                     if (matchingEmail) {
                         const emailUidStr = matchingEmail.uid.toString();
-                        console.log(`[AUTO-BINANCE] ¡Pago de ${matchingEmail.amount} USDT encontrado en el correo! Aprobando pedido ${ref}`);
-                        
+                        console.log(`[AUTO-BINANCE] 💰 Pago de ${matchingEmail.amount} USDT encontrado (esperado: ${expectedUsdt} USDT). Procesando pedido ${ref}...`);
+
                         // Guardar en pagosValidados
                         if (!pagosValidados[emailUidStr]) {
                             pagosValidados[emailUidStr] = {
@@ -987,28 +1005,36 @@ setInterval(async () => {
                         }
 
                         if (!pagosValidados[emailUidStr].used) {
-                            // Aprobar pedido
-                            processPendingOrder(emailUidStr, ref);
+                            const approved = await processPendingOrder(emailUidStr, ref);
+                            if (approved) {
+                                // Solo marcar correo como leído si el pedido se aprobó con éxito
+                                await markEmailAsRead(matchingEmail.uid);
+                                console.log(`[AUTO-BINANCE] ✅ Pedido ${ref} aprobado y correo marcado como leído.`);
+                            }
+                        } else {
+                            // Correo ya usado: marcar de todas formas para limpiar la bandeja
+                            await markEmailAsRead(matchingEmail.uid);
                         }
-                        
-                        // Marcar el correo como leído para no re-usarlo
-                        await markEmailAsRead(matchingEmail.uid);
-                        
-                        // Removerlo de la lista temporal para no aplicarlo a dos pedidos en el mismo ciclo
+
+                        // Remover de la lista temporal para no aplicarlo a dos pedidos en el mismo ciclo
                         binanceEmails = binanceEmails.filter(e => e.uid !== matchingEmail.uid);
                     }
                 }
             }
-            */
         }
     }
 
     if (changed) {
-        // En un sistema real, deberías actualizar Supabase para cada pedido cambiado
-        // Pero para no saturar, al menos no rompemos el servidor con una variable inexistente
         console.log('[AUTO-CLEAN] Cambios detectados en pedidos pendientes.');
     }
-}, 60000); // Se ejecuta cada 60 segundos
+}
+setInterval(async () => {
+    try {
+        await runAutoApprovalCycle();
+    } catch (e) {
+        console.error('[AUTO-CYCLE] Error en ciclo:', e.message);
+    }
+}, 60000); // Se ejecuta cada 60 segundos // Se ejecuta cada 60 segundos
 // --- SISTEMA DE AUTENTICACIÓN ADMIN ---
 function checkAdminAuth(req, res) {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -1178,6 +1204,7 @@ const server = http.createServer(async (req, res) => {
         const ref = parsedUrl.searchParams.get('ref');
         const price = parsedUrl.searchParams.get('price') || 'N/A';
         const wa = parsedUrl.searchParams.get('wa') || 'No provisto';
+        const juego = parsedUrl.searchParams.get('juego') || 'freefire';
 
         console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}`);
 
@@ -1213,9 +1240,9 @@ const server = http.createServer(async (req, res) => {
         const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
         const ip_address = rawIp.split(',')[0].trim() || 'N/A';
 
-        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address };
+        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address, juego };
         const { error: insertError } = await supabase.from('ff_orders').insert({
-            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address
+            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address, juego
         });
         if (insertError) {
             // Si Supabase rechaza por restricción de unicidad, también bloqueamos
@@ -1229,7 +1256,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         // --- NOTIFICAR A ADMINS VÍA WHATSAPP ---
-        notifyAdminsNewOrder({ uid, login_uid, name, pack, method, price, wa, ref, control_num });
+        notifyAdminsNewOrder({ uid, login_uid, name, pack, method, price, wa, ref, control_num, juego });
 
         /* 
         // Auto-aprobación desactivada por seguridad a petición del usuario
@@ -1441,6 +1468,36 @@ const server = http.createServer(async (req, res) => {
                     if (action === 'accept') {
                         // Cambiar estado a processing para evitar ejecución simultánea
                         order.status = 'processing';
+                        
+                        const esFreeFire = !order.juego || order.juego === 'freefire';
+
+                        // ===== JUEGOS NO-FREEFIRE: Aprobación manual directa desde Telegram =====
+                        if (!esFreeFire) {
+                            console.log(`[WEBHOOK] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
+                            orders[ref].status = 'approved';
+                            updateOrderStatus(ref, 'approved', 'Manual');
+                            saveRecent(order.name, order.pack);
+                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                            if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                            queueWhatsAppMessage({ ...order, ref }, true);
+                            scheduleReviewRequest({ ...order, ref });
+                            sendPushToUser(order.login_uid || order.uid, 'Pedido Aprobado ✅', `¡Tu pedido de ${order.pack} fue aprobado!`, '/icon-192.png', '/historial');
+                            updateTelegramStatus(ref);
+
+                            const editPayloadManual = JSON.stringify({
+                                chat_id: chatId,
+                                message_id: messageId,
+                                text: `✅ *APROBADO MANUALMENTE (${order.juego.toUpperCase()})*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID/Usuario:* ${order.uid}\n📦 *Paquete:* ${order.pack}\n\n⚠️ _Recuerda realizar la recarga en la plataforma correspondiente._`,
+                                parse_mode: 'Markdown'
+                            });
+                            const erManual = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(editPayloadManual) } });
+                            erManual.on('error', () => {});
+                            erManual.write(editPayloadManual);
+                            erManual.end();
+                            return;
+                        }
+
+                        // ===== FREE FIRE: Recarga automática via Jadh.shop =====
                         console.log(`[WEBHOOK] 💎 Ejecutando recarga directa via Jadh.shop para ${order.uid}`);
                         
                         (async () => {
@@ -1451,7 +1508,9 @@ const server = http.createServer(async (req, res) => {
                             
                             let lastError = 'Error de conexión o saldo insuficiente en el proveedor.';
                             for (let i = 0; i < qty; i++) {
-                                const result = await rechargeViaJadh(order.uid, amountKey);
+                                const result = isPaqueteEspecial(amountKey)
+                                    ? await rechargeViaJadhPaquetes(order.uid, amountKey)
+                                    : await rechargeViaJadh(order.uid, amountKey);
                                 if (result.success) {
                                     if (result.nickname) nick = result.nickname;
                                     if (result.orderId) orderIds.push(result.orderId);
@@ -1671,6 +1730,42 @@ const server = http.createServer(async (req, res) => {
     } else if (parsedUrl.pathname === '/admin/pedidos' && req.method === 'GET') {
         res.writeHead(200);
         res.end(JSON.stringify(Object.entries(orders).map(([ref, data]) => ({ ref, ...data }))));
+    } else if (parsedUrl.pathname === '/admin/test-binance-payment' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { amount } = JSON.parse(body);
+                const parsedAmount = parseFloat(amount);
+                if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'El monto especificado no es válido.' }));
+                }
+
+                // Generar un UID simulado de correo único
+                const mockUid = `mock-${Date.now()}`;
+                simulatedBinanceEmails.push({
+                    uid: mockUid,
+                    amount: parsedAmount,
+                    text: `[SIMULADOR] Has recibido un pago de ${parsedAmount} USDT.`
+                });
+
+                console.log(`[SIMULADOR-BINANCE] Pago inyectado de ${parsedAmount} USDT (ID: ${mockUid}). Ejecutando auto-aprobación...`);
+                
+                // Forzar el ciclo de verificación de inmediato
+                await runAutoApprovalCycle();
+
+                res.writeHead(200);
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    message: `Pago simulado de ${parsedAmount} USDT inyectado con éxito. Se ejecutó la auto-aprobación inmediatamente.` 
+                }));
+            } catch (e) {
+                console.error('[SIMULADOR-BINANCE] Error:', e.message);
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: 'Error interno en el simulador de pagos.' }));
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/aprobar' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
@@ -1709,17 +1804,35 @@ const server = http.createServer(async (req, res) => {
                 if (order && order.status === 'pending') {
                     // Cambiar estado a processing de inmediato para evitar doble click
                     order.status = 'processing';
-                    // Nota: No llamamos updateOrderStatus('processing') en Supabase para no enviar notificaciones raras,
-                    // solo bloqueamos a nivel de memoria RAM hasta que termine y se llame con 'approved' o vuelva a 'pending'.
-                    
-                    console.log(`[ADMIN-APPROVE] 💎 Iniciando recarga manual via Jadh.shop para ${order.uid}`);
+
+                    // ===== JUEGOS NO-FREEFIRE: Aprobación manual directa =====
+                    const esFreeFire = !order.juego || order.juego === 'freefire';
+                    if (!esFreeFire) {
+                        console.log(`[ADMIN-APPROVE] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
+                        orders[targetRef].status = 'approved';
+                        updateOrderStatus(targetRef, 'approved', 'Manual');
+                        saveRecent(order.name, order.pack);
+                        const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                        if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                        queueWhatsAppMessage({ ...order, ref: targetRef }, true);
+                        scheduleReviewRequest({ ...order, ref: targetRef });
+                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅', `¡Tu pedido de ${order.pack} fue aprobado! Recuerda completar tu recarga.`, '/icon-192.png', '/historial');
+                        updateTelegramStatus(targetRef);
+                        res.writeHead(200);
+                        return res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: `Pedido de ${order.juego.toUpperCase()} aprobado manualmente. Recuerda realizar la recarga en la plataforma correspondiente.` }));
+                    }
+
+                    // ===== FREE FIRE: Recarga automática via Jadh.shop =====
+                    console.log(`[ADMIN-APPROVE] 💎 Iniciando recarga via Jadh.shop para ${order.uid}`);
                     const { qty, amountKey } = extractPackInfo(order.pack);
                     let allSuccess = true;
                     let nick = order.name;
                     let orderIds = [];
                     
                     for (let i = 0; i < qty; i++) {
-                        const result = await rechargeViaJadh(order.uid, amountKey);
+                        const result = isPaqueteEspecial(amountKey)
+                            ? await rechargeViaJadhPaquetes(order.uid, amountKey)
+                            : await rechargeViaJadh(order.uid, amountKey);
                         if (result.success) {
                             if (result.nickname) nick = result.nickname;
                             if (result.orderId) orderIds.push(result.orderId);
@@ -2231,6 +2344,7 @@ const server = http.createServer(async (req, res) => {
                 if (newSettings.metodos_pago !== undefined) dbUpdate.metodos_pago = newSettings.metodos_pago;
                 if (newSettings.whatsapp !== undefined) dbUpdate.whatsapp_config = newSettings.whatsapp;
                 if (newSettings.precios !== undefined) dbUpdate.precios = newSettings.precios;
+                if (newSettings.juegos !== undefined) dbUpdate.juegos = newSettings.juegos;
                 
                 let passwordChanged = false;
                 if (newSettings.admin) {
@@ -2261,6 +2375,7 @@ const server = http.createServer(async (req, res) => {
             tasa_del_dia: settings.tasa_del_dia,
             barra_informativa: settings.barra_informativa,
             precios: settings.precios,
+            juegos: settings.juegos,
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
             stock: Object.keys(settings.precios).reduce((acc, amount) => {
@@ -2472,8 +2587,10 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
-                const { username, password } = JSON.parse(body);
-                console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${username}' | Esperado: '${settings.admin.username}'`);
+                const cleanBody = body.replace(/\r/g, '').trim();
+                console.log(`[ADMIN-LOGIN] Body recibido: ${cleanBody}`);
+                const { username, password } = JSON.parse(cleanBody);
+                console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${username}' | Pass recibido: '${password}' | Esperado usuario: '${settings.admin.username}' | Esperado pass: '${settings.admin.password}'`);
                 if (username === settings.admin.username && password === settings.admin.password) {
                     // Generar un token aleatorio seguro
                     const token = 'tok_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
@@ -2492,13 +2609,13 @@ const server = http.createServer(async (req, res) => {
                     res.end(JSON.stringify({ success: true, token }));
                 } else {
                     console.warn('[ADMIN-LOGIN] ❌ Credenciales incorrectas.');
-                    // Siempre devolver 200 para que el frontend pueda leer el mensaje
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: false, message: 'Usuario o contraseña incorrectos' }));
                 }
             } catch (e) {
+                console.error('[ADMIN-LOGIN] Error parseando body:', e.message, '| Body raw:', body);
                 res.writeHead(200);
-                res.end(JSON.stringify({ success: false, message: 'Datos inválidos. Intenta de nuevo.' }));
+                res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
             }
         });
     } else if (parsedUrl.pathname === '/api/admin/logout_all' && req.method === 'POST') {
@@ -2722,58 +2839,61 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ status: 'ok' }));
 
     // ===== REVIEWS API =====
-    } else if (parsedUrl.pathname === '/api/reviews/check' && req.method === 'GET') {
-        const waNum = (parsedUrl.searchParams.get('wa') || '').replace(/\D/g, '');
-        const pending = pendingReviewRequests.get(waNum);
-        if (pending) {
-            pendingReviewRequests.delete(waNum); // Consumir una sola vez
-            res.writeHead(200, corsHeaders);
-            res.end(JSON.stringify({ eligible: true, ...pending }));
-        } else {
-            res.writeHead(200, corsHeaders);
-            res.end(JSON.stringify({ eligible: false }));
-        }
-    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'GET') {
-        try {
-            const { data, error } = await supabase
-                .from('ff_reviews')
-                .select('name, rating, pack, comment, created_at')
-                .gte('rating', 4)
-                .order('created_at', { ascending: false })
-                .limit(30);
-            if (error) throw error;
-            res.writeHead(200, corsHeaders);
-            res.end(JSON.stringify({ success: true, reviews: data || [] }));
-        } catch (e) {
-            res.writeHead(500, corsHeaders);
-            res.end(JSON.stringify({ success: false, error: e.message }));
-        }
-    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', async () => {
+    } else if (parsedUrl.pathname.startsWith('/api/reviews')) {
+        const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+        if (parsedUrl.pathname === '/api/reviews/check' && req.method === 'GET') {
+            const waNum = (parsedUrl.searchParams.get('wa') || '').replace(/\D/g, '');
+            const pending = pendingReviewRequests.get(waNum);
+            if (pending) {
+                pendingReviewRequests.delete(waNum); // Consumir una sola vez
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ eligible: true, ...pending }));
+            } else {
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ eligible: false }));
+            }
+        } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'GET') {
             try {
-                const { uid, rating, name, pack } = JSON.parse(body);
-                const stars = parseInt(rating);
-                if (!uid || isNaN(stars) || stars < 1 || stars > 5) {
-                    res.writeHead(400, corsHeaders);
-                    return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
-                }
-                const { error } = await supabase.from('ff_reviews').insert({
-                    uid,
-                    name: name || uid,
-                    pack: pack || 'Diamantes',
-                    rating: stars,
-                    comment: `${stars === 5 ? '¡Excelente servicio!' : stars === 4 ? 'Muy buen servicio' : 'Buen servicio'}`
-                });
+                const { data, error } = await supabase
+                    .from('ff_reviews')
+                    .select('name, rating, pack, comment, created_at')
+                    .gte('rating', 4)
+                    .order('created_at', { ascending: false })
+                    .limit(30);
                 if (error) throw error;
                 res.writeHead(200, corsHeaders);
-                res.end(JSON.stringify({ success: true }));
-            } catch(e) {
-                res.writeHead(400, corsHeaders);
+                res.end(JSON.stringify({ success: true, reviews: data || [] }));
+            } catch (e) {
+                res.writeHead(500, corsHeaders);
                 res.end(JSON.stringify({ success: false, error: e.message }));
             }
-        });
+        } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { uid, rating, name, pack } = JSON.parse(body);
+                    const stars = parseInt(rating);
+                    if (!uid || isNaN(stars) || stars < 1 || stars > 5) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                    }
+                    const { error } = await supabase.from('ff_reviews').insert({
+                        uid,
+                        name: name || uid,
+                        pack: pack || 'Diamantes',
+                        rating: stars,
+                        comment: `${stars === 5 ? '¡Excelente servicio!' : stars === 4 ? 'Muy buen servicio' : 'Buen servicio'}`
+                    });
+                    if (error) throw error;
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true }));
+                } catch(e) {
+                    res.writeHead(400, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+        }
     } else {
         // Servir archivos estáticos (index.html, style.css, script.js, etc.)
         let filePath = '.' + parsedUrl.pathname;

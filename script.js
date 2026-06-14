@@ -1,9 +1,80 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     let DOLAR_RATE = 635.00;
     let APP_CONFIG = {};
     let adminMarqueeText = "";
     let recentReloadsText = "";
-    
+    let currentJuego = 'freefire';
+
+    function getPackagesForCurrentGame() {
+        if (currentJuego === 'freefire') {
+            return APP_CONFIG.precios;
+        }
+        if (APP_CONFIG.juegos && APP_CONFIG.juegos[currentJuego]) {
+            return APP_CONFIG.juegos[currentJuego].paquetes;
+        }
+        return APP_CONFIG.precios;
+    }
+
+    function renderGames(juegos) {
+        const container = document.getElementById('game-selector-container');
+        const list = document.getElementById('game-list');
+        if (!container || !list) return;
+
+        if (!juegos || Object.keys(juegos).length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        list.innerHTML = '';
+
+        Object.keys(juegos).forEach(key => {
+            const juego = juegos[key];
+            const btn = document.createElement('button');
+            btn.className = 'btn-secondary-outline game-btn' + (key === currentJuego ? ' active' : '');
+            btn.style.borderColor = key === currentJuego ? 'var(--secondary)' : 'rgba(255,255,255,0.2)';
+            btn.style.color = key === currentJuego ? 'var(--secondary)' : '#fff';
+            
+            if (key === 'roblox' || key === 'bloodstrike') {
+                btn.style.position = 'relative';
+                btn.innerHTML = `<span style="position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 0.52rem; background: rgba(255, 0, 229, 0.15); color: #ff00e5; border: 1px solid rgba(255, 0, 229, 0.35); padding: 1px 5px; border-radius: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; z-index: 5; pointer-events: none; backdrop-filter: blur(2px);">Próximamente</span><i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
+                btn.style.opacity = '0.65';
+                btn.style.cursor = 'not-allowed';
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'info',
+                        title: '¡Próximamente!',
+                        text: `Las recargas para ${juego.nombre} estarán disponibles muy pronto.`,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF',
+                        confirmButtonText: 'Entendido'
+                    });
+                };
+            } else {
+                btn.innerHTML = `<i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
+                btn.onclick = () => {
+                    document.querySelectorAll('.game-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.borderColor = 'rgba(255,255,255,0.2)';
+                        b.style.color = '#fff';
+                    });
+                    btn.classList.add('active');
+                    btn.style.borderColor = 'var(--secondary)';
+                    btn.style.color = 'var(--secondary)';
+                    currentJuego = key;
+                    
+                    const input = document.getElementById('player-id');
+                    if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID / Usuario';
+                    
+                    renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
+                };
+            }
+            list.appendChild(btn);
+        });
+    }
+
     // Detectar si estamos en local, en el túnel o en la nube
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -61,6 +132,7 @@
             // Si la tasa o los precios cambiaron, o es la primera carga, re-renderizar
             const shouldRender = !APP_CONFIG.precios || 
                                JSON.stringify(APP_CONFIG.precios) !== JSON.stringify(data.precios) ||
+                               JSON.stringify(APP_CONFIG.juegos) !== JSON.stringify(data.juegos) ||
                                APP_CONFIG.tasa_del_dia !== data.tasa_del_dia ||
                                JSON.stringify(APP_CONFIG.stock) !== JSON.stringify(data.stock);
 
@@ -73,7 +145,8 @@
 
             if (shouldRender) {
                 console.log('[CONFIG] 🔄 Actualizando tienda (Precios o Stock cambiaron)');
-                renderPackages(data.precios, data.tasa_del_dia);
+                if (data.juegos) renderGames(data.juegos);
+                renderPackages(getPackagesForCurrentGame(), data.tasa_del_dia);
             }
 
             // Actualizar métodos de pago (solo si cambiaron)
@@ -146,7 +219,7 @@
                 carousel.appendChild(card);
             });
 
-            section.style.display = 'block';
+            // La sección de reseñas siempre es visible al final de la página
         } catch (e) { /* sin reseñas aún */ }
     }
 
@@ -201,33 +274,47 @@
 
     // Etiquetas de marketing para cada paquete
     const PROMO_TAGS = {
-        '100':  { text: 'Para Empezar', icon: '🎮', className: 'promo-starter' },
-        '310':  { text: 'Popular',      icon: '🔥', className: 'promo-popular' },
-        '520':  { text: 'Más Vendido',  icon: '⚡', className: 'promo-bestseller' },
-        '1060': { text: 'Mejor Valor',  icon: '💰', className: 'promo-value' },
-        '2180': { text: 'Premium',      icon: '👑', className: 'promo-premium' },
-        '5600': { text: 'VIP Élite',    icon: '🏆', className: 'promo-vip' }
+        '100':     { text: 'Para Empezar', icon: '🎮', className: 'promo-starter' },
+        '310':     { text: 'Popular',      icon: '🔥', className: 'promo-popular' },
+        '520':     { text: 'Más Vendido',  icon: '⚡', className: 'promo-bestseller' },
+        '1060':    { text: 'Mejor Valor',  icon: '💰', className: 'promo-value' },
+        '2180':    { text: 'Premium',      icon: '👑', className: 'promo-premium' },
+        '5600':    { text: 'VIP Élite',    icon: '🏆', className: 'promo-vip' },
+        'basica':  { text: 'Paquete Especial', icon: '🃏', className: 'promo-starter' },
+        'semanal': { text: 'Recarga Semanal',  icon: '📅', className: 'promo-popular' },
+        'mensual': { text: 'Recarga Mensual',  icon: '🌙', className: 'promo-premium' },
+        'booyah':  { text: 'Pase Élite',       icon: '🏆', className: 'promo-vip' }
     };
 
     function renderPackages(precios, tasa) {
         const grid = document.querySelector('.packages-grid');
         if (!grid) return;
         grid.innerHTML = '';
+        const PAQUETES_ESPECIALES = ['basica', 'semanal', 'mensual', 'booyah'];
         Object.entries(precios).forEach(([amount, data]) => {
             const priceBs = (data.usdt * tasa).toFixed(2).replace('.', ',');
             const isAvailable = true; // Todos los paquetes disponibles
             const stockLabel = `<span class="stock-badge available">Disponible</span>`;
             const disabledClass = '';
+            const esEspecial = PAQUETES_ESPECIALES.includes(amount.toLowerCase());
 
             // Etiqueta promocional
             const promo = PROMO_TAGS[amount];
             const promoTag = promo ? `<span class="promo-tag ${promo.className}">${promo.icon} ${promo.text}</span>` : '';
+
+            // Icono: tarjeta para paquetes especiales, gema para diamantes
+            const iconHtml = esEspecial
+                ? `<div class="diamond-icon" style="background: linear-gradient(135deg, #ff6b35, #f7931e);"><i class="fa-solid fa-id-card"></i></div>`
+                : `<div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>`;
+
+            // Bonus: solo aplica a paquetes de diamantes numéricos
+            const bonusNum = !esEspecial ? Math.round(parseInt(amount) * 0.1) : 0;
             
             grid.innerHTML += `
-                <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${parseInt(amount)*0.1}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
+                <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${bonusNum}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
                     ${stockLabel}
                     ${promoTag}
-                    <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
+                    ${iconHtml}
                     <div class="pack-info">
                         <span class="amount">${data.label}</span>
                         <span class="price-usdt">${data.usdt} USDT</span>
@@ -1984,7 +2071,13 @@
 
         const ref = selectedMethod === 'pagomovil' ? refPM : refB;
         const name = document.getElementById('player-name-display').innerText.trim();
-        const packText = selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`;
+        const PAQUETES_ESPECIALES_KEYS = ['basica', 'semanal', 'mensual', 'booyah'];
+        const esEspecialOrder = PAQUETES_ESPECIALES_KEYS.includes(selectedPackage.amount.toString().toLowerCase());
+        // Para paquetes especiales: usar solo el amountKey (sin bonus ni qty) ya que son suscripciones
+        const packText = esEspecialOrder
+            ? selectedPackage.amount
+            : (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`);
+
         const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
         const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
         let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
@@ -2008,7 +2101,7 @@
 
         try {
             const loginUid = localStorage.getItem('ff_user_id') || playerInput.value;
-            const messageParams = `uid=${playerInput.value}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}`;
+            const messageParams = `uid=${playerInput.value}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${currentJuego}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
             
             const notifyRes = await fetch(notifyUrl);
@@ -2060,7 +2153,7 @@
                             <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">RECARGASNEY.COM</div>
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
-                                <p><strong>PLAN:</strong> <span class="val">${selectedPackage.amount} + ${selectedPackage.bonus} Bonus</span></p>
+                                <p><strong>PLAN:</strong> <span class="val">${esEspecialOrder ? packText : `${selectedPackage.amount} + ${selectedPackage.bonus} Bonus`}</span></p>
                                 <p><strong>ID / JUGADOR:</strong> <span class="val">${playerInput.value} (${name})</span></p>
                                 <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
                                 <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
@@ -2162,8 +2255,8 @@
                                          `------------------------------------------\n` +
                                          `👤 *Jugador:* ${name}\n` +
                                          `🆔 *ID:* ${playerInput.value}\n` +
-                                         `📦 *Plan:* ${selectedPackage.amount} diamantes\n` +
-                                         `✨ *Bonus:* ${selectedPackage.bonus} diamantes\n` +
+                                         `📦 *Plan:* ${esEspecialOrder ? packText : `${selectedPackage.amount} diamantes`}\n` +
+                                         `✨ *Bonus:* ${esEspecialOrder ? 'N/A' : `${selectedPackage.bonus} diamantes`}\n` +
                                          `🔢 *N° Control:* ${controlNum}\n` +
                                          `🔢 *Ref:* ${approvalNum}\n` +
                                          `📅 *Fecha:* ${fullDateTime}\n` +
