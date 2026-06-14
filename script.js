@@ -311,10 +311,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const iconHtml = esEspecial
                 ? `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`
-                : `<div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>`;
+                : `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/diamante.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
 
             // Bonus: solo aplica a paquetes de diamantes numéricos
             const bonusNum = !esEspecial ? Math.round(parseInt(amount) * 0.1) : 0;
+            const displayLabel = esEspecial ? data.label : data.label.replace(/ diamantes/gi, '');
             
             grid.innerHTML += `
                 <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${bonusNum}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
@@ -322,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${promoTag}
                     ${iconHtml}
                     <div class="pack-info">
-                        <span class="amount">${data.label}</span>
+                        <span class="amount">${displayLabel}</span>
                         <span class="price-usdt">${data.usdt} USDT</span>
                         <span class="price-bs">${priceBs} Bs</span>
                     </div>
