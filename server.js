@@ -2903,6 +2903,22 @@ const server = http.createServer(async (req, res) => {
         let filePath = '.' + parsedUrl.pathname;
         if (filePath === './') filePath = './index.html';
 
+        // --- SEGURIDAD CRÍTICA ---
+        // Prevenir directory traversal y bloquear archivos sensibles (.env, .json, scripts backend)
+        const normalizedPath = filePath.toLowerCase();
+        const basename = path.basename(normalizedPath);
+        
+        if (
+            normalizedPath.includes('..') || 
+            basename.startsWith('.') || 
+            (basename.endsWith('.json') && basename !== 'manifest.json') || 
+            ['server.js', 'whatsapp-bot.js', 'jadh-service.js', 'bdv-service.js', 'binance-service.js', 'email-bot.js', 'redeem-service.js', 'set_webhook.js'].includes(basename)
+        ) {
+            console.log(`[SECURITY] 🚨 Intento de acceso bloqueado a archivo sensible: ${filePath}`);
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Access denied: Security Policy' }));
+        }
+
         const extname = String(path.extname(filePath)).toLowerCase();
         const mimeTypes = {
             '.html': 'text/html',

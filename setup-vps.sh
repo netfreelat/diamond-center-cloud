@@ -96,6 +96,19 @@ server {
         proxy_connect_timeout 75s;
     }
 
+    # Bloquear acceso a archivos sensibles
+    location ~ /\.(env|git|puppeteerrc) {
+        deny all;
+        return 404;
+    }
+    
+    location ~ \.(json|bat|ps1|sql)$ {
+        if (\$request_uri !~ "^/manifest\.json$") {
+            deny all;
+            return 404;
+        }
+    }
+
     location /ws {
         proxy_pass http://localhost:$NODE_PORT;
         proxy_http_version 1.1;
