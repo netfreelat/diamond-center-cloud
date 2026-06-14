@@ -166,7 +166,7 @@ VAPID_EMAIL=mailto:netfreelat@gmail.com
 VAPID_PUBLIC_KEY=BGn7IJ9jDJtkOAwUMXMP6PqEvmGgwAhxWF4yrxoUgMUZSs5dU5shBmT-Bd2T7sAbgmPxorsCvLTR08dyznBOykg
 VAPID_PRIVATE_KEY=RmpUuOcCY3owV5bV562VaPdJsGOZQcoOlbj2gve0dxM
 JADH_EMAIL=jmnetfreelat@gmail.com
-JADH_PASSWORD=Net2121**#
+JADH_PASSWORD='Net2121**#'
 PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 "@
 
