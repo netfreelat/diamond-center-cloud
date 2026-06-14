@@ -2535,9 +2535,13 @@ document.addEventListener('DOMContentLoaded', () => {
             html: `
                 <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Tienes <strong>${currentPoints}</strong> puntos.</p>
                 <div class="redeem-options" style="display: grid; gap: 10px;">
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('100')">100 Diamantes (500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('310')">310 Diamantes (1500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('520')">520 Diamantes (2500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('basica')">🃏 Tarjeta Básica (400 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('100')">💎 100 Diamantes (500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('semanal')">📅 Tarjeta Semanal (1500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('310')">💎 310 Diamantes (1500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('booyah')">🏆 Pase Booyah (2300 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('520')">💎 520 Diamantes (2500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('mensual')">👑 Tarjeta Mensual (7500 pts)</button>
                 </div>
             `,
             showConfirmButton: false,

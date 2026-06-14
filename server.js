@@ -2446,8 +2446,11 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, message: 'Contraseña incorrecta o requerida para canjear' }));
                 }
                 
-                // Definir costos en puntos (ejemplo: 100 diamantes = 500 puntos)
-                const pointCosts = { "100": 500, "310": 1500, "520": 2500 };
+                // Definir costos en puntos
+                const pointCosts = { 
+                    "100": 500, "310": 1500, "520": 2500,
+                    "basica": 400, "semanal": 1500, "booyah": 2300, "mensual": 7500
+                };
                 const cost = pointCosts[pack];
 
                 if (!cost || user.points < cost) {
@@ -2455,7 +2458,51 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, message: 'Puntos insuficientes o paquete inválido' }));
                 }
 
-                // Intentar recarga (prioridad pines para canje)
+                // Si es un paquete especial, se recarga directamente vía Jadh (no hay pines)
+                if (typeof isPaqueteEspecial === 'function' && isPaqueteEspecial(pack)) {
+                    const pointsBefore = Number(user.points);
+                    user.points = pointsBefore - cost;
+                    await saveUser(uid);
+                    console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} puntos por ${pack}. Balance: ${pointsBefore} -> ${user.points}`);
+                    
+                    saveRecent(user.name || uid, pack, 'canje');
+
+                    getLastUserWa(uid).then(userWa => {
+                        if (userWa) {
+                            const redemptionMsgId = `wa_redeem_${uid}_${Date.now()}`;
+                            let packLabel = pack.toUpperCase();
+                            if(pack === 'basica') packLabel = 'Tarjeta Básica';
+                            if(pack === 'semanal') packLabel = 'Tarjeta Semanal';
+                            if(pack === 'mensual') packLabel = 'Tarjeta Mensual';
+                            if(pack === 'booyah') packLabel = 'Pase Booyah';
+
+                            const redemptionMsg = `💎 *¡CANJE DE PUNTOS EXITOSO!* 💎\n\n` +
+                                                 `¡Hola! Has canjeado con éxito tu saldo de puntos por un *${packLabel}*. 🚀\n\n` +
+                                                 `━━━━━━━━━━━━━━━\n` +
+                                                 `🆔 *ID Garena:* ${uid}\n` +
+                                                 `📉 *Costo del canje:* -${cost} pts\n` +
+                                                 `⭐ *Tu nuevo balance:* ${user.points} pts\n` +
+                                                 `━━━━━━━━━━━━━━━\n\n` +
+                                                 `⚡ *Nota:* Esta es una recarga directa. Tu recarga ya se está procesando y llegará a tu cuenta en los próximos minutos.\n\n` +
+                                                 `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+                            
+                            const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
+                            whatsappQueue.push(waItem);
+                            supabase.from('ff_wa_queue').insert(waItem).catch(() => {});
+                        }
+                    });
+
+                    sendPushToUser(uid, '🎁 ¡Canje de Puntos Exitoso!', `Canjeaste ${cost} puntos por ${pack}. Recarga en proceso.`, '/icon-192.png', '/historial');
+
+                    // Lanzar recarga en background usando Jadh
+                    const jadhService = require('./jadh-service');
+                    jadhService.rechargeViaJadhPaquetes(uid, pack).catch(e => console.error('[CANJE_JADH] Error:', e));
+
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({ success: true, message: '¡Canje exitoso! Recarga en proceso directo a tu cuenta.' }));
+                }
+
+                // Intentar recarga de diamantes normales (prioridad pines para canje)
                 const pin = await getFallbackPin(pack);
                 if (pin) {
                     const pointsBefore = Number(user.points);
