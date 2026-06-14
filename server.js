@@ -2458,95 +2458,52 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, message: 'Puntos insuficientes o paquete inválido' }));
                 }
 
-                // Si es un paquete especial, se recarga directamente vía Jadh (no hay pines)
+                // Todos los canjes ahora se hacen por recarga directa vía Jadh
+                const pointsBefore = Number(user.points);
+                user.points = pointsBefore - cost;
+                await saveUser(uid);
+                console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} puntos por ${pack}. Balance: ${pointsBefore} -> ${user.points}`);
+                
+                saveRecent(user.name || uid, pack, 'canje');
+
+                getLastUserWa(uid).then(userWa => {
+                    if (userWa) {
+                        const redemptionMsgId = `wa_redeem_${uid}_${Date.now()}`;
+                        let packLabel = pack.toUpperCase();
+                        if(pack === 'basica') packLabel = 'Tarjeta Básica';
+                        else if(pack === 'semanal') packLabel = 'Tarjeta Semanal';
+                        else if(pack === 'mensual') packLabel = 'Tarjeta Mensual';
+                        else if(pack === 'booyah') packLabel = 'Pase Booyah';
+                        else packLabel = `${pack} Diamantes`;
+
+                        const redemptionMsg = `💎 *¡CANJE DE PUNTOS EXITOSO!* 💎\n\n` +
+                                             `¡Hola! Has canjeado con éxito tu saldo de puntos por *${packLabel}*. 🚀\n\n` +
+                                             `━━━━━━━━━━━━━━━\n` +
+                                             `🆔 *ID Garena:* ${uid}\n` +
+                                             `📉 *Costo del canje:* -${cost} pts\n` +
+                                             `⭐ *Tu nuevo balance:* ${user.points} pts\n` +
+                                             `━━━━━━━━━━━━━━━\n\n` +
+                                             `⚡ *Nota:* Esta es una recarga directa. Tu recarga ya se está procesando y llegará a tu cuenta en los próximos minutos.\n\n` +
+                                             `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+                        
+                        const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
+                        whatsappQueue.push(waItem);
+                        supabase.from('ff_wa_queue').insert(waItem).catch(() => {});
+                    }
+                });
+
+                sendPushToUser(uid, '🎁 ¡Canje de Puntos Exitoso!', `Canjeaste ${cost} puntos por ${pack}. Recarga en proceso.`, '/icon-192.png', '/historial');
+
+                // Lanzar recarga en background usando Jadh
+                const jadhService = require('./jadh-service');
                 if (typeof isPaqueteEspecial === 'function' && isPaqueteEspecial(pack)) {
-                    const pointsBefore = Number(user.points);
-                    user.points = pointsBefore - cost;
-                    await saveUser(uid);
-                    console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} puntos por ${pack}. Balance: ${pointsBefore} -> ${user.points}`);
-                    
-                    saveRecent(user.name || uid, pack, 'canje');
-
-                    getLastUserWa(uid).then(userWa => {
-                        if (userWa) {
-                            const redemptionMsgId = `wa_redeem_${uid}_${Date.now()}`;
-                            let packLabel = pack.toUpperCase();
-                            if(pack === 'basica') packLabel = 'Tarjeta Básica';
-                            if(pack === 'semanal') packLabel = 'Tarjeta Semanal';
-                            if(pack === 'mensual') packLabel = 'Tarjeta Mensual';
-                            if(pack === 'booyah') packLabel = 'Pase Booyah';
-
-                            const redemptionMsg = `💎 *¡CANJE DE PUNTOS EXITOSO!* 💎\n\n` +
-                                                 `¡Hola! Has canjeado con éxito tu saldo de puntos por un *${packLabel}*. 🚀\n\n` +
-                                                 `━━━━━━━━━━━━━━━\n` +
-                                                 `🆔 *ID Garena:* ${uid}\n` +
-                                                 `📉 *Costo del canje:* -${cost} pts\n` +
-                                                 `⭐ *Tu nuevo balance:* ${user.points} pts\n` +
-                                                 `━━━━━━━━━━━━━━━\n\n` +
-                                                 `⚡ *Nota:* Esta es una recarga directa. Tu recarga ya se está procesando y llegará a tu cuenta en los próximos minutos.\n\n` +
-                                                 `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
-                            
-                            const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
-                            whatsappQueue.push(waItem);
-                            supabase.from('ff_wa_queue').insert(waItem).catch(() => {});
-                        }
-                    });
-
-                    sendPushToUser(uid, '🎁 ¡Canje de Puntos Exitoso!', `Canjeaste ${cost} puntos por ${pack}. Recarga en proceso.`, '/icon-192.png', '/historial');
-
-                    // Lanzar recarga en background usando Jadh
-                    const jadhService = require('./jadh-service');
-                    jadhService.rechargeViaJadhPaquetes(uid, pack).catch(e => console.error('[CANJE_JADH] Error:', e));
-
-                    res.writeHead(200);
-                    return res.end(JSON.stringify({ success: true, message: '¡Canje exitoso! Recarga en proceso directo a tu cuenta.' }));
-                }
-
-                // Intentar recarga de diamantes normales (prioridad pines para canje)
-                const pin = await getFallbackPin(pack);
-                if (pin) {
-                    const pointsBefore = Number(user.points);
-                    user.points = pointsBefore - cost;
-                    await saveUser(uid);
-                    console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} puntos. Balance: ${pointsBefore} -> ${user.points}`);
-                    
-                    // Mostrar en la marquesina (usar nombre si existe o ID)
-                    saveRecent(user.name || uid, pack, 'canje');
-
-                    // Encolar mensaje de WhatsApp para el usuario
-                    getLastUserWa(uid).then(userWa => {
-                        if (userWa) {
-                            const redemptionMsgId = `wa_redeem_${uid}_${Date.now()}`;
-                            const redemptionMsg = `💎 *¡CANJE DE PUNTOS EXITOSO!* 💎\n\n` +
-                                                 `¡Hola! Has canjeado con éxito tu saldo de puntos por un paquete de *${pack} Diamantes*. 🚀\n\n` +
-                                                 `━━━━━━━━━━━━━━━\n` +
-                                                 `🆔 *ID Garena:* ${uid}\n` +
-                                                 `📉 *Costo del canje:* -${cost} pts\n` +
-                                                 `⭐ *Tu nuevo balance:* ${user.points} pts\n` +
-                                                 `━━━━━━━━━━━━━━━\n\n` +
-                                                 `⚡ *Tu PIN de Diamantes:* \n` +
-                                                 `\`${pin}\`\n\n` +
-                                                 `🔗 Canjéalo aquí directamente:\n` +
-                                                 `https://redeempins.com/\n\n` +
-                                                 `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
-                            
-                            const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
-                            whatsappQueue.push(waItem);
-                            supabase.from('ff_wa_queue').insert(waItem)
-                                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error redemption message:', error.message); });
-                            console.log(`[CANJE_NOTIFICATION] Encolada notificación de canje de puntos para ${userWa}`);
-                        }
-                    });
-
-                    sendPushToUser(uid, '🎁 ¡Canje de Puntos Exitoso! 💎', `Canjeaste ${cost} puntos por ${pack} diamantes. Tu PIN es: ${pin}`, '/icon-192.png', '/historial');
-                    
-                    res.writeHead(200);
-                    res.end(JSON.stringify({ success: true, pin: pin, message: '¡Canje exitoso!' }));
+                    jadhService.rechargeViaJadhPaquetes(uid, pack).catch(e => console.error('[CANJE_JADH_ESP] Error:', e));
                 } else {
-                    console.log(`[CANJE] ❌ FALLO: No hay pines para el paquete ${pack}`);
-                    res.writeHead(400);
-                    res.end(JSON.stringify({ success: false, message: 'No hay pines disponibles para canje en este momento' }));
+                    jadhService.rechargeViaJadh(uid, pack).catch(e => console.error('[CANJE_JADH] Error:', e));
                 }
+
+                res.writeHead(200);
+                return res.end(JSON.stringify({ success: true, message: '¡Canje exitoso! Recarga en proceso directo a tu cuenta.' }));
             } catch (e) {
                 res.writeHead(400);
                 res.end(JSON.stringify({ error: 'Error procesando canje' }));
