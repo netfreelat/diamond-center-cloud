@@ -61,17 +61,17 @@ async function rechargeViaJadh(uid, packAmount) {
         const page = await browser.newPage();
         await page.setDefaultNavigationTimeout(60000);
 
-        // 1. Ir a la página de login
-        console.log('[JADH-BOT] 📡 Navegando a Jadh.shop para inicio de sesión...');
-        await page.goto('https://jadh.shop/', { waitUntil: 'networkidle2' });
+        // 1. Navegar directamente al producto (Jadh redirige a /auth si no hay sesión)
+        console.log('[JADH-BOT] 📡 Navegando al producto Freefire Auto...');
+        await page.goto('https://jadh.shop/producto/freefire-auto', { waitUntil: 'networkidle2' });
 
-        // Verificar si ya estamos logueados o necesitamos loguearnos
-        const needsLogin = await page.evaluate(() => {
-            return !!document.querySelector('#login-email');
-        });
+        // Verificar si nos redirigió al login
+        const currentUrl = page.url();
+        const needsLogin = currentUrl.includes('/auth') || currentUrl.includes('/login') || !!(await page.$('#login-email'));
 
         if (needsLogin) {
-            console.log('[JADH-BOT] 🔑 Rellenando datos de inicio de sesión...');
+            console.log('[JADH-BOT] 🔑 Redirigido al login. Ingresando credenciales...');
+            await page.goto('https://jadh.shop/auth', { waitUntil: 'networkidle2' });
             await page.waitForSelector('#login-email', { timeout: 15000 });
             await page.type('#login-email', email);
             await page.type('#login-password', password);
@@ -82,21 +82,19 @@ async function rechargeViaJadh(uid, packAmount) {
                 page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 })
             ]);
             console.log('[JADH-BOT] ✅ Sesión iniciada con éxito.');
+            // Navegar al producto después del login
+            await page.goto('https://jadh.shop/producto/freefire-auto', { waitUntil: 'networkidle2' });
         } else {
             console.log('[JADH-BOT] 🔄 Sesión ya estaba activa.');
         }
 
-        // 2. Navegar al producto Freefire Auto
-        console.log('[JADH-BOT] 🛒 Navegando al producto Freefire Auto...');
-        await page.goto('https://jadh.shop/producto/freefire-auto', { waitUntil: 'networkidle2' });
-
-        // 3. Completar formulario de compra
+        // 2. Completar formulario de compra
         console.log('[JADH-BOT] 📝 Rellenando formulario de recarga...');
         await page.waitForSelector('#packageSelect', { timeout: 15000 });
         await page.select('#packageSelect', packageId);
 
-        await page.waitForSelector('#gameAccountId', { timeout: 15000 });
-        await page.type('#gameAccountId', uid.toString());
+        await page.waitForSelector('input[name="gp_input1"]', { timeout: 15000 });
+        await page.type('input[name="gp_input1"]', uid.toString());
 
         // 4. Click en Recargar
         if (process.env.TEST_MODE === 'true') {
@@ -277,17 +275,17 @@ async function rechargeViaJadhPaquetes(uid, packName) {
         const page = await browser.newPage();
         await page.setDefaultNavigationTimeout(60000);
 
-        // 1. Ir a la página de login
-        console.log('[JADH-PAQUETES] 📡 Navegando a Jadh.shop para inicio de sesión...');
-        await page.goto('https://jadh.shop/', { waitUntil: 'networkidle2' });
+        // 1. Navegar directamente al producto (Jadh usa /auth si no hay sesión)
+        console.log('[JADH-PAQUETES] 📡 Navegando al producto Freefire Paquetes...');
+        await page.goto('https://jadh.shop/producto/freefire-paquetes', { waitUntil: 'networkidle2' });
 
-        // Verificar si ya estamos logueados o necesitamos loguearnos
-        const needsLogin = await page.evaluate(() => {
-            return !!document.querySelector('#login-email');
-        });
+        // Verificar si nos redirigió al login
+        const currentUrl = page.url();
+        const needsLogin = currentUrl.includes('/auth') || currentUrl.includes('/login') || !!(await page.$('#login-email'));
 
         if (needsLogin) {
-            console.log('[JADH-PAQUETES] 🔑 Rellenando datos de inicio de sesión...');
+            console.log('[JADH-PAQUETES] 🔑 Redirigido al login. Ingresando credenciales...');
+            await page.goto('https://jadh.shop/auth', { waitUntil: 'networkidle2' });
             await page.waitForSelector('#login-email', { timeout: 15000 });
             await page.type('#login-email', email);
             await page.type('#login-password', password);
@@ -298,6 +296,8 @@ async function rechargeViaJadhPaquetes(uid, packName) {
                 page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 })
             ]);
             console.log('[JADH-PAQUETES] ✅ Sesión iniciada con éxito.');
+            // Navegar al producto después del login
+            await page.goto('https://jadh.shop/producto/freefire-paquetes', { waitUntil: 'networkidle2' });
         } else {
             console.log('[JADH-PAQUETES] 🔄 Sesión ya estaba activa.');
         }
