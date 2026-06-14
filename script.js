@@ -302,9 +302,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const promo = PROMO_TAGS[amount];
             const promoTag = promo ? `<span class="promo-tag ${promo.className}">${promo.icon} ${promo.text}</span>` : '';
 
-            // Icono: tarjeta para paquetes especiales, gema para diamantes
+            // Imagen 3D para paquetes especiales, ícono de gema para diamantes
+            const specialImgs = {
+                'basica':  '/img/tarjeta_basica.png',
+                'semanal': '/img/tarjeta_semanal.png',
+                'mensual': '/img/tarjeta_mensual.png',
+                'booyah':  '/img/pase_booyah.png'
+            };
             const iconHtml = esEspecial
-                ? `<div class="diamond-icon" style="background: linear-gradient(135deg, #ff6b35, #f7931e);"><i class="fa-solid fa-id-card"></i></div>`
+                ? `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`
                 : `<div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>`;
 
             // Bonus: solo aplica a paquetes de diamantes numéricos
