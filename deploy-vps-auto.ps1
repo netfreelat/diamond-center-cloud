@@ -140,7 +140,7 @@ Write-OK "Archivos subidos correctamente"
 Write-Step "[5/6] Configurando variables de entorno (.env)..."
 
 $envContent = @"
-TELEGRAM_BOT_TOKEN=8289162386:AAHLCDRF1OVerD95szOdWCDfQViH4CT_FGY
+TELEGRAM_BOT_TOKEN=8670482596:AAELwiQx4GrAnGfasJ7xlKcBTSjSLlW69Qs
 TELEGRAM_CHAT_ID=908668962
 SERVER_URL=https://recargasney.com
 NETFREELAT_USER=Netfreelat1
@@ -166,7 +166,7 @@ VAPID_EMAIL=mailto:netfreelat@gmail.com
 VAPID_PUBLIC_KEY=BGn7IJ9jDJtkOAwUMXMP6PqEvmGgwAhxWF4yrxoUgMUZSs5dU5shBmT-Bd2T7sAbgmPxorsCvLTR08dyznBOykg
 VAPID_PRIVATE_KEY=RmpUuOcCY3owV5bV562VaPdJsGOZQcoOlbj2gve0dxM
 JADH_EMAIL=jmnetfreelat@gmail.com
-JADH_PASSWORD=Clifor1988
+JADH_PASSWORD=Net2121**#
 PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 "@
 
