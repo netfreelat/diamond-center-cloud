@@ -438,15 +438,13 @@ function markAsSent(id) {
 // =========================================================================
 // 🛡️ LÓGICA Y CONFIGURACIÓN DE ADMINISTRADORES (Aprobar/Rechazar Pedidos)
 // =========================================================================
-const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
+const ADMIN_WA_NUMBERS = ['04243790757'];
 
-// Lista de JIDs @lid conocidos de los administradores (se actualiza automáticamente al recibir mensajes)
-// Los valores @lid se obtuvieron de los logs del servidor y corresponden a:
-//   265132844298371@lid -> 04243790757 (Admin 1)
-//   59931990483031@lid  -> 04125313735 (Admin 2)
+// Lista de JIDs @lid conocidos del administrador (se actualiza automáticamente al recibir mensajes)
+// El valor @lid se obtuvo de los logs del servidor y corresponde a:
+//   265132844298371@lid -> 04243790757 (Admin principal)
 const ADMIN_LID_CACHE = new Set([
-    '265132844298371@lid',
-    '59931990483031@lid'
+    '265132844298371@lid'
 ]);
 
 // Verificación de admin: compara por JID completo (cache @lid), por teléfono normalizado, o por cualquier campo conocido
