@@ -451,6 +451,10 @@ function isAdminJID(jid, resolvedPhone) {
 // Verifica si un número de teléfono (solo dígitos) es admin
 function isAdminPhone(phoneDigits) {
     if (!phoneDigits) return false;
+    
+    // Bloqueo estricto del número reportado
+    if (phoneDigits.includes('4125322412')) return false;
+
     return ADMIN_WA_NUMBERS.some(adminNum => {
         let cleanAdmin = adminNum.replace(/\D/g, '');
         if (cleanAdmin.startsWith('0')) {
@@ -582,7 +586,7 @@ async function handleSendPrices(msg) {
                     // Ordenar las claves de precios numéricamente
                     const sortedKeys = Object.keys(precios).sort((a, b) => parseInt(a) - parseInt(b));
                     
-                    let msgText = `💎 *RECARGASNEY.COM - PRECIOS ACTUALIZADOS* 💎\n`;
+                    let msgText = `💎 *RECARGASNEY.COM - PRECIOS ACTUALIZADOS (v2)* 💎\n`;
                     msgText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
                     msgText += `⚡ _Precios expresados en Bolívares (Bs.):_\n\n`;
                     
