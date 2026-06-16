@@ -1132,8 +1132,8 @@ setInterval(async () => {
 }, 60000); // Se ejecuta cada 60 segundos // Se ejecuta cada 60 segundos
 // --- SISTEMA DE AUTENTICACIÓN ADMIN ---
 
-// 🔒 NÚMERO DE WHATSAPP AUTORIZADO PARA APROBAR/RECHAZAR (solo admin principal)
-const ADMIN_WA_PHONES = ['04243790757'];
+// 🔒 NÚMEROS DE WHATSAPP AUTORIZADOS PARA APROBAR/RECHAZAR (ambos admins)
+const ADMIN_WA_PHONES = ['04243790757', '04125313735'];
 
 // 🔒 USER IDs DE TELEGRAM AUTORIZADOS (obtener con @userinfobot en Telegram)
 // IMPORTANTE: Llenar con los IDs reales de cada administrador
