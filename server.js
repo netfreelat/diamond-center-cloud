@@ -1131,6 +1131,31 @@ setInterval(async () => {
     }
 }, 60000); // Se ejecuta cada 60 segundos // Se ejecuta cada 60 segundos
 // --- SISTEMA DE AUTENTICACIÓN ADMIN ---
+
+// 🔒 NÚMEROS DE WHATSAPP AUTORIZADOS PARA APROBAR/RECHAZAR
+const ADMIN_WA_PHONES = ['04243790757', '04125313735'];
+
+// 🔒 USER IDs DE TELEGRAM AUTORIZADOS (obtener con @userinfobot en Telegram)
+// IMPORTANTE: Llenar con los IDs reales de cada administrador
+const ADMIN_TELEGRAM_IDS = (
+    process.env.ADMIN_TELEGRAM_IDS
+        ? process.env.ADMIN_TELEGRAM_IDS.split(',')
+              .map(id => parseInt(id.trim()))
+              .filter(id => !isNaN(id))
+        : []
+);
+
+// Helper: verifica si un user_id de Telegram es admin autorizado
+function isTelegramAdmin(userId) {
+    if (!userId) return false;
+    if (ADMIN_TELEGRAM_IDS.length === 0) {
+        // Si no hay IDs configurados, bloquear TODO por defecto (seguridad máxima)
+        console.warn('[TELEGRAM-AUTH] ⚠️ ADMIN_TELEGRAM_IDS no configurado en .env — todos los clics de Telegram bloqueados.');
+        return false;
+    }
+    return ADMIN_TELEGRAM_IDS.includes(Number(userId));
+}
+
 function checkAdminAuth(req, res) {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     let token = parsedUrl.searchParams.get('token');
@@ -1143,15 +1168,18 @@ function checkAdminAuth(req, res) {
     }
     
     // Permitir acceso si se provee el header X-WA-Secret con la contraseña de admin
+    // Solo el bot de WhatsApp interno lo conoce; valida adicionalmente por IP si es necesario
     const waSecret = req.headers['x-wa-secret'];
     const expectedSecret = process.env.ADMIN_PASS || 'Sneyder12345*#';
     if (waSecret && waSecret === expectedSecret) {
+        console.log(`[AUTH] ✅ Acceso autorizado por X-WA-Secret desde ${req.socket.remoteAddress}`);
         return true;
     }
     
     // Validar token contra el guardado en memoria
     if (!token || !settings.admin.session_token || token !== settings.admin.session_token) {
-        console.warn(`[AUTH] 🛑 Acceso denegado: ${req.method} ${parsedUrl.pathname}`);
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'desconocida';
+        console.warn(`[AUTH] 🛑 ACCESO DENEGADO: ${req.method} ${parsedUrl.pathname} | IP: ${ip} | Token recibido: ${token ? token.substring(0,8)+'...' : 'ninguno'}`);
         res.writeHead(401);
         res.end(JSON.stringify({ success: false, error: 'Unauthorized', code: 401 }));
         return false;
@@ -1479,7 +1507,31 @@ const server = http.createServer(async (req, res) => {
                     const [action, ref] = data.split('|');
                     let order = orders[ref];
                     
-                    console.log(`[WEBHOOK] 🖱️ CLIC RECIBIDO: Acción=${action} | Ref=${ref} | User=${callbackQuery.from.username || callbackQuery.from.id}`);
+                    const tgUserId = callbackQuery.from.id;
+                    const tgUsername = callbackQuery.from.username || String(tgUserId);
+                    console.log(`[WEBHOOK] 🖱️ CLIC RECIBIDO: Acción=${action} | Ref=${ref} | User=${tgUsername} | ID=${tgUserId}`);
+
+                    // 🔒 VERIFICACIÓN DE IDENTIDAD: Solo admins autorizados pueden aprobar/rechazar
+                    if (!isTelegramAdmin(tgUserId)) {
+                        console.warn(`[WEBHOOK] 🚫 ACCESO DENEGADO: Usuario ${tgUsername} (ID: ${tgUserId}) NO está en la lista de admins autorizados. Clic ignorado.`);
+                        // Notificar al usuario no autorizado directamente
+                        const denyPayload = JSON.stringify({
+                            callback_query_id: callbackQuery.id,
+                            text: '🚫 No tienes permisos para aprobar o rechazar pagos.',
+                            show_alert: true
+                        });
+                        const denyReq = https.request({
+                            hostname: 'api.telegram.org',
+                            path: `/bot${BOT_TOKEN}/answerCallbackQuery`,
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(denyPayload) }
+                        });
+                        denyReq.on('error', () => {});
+                        denyReq.write(denyPayload);
+                        denyReq.end();
+                        return;
+                    }
+                    console.log(`[WEBHOOK] ✅ Admin autorizado: ${tgUsername} (ID: ${tgUserId})`);
 
                     // 1. Responder INMEDIATAMENTE a Telegram para quitar el "relojito"
                     const answerPayload = JSON.stringify({ 
