@@ -443,26 +443,9 @@ function markAsSent(id) {
 // =========================================================================
 const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
 
-// Lista de JIDs @lid conocidos de los administradores (se actualiza automáticamente al recibir mensajes)
-// Los valores @lid se obtuvieron de los logs del servidor y corresponden a:
-//   265132844298371@lid -> 04243790757 (Admin principal - Telegram + WhatsApp)
-//   59931990483031@lid  -> 04125313735 (Admin secundario - solo WhatsApp)
-// Lista de JIDs @lid/@c.us conocidos de los administradores. Inicialmente vacía para prevenir inyecciones.
-const ADMIN_LID_CACHE = new Set();
-
-// Verificación de admin: compara por JID completo (cache @lid), por teléfono normalizado, o por cualquier campo conocido
+// Verificación de admin: compara ESTRICTAMENTE por número de teléfono normalizado
 function isAdminJID(jid, resolvedPhone) {
-    // 1. Verificar si está en cache de @lid conocidos
-    if (ADMIN_LID_CACHE.has(jid)) return true;
-    
-    // 2. Verificar por número de teléfono resuelto
-    if (isAdminPhone(resolvedPhone)) {
-        // Guardar este JID en cache para próximas veces
-        ADMIN_LID_CACHE.add(jid);
-        console.log(`[ADMIN-CACHE] ✅ JID ${jid} añadido al cache de admins (phone: ${resolvedPhone})`);
-        return true;
-    }
-    return false;
+    return isAdminPhone(resolvedPhone);
 }
 
 // Verifica si un número de teléfono (solo dígitos) es admin
