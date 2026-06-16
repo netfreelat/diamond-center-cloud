@@ -1045,9 +1045,10 @@ async function runAutoApprovalCycle() {
     const NOW = new Date();
     let changed = false;
 
-    // 1. Obtener pagos recientes de Binance (si hay pedidos pendientes de Free Fire)
-    let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance' && (!o.juego || o.juego === 'freefire'));
-    let binanceEmails = [];
+    // 1. OBTENCIÓN DE CORREOS DE BINANCE DESACTIVADA A PETICIÓN DEL USUARIO
+    // let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance' && (!o.juego || o.juego === 'freefire'));
+    // let binanceEmails = [];
+    /*
     if (pendingBinanceOrders.length > 0) {
         try {
             binanceEmails = await checkBinanceEmails();
@@ -1061,6 +1062,7 @@ async function runAutoApprovalCycle() {
             console.log(`[AUTO-BINANCE] 📧 ${binanceEmails.length} correo(s) de pago encontrado(s) (incluyendo simulados).`);
         }
     }
+    */
 
     for (let ref in orders) {
         if (orders[ref].status === 'pending') {
@@ -1075,7 +1077,9 @@ async function runAutoApprovalCycle() {
                 continue;
             }
 
-            // --- AUTO APROBACIÓN BINANCE (ACTIVA) ---
+            // --- AUTO APROBACIÓN BINANCE DESACTIVADA ---
+            // Los pedidos de Binance ahora requieren aprobación manual como los de Pago Móvil.
+            /*
             if (orders[ref].method === 'binance' && binanceEmails.length > 0 && (!orders[ref].juego || orders[ref].juego === 'freefire')) {
                 let expectedUsdt = 0;
                 try {
@@ -1116,6 +1120,7 @@ async function runAutoApprovalCycle() {
                     }
                 }
             }
+            */
         }
     }
 
