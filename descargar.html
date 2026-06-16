@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargar App - RECARGASNEY.COM</title>
+    <meta name="description" content="Instala la app de RECARGASNEY.COM en tu celular. Recargas de diamantes al instante, sin comisiones.">
+    <meta name="theme-color" content="#07030D">
+
+    <!-- Open Graph para WhatsApp / Telegram preview -->
+    <meta property="og:title" content="📲 Descarga la App - RECARGASNEY.COM">
+    <meta property="og:description" content="Instala nuestra app y recarga tus diamantes al instante. Funciona en Android e iPhone. ¡Sin descargas de tiendas!">
+    <meta property="og:image" content="/icon-512.png">
+    <meta property="og:type" content="website">
+
+    <link rel="icon" href="/icon-512.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --cyan:    #00E5FF;
+            --purple:  #8B5CF6;
+            --blue:    #3B82F6;
+            --dark:    #07030D;
+            --card:    rgba(255,255,255,0.05);
+            --border:  rgba(255,255,255,0.08);
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Outfit', sans-serif;
+            background: var(--dark);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* ── BACKGROUND ── */
+        .bg-glow {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0,229,255,.13) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 60% at 80% 80%, rgba(139,92,246,.18) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 30% at 50% 0%,  rgba(59,130,246,.10) 0%, transparent 70%);
+        }
+
+        /* ── PARTICLES ── */
+        .particle {
+            position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+            animation: floatP linear infinite;
+            background: radial-gradient(circle, rgba(0,229,255,.6), transparent 70%);
+        }
+        @keyframes floatP {
+            0%   { transform: translateY(110vh) scale(0); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: .5; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        /* ── LAYOUT ── */
+        .wrapper {
+            position: relative; z-index: 1;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px 20px;
+            gap: 0;
+        }
+
+        /* ── TOP BADGE ── */
+        .top-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(0,229,255,.1);
+            border: 1px solid rgba(0,229,255,.3);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-size: .8rem; font-weight: 600;
+            color: var(--cyan);
+            letter-spacing: .05em;
+            margin-bottom: 32px;
+            animation: fadeDown .6s ease both;
+        }
+        .top-badge .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 8px var(--cyan);
+            animation: pulse 1.5s ease infinite;
+        }
+        @keyframes pulse {
+            0%,100% { transform: scale(1); opacity: 1; }
+            50%      { transform: scale(1.4); opacity: .7; }
+        }
+
+        /* ── APP ICON ── */
+        .app-icon-wrap {
+            position: relative;
+            margin-bottom: 28px;
+            animation: fadeDown .6s .1s ease both;
+        }
+        .app-icon {
+            width: 120px; height: 120px;
+            border-radius: 28px;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,.1),
+                0 8px 40px rgba(0,229,255,.25),
+                0 24px 60px rgba(139,92,246,.2);
+        }
+        .icon-ring {
+            position: absolute; inset: -8px;
+            border-radius: 36px;
+            border: 2px solid transparent;
+            background: linear-gradient(135deg, rgba(0,229,255,.4), rgba(139,92,246,.4)) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            animation: spin 6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── TITLES ── */
+        h1 {
+            font-size: clamp(2rem, 6vw, 3rem);
+            font-weight: 900;
+            text-align: center;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #fff 30%, var(--cyan) 70%, var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: fadeDown .6s .15s ease both;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            font-size: 1.05rem; font-weight: 400;
+            color: rgba(255,255,255,.6);
+            text-align: center; max-width: 380px;
+            line-height: 1.6;
+            animation: fadeDown .6s .2s ease both;
+            margin-bottom: 40px;
+        }
+
+        /* ── FEATURES ── */
+        .features {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+            max-width: 480px;
+            margin-bottom: 40px;
+            animation: fadeDown .6s .25s ease both;
+        }
+        .feat {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: .85rem; font-weight: 500;
+            color: rgba(255,255,255,.8);
+        }
+        .feat i { color: var(--cyan); font-size: .9rem; }
+
+        /* ── MAIN CTA ── */
+        .cta-wrap {
+            display: flex; flex-direction: column; align-items: center; gap: 16px;
+            width: 100%; max-width: 400px;
+            animation: fadeUp .6s .3s ease both;
+        }
+        .btn-install {
+            width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            padding: 20px 32px;
+            border-radius: 18px;
+            border: none; cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem; font-weight: 700;
+            letter-spacing: .02em;
+            text-decoration: none;
+            transition: all .25s ease;
+            position: relative; overflow: hidden;
+        }
+        .btn-install::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,.12) 100%);
+            opacity: 0; transition: opacity .25s;
+        }
+        .btn-install:hover::before { opacity: 1; }
+        .btn-install:active { transform: scale(.97); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), var(--blue), var(--purple));
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(0,229,255,.3), 0 4px 16px rgba(139,92,246,.2);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 12px 48px rgba(0,229,255,.45), 0 6px 24px rgba(139,92,246,.3);
+            transform: translateY(-2px);
+        }
+        .btn-icon { font-size: 1.4rem; }
+
+        /* Steps for iOS */
+        .ios-steps {
+            display: none;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            width: 100%;
+            gap: 14px;
+            flex-direction: column;
+        }
+        .ios-steps.visible { display: flex; }
+        .ios-steps h3 {
+            font-size: 1rem; font-weight: 700; color: var(--cyan);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .ios-step {
+            display: flex; align-items: flex-start; gap: 12px;
+        }
+        .step-num {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            font-size: .78rem; font-weight: 800; color: #fff;
+        }
+        .step-text { font-size: .9rem; color: rgba(255,255,255,.75); line-height: 1.5; }
+        .step-text strong { color: #fff; }
+
+        /* OR divider */
+        .or-divider {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; color: rgba(255,255,255,.3); font-size: .8rem;
+        }
+        .or-divider::before, .or-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+
+        /* Direct link btn */
+        .btn-link {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: rgba(255,255,255,.7);
+            font-size: .95rem; font-weight: 500;
+        }
+        .btn-link:hover {
+            border-color: rgba(0,229,255,.4);
+            color: #fff;
+            background: rgba(0,229,255,.05);
+        }
+
+        /* ── STATS ── */
+        .stats {
+            display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+            margin-top: 48px;
+            animation: fadeUp .6s .4s ease both;
+        }
+        .stat {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .stat-num {
+            font-size: 1.6rem; font-weight: 900;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-lbl {
+            font-size: .75rem; color: rgba(255,255,255,.45); font-weight: 500;
+            text-transform: uppercase; letter-spacing: .08em;
+        }
+        .stat-sep {
+            width: 1px; background: var(--border);
+            align-self: stretch; margin: 4px 0;
+        }
+
+        /* ── QR CARD ── */
+        .qr-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            margin-top: 40px;
+            animation: fadeUp .6s .45s ease both;
+        }
+        .qr-card p { font-size: .85rem; color: rgba(255,255,255,.5); text-align: center; }
+        .qr-card strong { color: rgba(255,255,255,.8); }
+        #qr-canvas { border-radius: 12px; }
+
+        /* ── FOOTER ── */
+        footer {
+            margin-top: 48px;
+            text-align: center;
+            font-size: .8rem;
+            color: rgba(255,255,255,.25);
+            animation: fadeUp .6s .5s ease both;
+        }
+        footer a { color: rgba(255,255,255,.4); text-decoration: none; }
+        footer a:hover { color: var(--cyan); }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: rgba(0,229,255,.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,229,255,.4);
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: .9rem; font-weight: 600; color: var(--cyan);
+            transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+            z-index: 100;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 400px) {
+            .features { gap: 8px; }
+            .feat { font-size: .78rem; padding: 7px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<!-- Particles -->
+<div id="particles"></div>
+
+<div class="wrapper">
+
+    <div class="top-badge">
+        <span class="dot"></span>
+        Disponible ahora · Gratis
+    </div>
+
+    <div class="app-icon-wrap">
+        <img class="app-icon" src="/icon-512.png" alt="RECARGASNEY.COM">
+        <div class="icon-ring"></div>
+    </div>
+
+    <h1>RECARGASNEY<br>.COM</h1>
+    <p class="subtitle">
+        La app de recargas de diamantes más rápida de Venezuela.<br>
+        ¡Instálala en segundos, sin pasar por ninguna tienda!
+    </p>
+
+    <div class="features">
+        <div class="feat"><i class="fa-solid fa-bolt"></i> Entrega al instante</div>
+        <div class="feat"><i class="fa-solid fa-star"></i> Sistema de $</div>
+        <div class="feat"><i class="fa-solid fa-shield-halved"></i> Pago 100% seguro</div>
+        <div class="feat"><i class="fa-solid fa-mobile-screen"></i> Android &amp; iPhone</div>
+        <div class="feat"><i class="fa-solid fa-wifi"></i> Funciona sin internet</div>
+    </div>
+
+    <div class="cta-wrap">
+
+        <!-- Botón principal Android / Desktop -->
+        <button class="btn-install btn-primary" id="btnInstall" onclick="triggerInstall()">
+            <span class="btn-icon">📲</span>
+            <span id="btnText">Instalar App Gratis</span>
+        </button>
+
+        <!-- Pasos iOS (aparecen solo en iPhone) -->
+        <div class="ios-steps" id="iosSteps">
+            <h3><i class="fa-brands fa-apple"></i> &nbsp;Instalar en iPhone</h3>
+            <div class="ios-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Toca el botón <strong>Compartir</strong> <span style="font-size:1.1em">⬆️</span> en la barra inferior de Safari</div>
+            </div>
+            <div class="ios-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Desplázate y toca <strong>"Agregar a pantalla de inicio"</strong> <span style="font-size:1.1em">➕</span></div>
+            </div>
+            <div class="ios-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Toca <strong>Agregar</strong> en la esquina superior derecha. ¡Listo! 🎉</div>
+            </div>
+        </div>
+
+        <div class="or-divider">o también puedes</div>
+
+        <a class="btn-install btn-link" href="https://recargasney.com" target="_blank">
+            <i class="fa-solid fa-globe btn-icon" style="font-size:1.2rem"></i>
+            Abrir en el navegador
+        </a>
+
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat">
+            <span class="stat-num">+100</span>
+            <span class="stat-lbl">Usuarios</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+            <span class="stat-num">⚡</span>
+            <span class="stat-lbl">Entrega Inmediata</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+            <span class="stat-num">24/7</span>
+            <span class="stat-lbl">Disponible</span>
+        </div>
+    </div>
+
+    <!-- QR code -->
+    <div class="qr-card">
+        <p><strong>📷 Escanea el QR</strong> con tu cámara para instalar en cualquier celular</p>
+        <canvas id="qr-canvas" width="180" height="180"></canvas>
+        <p style="margin-top:4px; font-size:.75rem">recargasney.com</p>
+    </div>
+
+    <footer>
+        <p>© 2025 RECARGASNEY.COM · Todos los derechos reservados</p>
+        <p style="margin-top:6px">
+            <a href="/terminos-condiciones.html">Términos</a> &nbsp;·&nbsp;
+            <a href="/politica-privacidad.html">Privacidad</a>
+        </p>
+    </footer>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✅ ¡App instalada con éxito!</div>
+
+<!-- QR Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    /* ─────────────────────────────────────────
+       PARTICLES
+    ───────────────────────────────────────── */
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 6 + 3;
+        const colors = ['rgba(0,229,255,.5)', 'rgba(139,92,246,.5)', 'rgba(59,130,246,.5)'];
+        p.style.cssText = `
+            width:${size}px; height:${size}px;
+            left:${Math.random()*100}%;
+            animation-duration:${Math.random()*12+10}s;
+            animation-delay:-${Math.random()*15}s;
+            background: radial-gradient(circle, ${colors[Math.floor(Math.random()*3)]}, transparent 70%);
+        `;
+        container.appendChild(p);
+    }
+
+    /* ─────────────────────────────────────────
+       DETECT PLATFORM
+    ───────────────────────────────────────── */
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isAndroid = /Android/.test(ua);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    let deferredPrompt = null;
+
+    /* ─────────────────────────────────────────
+       PWA INSTALL PROMPT (Android/Desktop)
+    ───────────────────────────────────────── */
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('btnText').textContent = '📲 Instalar App Gratis';
+    });
+
+    window.addEventListener('appinstalled', () => {
+        showToast('✅ ¡App instalada! Búscala en tu pantalla de inicio.');
+        document.getElementById('btnInstall').textContent = '✅ App Instalada';
+        document.getElementById('btnInstall').style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    });
+
+    function triggerInstall() {
+        if (isStandalone) {
+            showToast('✅ ¡Ya tienes la app instalada!');
+            return;
+        }
+
+        if (isIOS) {
+            const steps = document.getElementById('iosSteps');
+            steps.classList.toggle('visible');
+            const btn = document.getElementById('btnInstall');
+            if (steps.classList.contains('visible')) {
+                btn.querySelector('#btnText').textContent = 'Ver instrucciones ↑';
+                steps.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                btn.querySelector('#btnText').textContent = 'Instalar en iPhone';
+            }
+            return;
+        }
+
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(result => {
+                if (result.outcome === 'accepted') {
+                    showToast('🎉 ¡Instalando app...');
+                }
+                deferredPrompt = null;
+            });
+        } else {
+            // Fallback: abrir la app directamente
+            window.open('https://recargasney.com', '_blank');
+        }
+    }
+
+    // Personalizar botón según plataforma al cargar
+    window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btnInstall');
+        const btnTxt = document.getElementById('btnText');
+
+        if (isStandalone) {
+            btnTxt.textContent = '✅ App ya instalada';
+            btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        } else if (isIOS) {
+            btnTxt.textContent = '🍎 Instalar en iPhone';
+        } else if (isAndroid) {
+            btnTxt.textContent = '📲 Instalar en Android';
+        }
+    });
+
+    /* ─────────────────────────────────────────
+       QR CODE
+    ───────────────────────────────────────── */
+    const APP_URL = 'https://recargasney.com/descargar.html';
+    const canvas = document.getElementById('qr-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Simple QR generator usando API gratuita como fallback
+    const qrImg = new Image();
+    qrImg.crossOrigin = 'anonymous';
+    qrImg.onload = function() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 180, 180);
+        ctx.drawImage(qrImg, 10, 10, 160, 160);
+    };
+    qrImg.onerror = function() {
+        // Si falla, usar qrcodejs si está disponible
+        try {
+            new QRCode(document.createElement('div'), {
+                text: APP_URL,
+                width: 160, height: 160
+            });
+        } catch(e) {}
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(0,0,180,180);
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '13px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('recargasney.com', 90, 95);
+        ctx.fillText('/descargar', 90, 115);
+    };
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(APP_URL)}&bgcolor=ffffff&color=07030D&qzone=2&format=png`;
+
+    /* ─────────────────────────────────────────
+       TOAST
+    ───────────────────────────────────────── */
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+</script>
+</body>
+</html>

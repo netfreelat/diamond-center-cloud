@@ -160,14 +160,56 @@ client.on('message', async (msg) => {
                 }
             }
             
-            // Caso 2: Comando directo (ej: "Aprobar 12345")
-            const match = text.match(/^(aprobar|rechazar|aprobado|rechazado|aprueba|rechaza)\s+([A-Za-z0-9_.-]+)$/i);
-            if (match) {
-                const action = match[1].toLowerCase().startsWith('aprob') || match[1].toLowerCase().startsWith('aprueb') ? 'aprobar' : 'rechazar';
-                const ref = match[2].trim();
-                await handleAdminAction(msg, action, ref);
-                return;
+            // Caso 2: Comando directo (ej: "Aprobar 1234", "a 1234", "1234 a", "r 1234")
+            const parts = text.split(/\s+/);
+            if (parts.length === 2) {
+                const p1 = parts[0].toLowerCase();
+                const p2 = parts[1].toLowerCase();
+                
+                // Mapear comandos válidos
+                const approveCmds = ['aprobar', 'aprobado', 'aprueba', 'a', 'ok', 'si', 'sí', 'yes'];
+                const rejectCmds = ['rechazar', 'rechazado', 'rechaza', 'r', 'no'];
+                
+                let action = null;
+                let ref = null;
+                
+                if (approveCmds.includes(p1) && /^[A-Za-z0-9_.-]{4,}$/.test(p2)) {
+                    action = 'aprobar';
+                    ref = parts[1];
+                } else if (rejectCmds.includes(p1) && /^[A-Za-z0-9_.-]{4,}$/.test(p2)) {
+                    action = 'rechazar';
+                    ref = parts[1];
+                } else if (/^[A-Za-z0-9_.-]{4,}$/.test(p1) && approveCmds.includes(p2)) {
+                    action = 'aprobar';
+                    ref = parts[0];
+                } else if (/^[A-Za-z0-9_.-]{4,}$/.test(p1) && rejectCmds.includes(p2)) {
+                    action = 'rechazar';
+                    ref = parts[0];
+                }
+                
+                if (action && ref) {
+                    await handleAdminAction(msg, action, ref);
+                    return;
+                }
             }
+
+            // Caso 3: Cambiar tasa de cambio (ej: "tasa 650" o "tasa 650.50")
+            const tasaMatch = text.match(/^tasa\s+(\d+(?:[.,]\d+)?)$/i);
+            if (tasaMatch) {
+                const newRateStr = tasaMatch[1].replace(',', '.');
+                const newRate = parseFloat(newRateStr);
+                if (!isNaN(newRate) && newRate > 0) {
+                    await handleAdminUpdateRate(msg, newRate);
+                    return;
+                }
+            }
+        }
+
+        // --- COMANDO DE PRECIOS PARA TODOS (Clientes y Admin) ---
+        const cleanText = text.toLowerCase().trim();
+        if (['precios', 'precio', 'diamantes', 'costos', 'paquetes'].includes(cleanText)) {
+            await handleSendPrices(msg);
+            return;
         }
 
         const rating = parseInt(text);
@@ -307,15 +349,27 @@ async function sendMessage(item) {
         }
 
         console.log(`[WHATSAPP] 📞 Número normalizado: ${item.number} -> ${targetNumber}`);
-        const numberId = `${targetNumber}@c.us`;
-        
-        console.log(`[WHATSAPP] Enviando mensaje a ${item.number}...`);
+        let numberId = `${targetNumber}@c.us`;
         
         // Verificamos si el cliente está listo
         if (!client || !client.pupPage) {
             throw new Error('El navegador de WhatsApp no está listo todavía.');
         }
 
+        try {
+            console.log(`[WHATSAPP] 🔍 Resolviendo WID/LID para el número: ${targetNumber}...`);
+            const resolvedId = await client.getNumberId(targetNumber);
+            if (resolvedId && resolvedId._serialized) {
+                numberId = resolvedId._serialized;
+                console.log(`[WHATSAPP] ✅ WID/LID resuelto exitosamente: ${numberId}`);
+            } else {
+                console.log(`[WHATSAPP] ⚠️ getNumberId no encontró WID para ${targetNumber}. Usando fallback: ${numberId}`);
+            }
+        } catch (resolveErr) {
+            console.warn(`[WHATSAPP] ⚠️ Error llamando a getNumberId para ${targetNumber}:`, resolveErr.message);
+        }
+
+        console.log(`[WHATSAPP] Enviando mensaje a ${item.number} (usando ${numberId})...`);
         await client.sendMessage(numberId, item.message);
         console.log(`[WHATSAPP] ✅ Mensaje enviado a ${item.number}`);
         
@@ -432,9 +486,10 @@ function extractReference(text) {
     return null;
 }
 
-function callAdminAPI(endpoint, ref) {
+function callAdminAPI(endpoint, payloadObj) {
     return new Promise((resolve, reject) => {
-        const payload = JSON.stringify({ ref });
+        const dataObj = typeof payloadObj === 'object' ? payloadObj : { ref: payloadObj };
+        const payload = JSON.stringify(dataObj);
         const url = new URL(`${SERVER_URL}${endpoint}`);
         const isHttps = SERVER_URL.startsWith('https');
         const httpLib = isHttps ? require('https') : require('http');
@@ -497,6 +552,87 @@ async function handleAdminAction(msg, action, ref) {
     } catch (err) {
         console.error(`[ADMIN-ACTION] Error en action ${action} para ref ${ref}:`, err.message);
         await msg.reply(`❌ *ERROR DE SISTEMA*\n\n📌 *Referencia:* ${ref}\n⚠️ *Detalle:* ${err.message}`);
+    }
+}
+
+async function handleAdminUpdateRate(msg, newRate) {
+    try {
+        console.log(`[ADMIN-RATE] Actualizando tasa a ${newRate} (Solicitado por admin: ${msg.from})`);
+        await msg.reply(`⏳ Actualizando tasa del día a *${newRate} Bs*...`);
+
+        const res = await callAdminAPI('/admin/settings', { tasa_del_dia: newRate });
+
+        if (res.statusCode === 200 && res.data && res.data.success) {
+            await msg.reply(`✅ *TASA ACTUALIZADA CON ÉXITO*\n\n📈 *Nueva tasa:* ${newRate} Bs/$`);
+        } else {
+            const errorMsg = res.data ? (res.data.message || res.data.error) : (res.error || 'Error de conexión');
+            await msg.reply(`❌ *FALLO AL ACTUALIZAR LA TASA*\n\n⚠️ *Motivo:* ${errorMsg}`);
+        }
+    } catch (err) {
+        console.error(`[ADMIN-RATE] Error actualizando tasa a ${newRate}:`, err.message);
+        await msg.reply(`❌ *ERROR DE SISTEMA*\n\n⚠️ *Detalle:* ${err.message}`);
+    }
+}
+
+async function handleSendPrices(msg) {
+    try {
+        const url = new URL(`${SERVER_URL}/api/config`);
+        const isHttps = SERVER_URL.startsWith('https');
+        const httpLib = isHttps ? require('https') : require('http');
+
+        console.log(`[WHATSAPP-PRECIOS] Consultando precios al servidor: ${url.href}`);
+
+        httpLib.get(url, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', async () => {
+                try {
+                    if (res.statusCode !== 200) {
+                        throw new Error(`Código de estado del servidor: ${res.statusCode}`);
+                    }
+                    const config = JSON.parse(body);
+                    const tasa = parseFloat(config.tasa_del_dia) || 635.00;
+                    const precios = config.precios || {};
+                    const canal = (config.whatsapp && config.whatsapp.canal) ? config.whatsapp.canal : 'https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K';
+                    
+                    // Ordenar las claves de precios numéricamente
+                    const sortedKeys = Object.keys(precios).sort((a, b) => parseInt(a) - parseInt(b));
+                    
+                    let msgText = `💎 *RECARGASNEY.COM - PRECIOS ACTUALIZADOS* 💎\n`;
+                    msgText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                    msgText += `⚡ _Precios expresados en Bolívares (Bs.):_\n\n`;
+                    
+                    sortedKeys.forEach(key => {
+                        const item = precios[key];
+                        const priceUsdt = parseFloat(item.usdt);
+                        const priceBs = (priceUsdt * tasa).toFixed(2).replace('.', ',');
+                        
+                        let icon = '🔹';
+                        if (parseInt(key) >= 1060) icon = '🔥';
+                        if (parseInt(key) >= 5600) icon = '👑';
+                        
+                        msgText += `${icon} *${item.label || (key + ' Diamantes')}* ➔ *${priceBs} Bs.*\n`;
+                    });
+                    
+                    msgText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                    msgText += `🌐 *Compra aquí:* https://recargasney.com\n`;
+                    msgText += `📱 *Únete a nuestro Canal:* \n🔗 ${canal}\n\n`;
+                    msgText += `⚡ _¡Recargas al instante con tu ID Garena!_ 🚀`;
+                    
+                    await client.sendMessage(msg.from, msgText);
+                    console.log(`[WHATSAPP-PRECIOS] Precios enviados con éxito a ${msg.from}`);
+                } catch (e) {
+                    console.error('[WHATSAPP-PRECIOS] Error parseando respuesta de config:', e.message);
+                    await msg.reply('❌ No se pudo obtener la lista de precios en este momento. Por favor intenta más tarde.');
+                }
+            });
+        }).on('error', async (err) => {
+            console.error('[WHATSAPP-PRECIOS] Error en petición GET:', err.message);
+            await msg.reply('❌ Error al conectar con el servidor para obtener los precios.');
+        });
+    } catch (err) {
+        console.error('[WHATSAPP-PRECIOS] Error general en handleSendPrices:', err.message);
+        await msg.reply('❌ Error al procesar la solicitud de precios.');
     }
 }
 

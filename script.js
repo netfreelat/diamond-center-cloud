@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.borderColor = key === currentJuego ? 'var(--secondary)' : 'rgba(255,255,255,0.2)';
             btn.style.color = key === currentJuego ? 'var(--secondary)' : '#fff';
             
-            if (key === 'roblox' || key === 'bloodstrike') {
+            if (key === 'bloodstrike') {
                 btn.style.position = 'relative';
                 btn.innerHTML = `<span style="position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 0.52rem; background: rgba(255, 0, 229, 0.15); color: #ff00e5; border: 1px solid rgba(255, 0, 229, 0.35); padding: 1px 5px; border-radius: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; z-index: 5; pointer-events: none; backdrop-filter: blur(2px);">Próximamente</span><i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
                 btn.style.opacity = '0.65';
@@ -69,6 +69,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID / Usuario';
                     
                     renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
+
+                    // ── Roblox: saltar directamente a paquetes sin pedir ID ──
+                    if (key === 'roblox') {
+                        document.querySelector('.input-group').style.display = 'none';
+                        document.getElementById('verify-btn').style.display = 'none';
+                        document.getElementById('welcome-section').style.display = 'none';
+                        document.getElementById('packages-section').style.display = 'block';
+                        document.querySelector('.main-container').classList.add('expanded');
+                        const titleEl = document.getElementById('packages-section-title');
+                        if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Robux';
+                    } else {
+                        // Restaurar vista normal al cambiar a otro juego
+                        document.querySelector('.input-group').style.display = 'flex';
+                        document.getElementById('verify-btn').style.display = 'flex';
+                        document.getElementById('packages-section').style.display = 'none';
+                        document.getElementById('welcome-section').style.display = 'none';
+                        document.querySelector('.main-container').classList.remove('expanded');
+                        const titleEl = document.getElementById('packages-section-title');
+                        if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Diamantes';
+                    }
                 };
             }
             list.appendChild(btn);
@@ -309,12 +329,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 'mensual': '/img/tarjeta_mensual.png',
                 'booyah':  '/img/pase_booyah.png'
             };
-            const iconHtml = esEspecial
-                ? `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`
-                : `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/diamante.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
+            let iconHtml = '';
+            if (currentJuego === 'roblox') {
+                const robloxImgMap = { '10': '/img/roblox_10usd.jpg' };
+                const robloxImg = robloxImgMap[amount] || '/img/roblox.png';
+                iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${robloxImg}" alt="Roblox" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
+            } else if (esEspecial) {
+                iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`;
+            } else {
+                iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/diamante.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
+            }
 
             // Bonus: solo aplica a paquetes de diamantes numéricos
-            const bonusNum = !esEspecial ? Math.round(parseInt(amount) * 0.1) : 0;
+            const bonusNum = (currentJuego === 'freefire' && !esEspecial) ? Math.round(parseInt(amount) * 0.1) : 0;
             const displayLabel = esEspecial ? data.label : data.label.replace(/ diamantes/gi, '');
             
             grid.innerHTML += `
@@ -1082,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         uid: result.uid,
-                        name: playerInfo.name || 'Jugador',
+                        name: result.nombre || playerInfo.name || 'Jugador',
                         apellido: result.apellido,
                         phone: result.phone,
                         password: result.password
@@ -1108,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Swal.fire({
                         icon: 'success',
                         title: '¡Registro Exitoso! 🏆💎',
-                        html: `<p style="color:#fff;font-size:0.95rem;">¡Hola, <strong>${name}</strong>!<br>Tu cuenta ha sido creada y protegida correctamente. Ya estás listo para acumular puntos.</p>`,
+                        html: `<p style="color:#fff;font-size:0.95rem;">¡Hola, <strong>${name}</strong>!<br>Tu cuenta ha sido creada y protegida correctamente. Ya estás listo para acumular $.</p>`,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
@@ -1117,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if ('Notification' in window && Notification.permission !== 'granted') {
                             Swal.fire({
                                 title: '🔔 ¿Activar Notificaciones?',
-                                text: 'Te enviaremos alertas al instante cuando tus recargas sean aprobadas y cuando ganes puntos.',
+                                text: 'Te enviaremos alertas al instante cuando tus recargas sean aprobadas y cuando ganes $.',
                                 icon: 'info',
                                 showCancelButton: true,
                                 confirmButtonText: 'Sí, activar 🔔',
@@ -1283,14 +1310,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <strong style="color:#fff;">${uid}</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px; align-items:center;">
-                            <span style="color:#aaa;"><i class="fa-solid fa-star"></i> Puntos Acumulados:</span>
-                            <span class="points-badge" style="margin:0; padding:4px 10px; font-size:0.8rem; background:rgba(255, 215, 0, 0.15); border:1px solid rgba(255, 215, 0, 0.4); display:inline-flex; align-items:center; gap:5px; color:#ffd700; border-radius:20px; font-weight:700;"><i class="fa-solid fa-star"></i> ${userProfile.points || 0} pts</span>
+                            <span style="color:#aaa;"><i class="fa-solid fa-dollar-sign"></i> Cashback USDT:</span>
+                            <span class="points-badge" style="margin:0; padding:4px 10px; font-size:0.8rem; background:rgba(0, 230, 118, 0.15); border:1px solid rgba(0, 230, 118, 0.4); display:inline-flex; align-items:center; gap:5px; color:#00e676; border-radius:20px; font-weight:700;"><i class="fa-solid fa-dollar-sign"></i> $${((userProfile.points || 0) * 0.003).toFixed(2)} USDT</span>
                         </div>
                     </div>
 
                     <!-- Enlace de Referido -->
                     <div style="background:rgba(0, 240, 255, 0.04); border:1px dashed rgba(0, 240, 255, 0.3); border-radius:10px; padding:12px; margin-bottom:20px; text-align:center;">
-                        <p style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">Gana <strong>+10 puntos</strong> cuando un amigo se registre y compre con tu link.</p>
+                        <p style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">Gana <strong>+$0.05 USDT</strong> de cashback cuando un amigo se registre y compre con tu link.</p>
                         <button id="btn-share-ref" class="swal2-confirm swal2-styled" style="margin:0; width:100%; font-size:0.8rem; padding:8px 12px; background:linear-gradient(135deg, #00F0FF, #00B2FF); border-radius:8px; font-weight:700; border:none; color:#000; box-shadow:0 4px 12px rgba(0,240,255,0.25); cursor:pointer;">
                             <i class="fa-solid fa-share-nodes"></i> Compartir Link de Referido
                         </button>
@@ -1321,7 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         icon: 'success',
                         title: '¡Link Copiado! 🔗',
                         html: `<p style="font-size:0.85rem;color:#aaa;word-break:break-all;margin-bottom:10px;">${refLink}</p>
-                               <p style="font-size:0.85rem;">Compártelo y gana <strong>+10 puntos</strong> cuando hagan su primera compra.</p>`,
+                               <p style="font-size:0.85rem;">Compártelo y gana <strong>+$0.05 USDT</strong> de cashback cuando hagan su primera compra.</p>`,
                         timer: 4000,
                         showConfirmButton: false,
                         background: 'rgba(20, 10, 35, 0.98)',
@@ -1404,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Si el usuario existe pero no tiene contraseña (usuarios viejos), debería crear una
                     const { isConfirmed } = await Swal.fire({
                         title: '🛡️ Protege tu Cuenta',
-                        text: 'Aún no tienes una contraseña. Para proteger tus puntos y perfil, por favor crea una contraseña.',
+                        text: 'Aún no tienes una contraseña. Para proteger tus $ y perfil, por favor crea una contraseña.',
                         icon: 'info',
                         showCancelButton: true,
                         confirmButtonText: 'Crear Contraseña',
@@ -1617,7 +1644,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data && data.length > 0) {
                 const text = data.map(r => {
                     if (r.type === 'canje') {
-                        return `🎁 ${r.name} CANJEÓ ${r.pack} diamantes con sus puntos!`;
+                        return `🎁 ${r.name} CANJEÓ ${r.pack} diamantes con sus $!`;
                     }
                     return `✅ ${r.name} recargó ${r.pack} diamantes`;
                 }).join(' | ');
@@ -1688,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.type === 'canje') {
                 fomoEl.querySelector('.fomo-icon').textContent = '🎁';
                 titleEl.textContent = `${name} canjeó ${displayPack} 💎`;
-                subEl.textContent = `con sus puntos acumulados · ${when}`;
+                subEl.textContent = `con sus $ acumulados · ${when}`;
             } else {
                 fomoEl.querySelector('.fomo-icon').textContent = '🔥';
                 titleEl.textContent = `${name} compró ${displayPack} 💎`;
@@ -1747,6 +1774,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     verifyBtn.addEventListener('click', async () => {
+        // ── Roblox no requiere ID: mostrar paquetes directamente ──
+        if (currentJuego === 'roblox') {
+            document.querySelector('.input-group').style.display = 'none';
+            document.getElementById('verify-btn').style.display = 'none';
+            document.getElementById('welcome-section').style.display = 'none';
+            document.getElementById('packages-section').style.display = 'block';
+            document.querySelector('.main-container').classList.add('expanded');
+            return;
+        }
+
         const uid = playerInput.value.trim();
 
         if (!uid) {
@@ -2077,7 +2114,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const ref = selectedMethod === 'pagomovil' ? refPM : refB;
-        const name = document.getElementById('player-name-display').innerText.trim();
+        // Para Roblox no hay ID de jugador Garena; usamos WA como identificador
+        const isRobloxOrder = currentJuego === 'roblox';
+        const rawName = document.getElementById('player-name-display').innerText.trim();
+        const name = isRobloxOrder ? (rawName || `WA:${waNum}`) : rawName;
         const PAQUETES_ESPECIALES_KEYS = ['basica', 'semanal', 'mensual', 'booyah'];
         const esEspecialOrder = PAQUETES_ESPECIALES_KEYS.includes(selectedPackage.amount.toString().toLowerCase());
         // Para paquetes especiales: usar solo el amountKey (sin bonus ni qty) ya que son suscripciones
@@ -2107,8 +2147,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            const loginUid = localStorage.getItem('ff_user_id') || playerInput.value;
-            const messageParams = `uid=${playerInput.value}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${currentJuego}`;
+            // Para Roblox: uid = número WA (no hay ID Garena)
+            const effectiveUid = isRobloxOrder ? waFull : playerInput.value;
+            const loginUid = localStorage.getItem('ff_user_id') || effectiveUid;
+            const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${currentJuego}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
             
             const notifyRes = await fetch(notifyUrl);
@@ -2380,6 +2422,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(url);
             const data = await res.json();
             const points = (data.success && data.user) ? (data.user.points || 0) : 0;
+            const usdtDisplay = (points * 0.003).toFixed(2);
 
             // Si es usuario NUEVO y hay un referido pendiente, vincularlo
             if (data.isNew && pendingRef && pendingRef !== uid) {
@@ -2400,8 +2443,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const pointsEl = document.getElementById('user-points');
             const headerPointsEl = document.getElementById('header-points-val');
             
-            if (pointsEl) pointsEl.innerText = points;
-            if (headerPointsEl) headerPointsEl.innerText = points;
+            if (pointsEl) {
+                pointsEl.textContent = `$${usdtDisplay} USDT`;
+                pointsEl.dataset.rawPoints = points; // Guardar valor real para el canje
+            }
+            if (headerPointsEl) {
+                headerPointsEl.textContent = `$${usdtDisplay}`;
+                headerPointsEl.dataset.rawPoints = points;
+            }
             
             return points;
         } catch (e) {
@@ -2412,7 +2461,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('redeem-btn').addEventListener('click', async () => {
         const uid = playerInput.value;
-        const currentPoints = parseInt(document.getElementById('user-points').innerText);
+        // Leer el valor real de puntos desde el atributo data-raw-points
+        const pointsRawEl = document.getElementById('user-points');
+        const currentPoints = parseInt(pointsRawEl ? (pointsRawEl.dataset.rawPoints || 0) : 0);
 
         Swal.fire({ title: 'Cargando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -2428,7 +2479,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     html: `
                         <p style="font-size:0.95rem;color:#aaa;line-height:1.5;">
                             Este ID de jugador no se encuentra registrado en nuestro sistema.<br><br>
-                            Para acumular puntos con tus recargas y poder canjearlos por diamantes gratis, debes registrar tu cuenta primero.
+                            Para acumular $ con tus recargas y poder canjearlos por diamantes gratis, debes registrar tu cuenta primero.
                         </p>
                     `,
                     showCancelButton: true,
@@ -2458,7 +2509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { value: enteredPassword } = await Swal.fire({
                     title: '🔐 Cuenta Protegida',
                     html: `
-                        <p style="font-size:0.9rem;color:#aaa;margin-bottom:15px;">Ingresa tu contraseña para canjear tus puntos:</p>
+                        <p style="font-size:0.9rem;color:#aaa;margin-bottom:15px;">Ingresa tu contraseña para canjear tus $:</p>
                         <input id="swal-redeem-pass" type="password" class="swal2-input" placeholder="Tu contraseña">
                     `,
                     showCancelButton: true,
@@ -2503,11 +2554,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Fallback para usuarios sin contraseña configurada (legacy)
                 const { isConfirmed } = await Swal.fire({
-                    title: '🛡️ Protege tus Puntos',
+                    title: '🛡️ Protege tus $',
                     html: `
                         <p style="font-size:0.9rem;color:#aaa;line-height:1.4;">
-                            Aún no has configurado una contraseña. Cualquier persona que conozca tu ID de Free Fire podría canjear tus puntos acumulados.<br><br>
-                            ¿Te gustaría crear una contraseña ahora para bloquear tus puntos de forma segura?
+                            Aún no has configurado una contraseña. Cualquier persona que conozca tu ID de Free Fire podría canjear tus $ acumulados.<br><br>
+                            ¿Te gustaría crear una contraseña ahora para bloquear tus $ de forma segura?
                         </p>
                     `,
                     showCancelButton: true,
@@ -2537,18 +2588,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function showRedeemOptions(currentPoints) {
+        const currentUsdt = (currentPoints * 0.003).toFixed(2);
         Swal.fire({
-            title: 'Canjear Puntos',
+            title: '💰 Canjear Cashback USDT',
             html: `
-                <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Tienes <strong>${currentPoints}</strong> puntos.</p>
+                <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Tienes <strong style="color:#00e676;">$${currentUsdt} USDT</strong> de cashback disponible.</p>
                 <div class="redeem-options" style="display: grid; gap: 10px;">
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('basica')">🃏 Tarjeta Básica (400 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('100')">💎 100 Diamantes (500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('semanal')">📅 Tarjeta Semanal (1500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('310')">💎 310 Diamantes (1500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('booyah')">🏆 Pase Booyah (2300 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('520')">💎 520 Diamantes (2500 pts)</button>
-                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('mensual')">👑 Tarjeta Mensual (7500 pts)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('basica')">🃏 Tarjeta Básica ($1.20 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('100')">💎 100 Diamantes ($1.50 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('semanal')">📅 Tarjeta Semanal ($4.50 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('310')">💎 310 Diamantes ($4.50 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('booyah')">🏆 Pase Booyah ($6.90 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('520')">💎 520 Diamantes ($7.50 USDT)</button>
+                    <button class="swal2-confirm swal2-styled" onclick="window.redeem('mensual')">👑 Tarjeta Mensual ($22.50 USDT)</button>
                 </div>
             `,
             showConfirmButton: false,

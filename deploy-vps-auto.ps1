@@ -134,48 +134,28 @@ if (Test-Path ".well-known") {
     Write-Host " OK" -ForegroundColor Green
 }
 
+# Subir carpeta img si existe
+if (Test-Path "img") {
+    Write-Host "  Subiendo: img/..." -NoNewline
+    SCP-UploadDir "img" "$VPS_PATH/" | Out-Null
+    Write-Host " OK" -ForegroundColor Green
+}
+
 Write-OK "Archivos subidos correctamente"
 
-# ─── FASE 5: Crear .env en el VPS ────────────────────────────
-Write-Step "[5/6] Configurando variables de entorno (.env)..."
+# ─── FASE 5: Subir .env al VPS directamente ─────────────────
+Write-Step "[5/6] Subiendo .env al VPS..."
 
-$envContent = @"
-TELEGRAM_BOT_TOKEN=8670482596:AAELwiQx4GrAnGfasJ7xlKcBTSjSLlW69Qs
-TELEGRAM_CHAT_ID=908668962
-SERVER_URL=https://recargasney.com
-NETFREELAT_USER=Netfreelat1
-NETFREELAT_PASS=Clifor1988
-TEST_MODE=false
-EMAIL_USER=juanmartinez_890@outlook.com
-EMAIL_PASSWORD=Clifor1987
-BDV_TOKEN=n3NjPhPCO1etlLelCDgA6t94bnOustsm3dkTqsAlE9o
-BDV_PASSWORD=Juaquina14.
-SUPABASE_URL=https://gtvlraxlszucoglbnzen.supabase.co
-SUPABASE_KEY=sb_publishable_fudPzwmYRs3gk7efJWNkZw_kCjuJhrt
-ADMIN_USER=admin
-ADMIN_PASS=Clifor1988**
-BDV_USER=Sneyder2107
-BDV_PASS=Juaquina11.
-BDV_CUENTA=01020350340000557061
-BDV_CUENTA_POS=0
-BDV_MEDIA_HUELLA=I0+nx3T/kAjP/sNwSmHST785id3jyTny7TDY2Zklg3HcziphhZycDJaPQvZTMfHCl0n1Dwn4coTF/dn5uEIv9peKOQ6al9g5OAXH7Dg7nnp/ukBrFpAbq2KMP65OXifZp5IvLTk/dcyBWjTWa9zLqJ6ERDSOxtrQUdMwvlgHKoh9QGRVy7q3AYoEMUVm+N2lBBXv3pYmA3eNCJOqwr8ozJb5wvVBFPog+jh9Xa6xdsU+itzKMsCJJ0nAkwGZ3kJ7OFaD2u1kgqLAAN93aeBt5hp+XS6VbDFQpqpsRnkio/Dz4r94jW9NmGbrcO23wbpvN+wwbvZdq+zlrRXNAsHgbA==
-BDV_F5_COOKIE=f5avraaaaaaaaaaaaaaaa_session_=FEIILAEODOPGOFGBPCGAAJCNDCPIFCHBPCFKINLNGEIANOMCMLDHDCOBINOFLEPDFCKDFGBKDOGLBHPNJPIAMEMBPHFFIFJDIPPOGMGBKLKANMIILHIOAFEJINGAFCDB
-BINANCE_EMAIL_USER=juanmartinez.890.jcm@gmail.com
-BINANCE_EMAIL_PASSWORD=azro nitk bvkx tplm
-VAPID_EMAIL=mailto:netfreelat@gmail.com
-VAPID_PUBLIC_KEY=BGn7IJ9jDJtkOAwUMXMP6PqEvmGgwAhxWF4yrxoUgMUZSs5dU5shBmT-Bd2T7sAbgmPxorsCvLTR08dyznBOykg
-VAPID_PRIVATE_KEY=RmpUuOcCY3owV5bV562VaPdJsGOZQcoOlbj2gve0dxM
-JADH_EMAIL=jmnetfreelat@gmail.com
-JADH_PASSWORD='Net2121**#'
-PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-"@
-
-# Escribir .env en el VPS via heredoc
-$envEscaped = $envContent -replace "'", "'\''"
-SSH-Run "cat > $VPS_PATH/.env << 'ENVEOF'
-$envContent
-ENVEOF"
-Write-OK ".env creado en el VPS"
+# Usamos pscp para subir el .env local directamente - evita problemas con
+# caracteres especiales (#, *, comillas) que se corrompen en heredocs SSH.
+if (Test-Path ".env") {
+    Write-Host "  Subiendo: .env..." -NoNewline
+    SCP-Upload ".env" "$VPS_PATH/.env" | Out-Null
+    Write-Host " OK" -ForegroundColor Green
+    Write-OK ".env subido al VPS correctamente"
+} else {
+    Write-ERR "No se encontró el archivo .env local. Crea el .env antes de hacer deploy."
+}
 
 # ─── FASE 6: Instalar dependencias y arrancar ─────────────────
 Write-Step "[6/6] Instalando dependencias y arrancando servidor..."
@@ -185,7 +165,8 @@ cd $VPS_PATH
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install --production
 pm2 delete recargasney 2>/dev/null || true
 pm2 start server.js --name recargasney --max-memory-restart 3G
-pm2 restart recargasney-wa || pm2 start whatsapp-bot.js --name recargasney-wa --max-memory-restart 2G
+pm2 restart recargasney-wa --update-env || pm2 start whatsapp-bot.js --name recargasney-wa --max-memory-restart 2G
+pm2 restart recargasney --update-env
 pm2 save
 pm2 status
 "@

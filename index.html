@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -21,7 +21,7 @@
     </script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css?v=1.3.0">
+    <link rel="stylesheet" href="style.css?v=1.3.3">
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -79,9 +79,10 @@
         </div>
     </div>
 
+
     <div class="header-actions">
         <div id="user-display" class="user-info-header" style="display: none;" title="Gestionar mi cuenta">
-            <span class="header-points"><i class="fa-solid fa-star"></i> <span id="header-points-val">0</span> puntos</span>
+            <span class="header-points"><i class="fa-solid fa-star"></i> $<span id="header-points-val">0</span></span>
             <button id="perfil-btn" class="btn-bell-header" title="Mi Perfil" style="margin-left: 5px;">
                 <i class="fa-solid fa-user-pen"></i>
             </button>
@@ -100,7 +101,7 @@
         <!-- Banner de Bienvenida para nuevos usuarios -->
         <div id="new-user-banner" style="display: none; background: rgba(157, 0, 255, 0.05); border: 1px dashed var(--primary); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; animation: pulse 2s infinite;">
             <h3 style="color: var(--secondary); margin-bottom: 5px; font-family: 'Montserrat', sans-serif;">¡Hola! Gana premios gratis 💎</h3>
-            <p style="font-size: 0.85rem; color: #aaa;">Inicia sesión con tu ID para acumular puntos por cada recarga y canjearlos por diamantes.</p>
+            <p style="font-size: 0.85rem; color: #aaa;">Inicia sesión con tu ID para acumular $ por cada recarga y canjearlos por diamantes.</p>
         </div>
 
         <div class="card">
@@ -108,6 +109,12 @@
                 <h1>CENTRO DE RECARGAS</h1>
             </div>
 
+            <!-- Selector de Juegos -->
+            <div id="game-selector-container" style="display: none; margin-bottom: 20px; overflow-x: auto; white-space: nowrap; padding-top: 8px; padding-bottom: 5px; scrollbar-width: none;">
+                <div id="game-list" style="display: inline-flex; gap: 10px;">
+                    <!-- Botones generados por JS -->
+                </div>
+            </div>
 
             <div class="input-group">
                 <input type="text" id="player-id" placeholder="Ingresa ID del Jugador" autocomplete="off">
@@ -155,26 +162,32 @@
                 
                 <!-- Points Display -->
                 <div class="points-badge">
-                    <i class="fa-solid fa-star"></i> <span id="user-points">0</span> Puntos Acumulados
+                    <i class="fa-solid fa-star"></i> $<span id="user-points">0</span> Acumulados
                 </div>
                 <button id="redeem-btn" class="btn-redeem-small">
-                    <i class="fa-solid fa-gift"></i> Canjear Puntos
+                    <i class="fa-solid fa-gift"></i> Canjear $
                 </button>
                 
                 <button id="change-id-btn" class="btn-change-id">
                     <i class="fa-solid fa-user-pen"></i> Cambiar ID / Salir
                 </button>
 
-                <!-- Banner de Referidos -->
-                <div id="referral-banner" style="margin-top: 14px; background: linear-gradient(135deg, rgba(37,211,102,0.1), rgba(18,140,126,0.1)); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; padding: 12px 16px; text-align: center;">
-                    <p style="margin: 0 0 8px 0; font-size: 0.8rem; color: #25D366; font-weight: 700;">
-                        <i class="fa-solid fa-share-nodes"></i> ¡Gana puntos gratis!
+                <!-- Banner de Referidos PREMIUM -->
+                <div id="referral-banner" class="referral-banner-premium">
+                    <div class="referral-banner-glow"></div>
+                    <div class="referral-banner-top">
+                        <span class="referral-badge-pill">💎 GRATIS</span>
+                    </div>
+                    <div class="referral-banner-icon">🎁</div>
+                    <h3 class="referral-banner-title">¡Gana Diamantes Gratis!</h3>
+                    <p class="referral-banner-desc">
+                        Envía tu link a tus amigos y gana <strong>+$0.03 USDT</strong> de cashback<br>
+                        cuando hagan su primera compra.<br>
+                        <span class="referral-no-limit">¡Sin límite de referidos!</span>
                     </p>
-                    <p style="margin: 0 0 10px 0; font-size: 0.75rem; color: #aaa;">
-                        Comparte tu link con nuevos usuarios y gana <strong style="color:#fff;">+10 puntos</strong> cuando hagan su primera compra.
-                    </p>
-                    <button id="copy-ref-link-btn" style="background: linear-gradient(135deg,#25D366,#128C7E); border: none; color: white; border-radius: 8px; padding: 7px 16px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
-                        <i class="fa-solid fa-link"></i> Copiar mi Link
+                    <button id="copy-ref-link-btn" class="referral-copy-btn">
+                        <span class="referral-btn-shine"></span>
+                        <i class="fa-solid fa-share-nodes"></i> Compartir mi Link
                     </button>
                 </div>
             </div>
@@ -182,7 +195,7 @@
             <!-- Diamond Packages Section (Hidden by default) -->
             <div id="packages-section" class="packages-container" style="display: none;">
                 <div class="section-header">
-                    <h2 class="section-title">Selecciona tu Paquete de Diamantes</h2>
+                    <h2 class="section-title" id="packages-section-title">Selecciona tu Paquete de Diamantes</h2>
                 </div>
 
                 <div class="packages-grid">
@@ -365,27 +378,10 @@
         </div>
     </div>
 
-    <!-- ===== SECCIÓN DE TESTIMONIOS ===== -->
-    <div class="reviews-section" id="reviews-section" style="display:none;">
-        <div class="reviews-header">
-            <span class="reviews-badge">⭐ VERIFICADAS</span>
-            <h2 class="reviews-title">Lo que dicen nuestros jugadores</h2>
-            <p class="reviews-subtitle">Calificaciones reales de clientes que han comprado con nosotros</p>
-            <div class="reviews-stats">
-                <div class="reviews-avg">
-                    <span id="reviews-avg-score">5.0</span>
-                    <div id="reviews-avg-stars" class="star-row"></div>
-                    <span id="reviews-total-count" class="reviews-count">0 reseñas</span>
-                </div>
-            </div>
-        </div>
-        <div class="reviews-carousel" id="reviews-carousel">
-            <!-- Cargado por JS -->
-        </div>
-    </div>
+
 
     <!-- Custom Script -->
-    <script src="script.js?v=1.3.0"></script>
+    <script src="script.js?v=1.3.3"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>

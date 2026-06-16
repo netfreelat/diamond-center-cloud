@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -413,6 +413,7 @@
             </button>
             <button class="tab-btn" onclick="showTab('historial-ventas', this)"><i class="fa-solid fa-receipt"></i> Ventas</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
+            <button class="tab-btn" onclick="showTab('juegos-tab', this)"><i class="fa-solid fa-gamepad"></i> Juegos</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
             <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Notificaciones Push</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
@@ -519,7 +520,7 @@
                                 <th>ID Jugador</th>
                                 <th>Nombre</th>
                                 <th>Fecha Registro</th>
-                                <th>Puntos</th>
+                                <th>Cashback ($)</th>
                                 <th>Seguridad</th>
                                 <th>Acciones</th>
                             </tr>
@@ -575,6 +576,26 @@
                     <i class="fa-solid fa-circle-check" style="color: #00FF94; font-size: 2rem; margin-bottom: 10px; display: block;"></i>
                     <p style="color: #00FF94; font-weight: 800; font-size: 1rem; margin-bottom: 5px;">Sistema Operativo al 100%</p>
                     <p style="color: var(--text-gray); font-size: 0.85rem;">Las recargas se procesan de forma instantánea y automática via Jadh.shop las 24 horas del día, los 7 días de la semana.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- JUEGOS TAB -->
+        <div id="juegos-tab" class="tab-content">
+            <div class="action-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-gamepad" style="color: var(--secondary);"></i> Gestión de Juegos</h2>
+                    <button onclick="showAddGameModal()" class="btn-main" style="width: auto; padding: 10px 20px; font-size: 0.85rem;">
+                        <i class="fa-solid fa-plus"></i> Añadir Juego
+                    </button>
+                </div>
+                <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">Administra los juegos disponibles en la tienda. Puedes editar los paquetes, precios e iconos de cada uno.</p>
+                <div id="juegos-list" style="display: grid; gap: 20px;">
+                    <!-- Cargado por JS -->
+                    <div style="text-align:center; padding: 40px; color: var(--text-gray);">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px; display:block;"></i>
+                        Cargando juegos...
+                    </div>
                 </div>
             </div>
         </div>
@@ -941,6 +962,7 @@
             if (tabId === 'usuarios') loadUsers();
             if (tabId === 'wa-bot-tab') checkWaStatus();
             if (tabId === 'settings') loadSettings();
+            if (tabId === 'juegos-tab') loadJuegos();
         }
 
         async function loadDashboardStats() {
@@ -1007,6 +1029,8 @@
                         ${order.status === 'pending' ? `
                             <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar"><i class="fa-solid fa-check"></i></button>
                             <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar"><i class="fa-solid fa-times"></i></button>
+                        ` : (order.status === 'approved' || order.status === 'failed') ? `
+                            <button onclick="retryRecharge('${order.ref}', '${order.uid}', '${order.pack}')" class="btn-action" title="Reintentar Recarga" style="background:rgba(255,150,0,0.15);border-color:rgba(255,150,0,0.4);color:#FF9600;" ><i class="fa-solid fa-rotate-right"></i></button>
                         ` : '-'}
                     </td>
                 `;
@@ -1023,6 +1047,60 @@
                 (o.name && o.name.toLowerCase().includes(query))
             );
             renderOrders(filtered);
+        }
+
+        async function retryRecharge(ref, uid, pack) {
+            const result = await Swal.fire({
+                title: '↻ ¿Reintentar Recarga?',
+                html: `¿Estás seguro de que quieres reintentar la recarga en <strong>Jadh.shop</strong> para este pedido?<br><br>
+                       <small style="color:#FF9600;"><strong>⚠️ PRECAUCIÓN:</strong> Solo usa esto si el cliente NO recibió sus diamantes. Si ya los recibió, se duplicará la recarga.</small><br><br>
+                       <code style="font-size:0.8rem">Ref: ${ref} | ID: ${uid} | Pack: ${pack}</code>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '↻ Sí, Reintentar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#FF9600',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Reintentando recarga...',
+                html: 'Conectando con Jadh.shop. Esto puede tomar hasta 60 segundos. Por favor espera.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/retry-recharge`, {
+                    method: 'POST',
+                    body: JSON.stringify({ ref, force: true })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ ¡Recarga Exitosa!',
+                        html: `<b>${data.message}</b>${data.pin ? `<br><br>🔑 PIN: <code style="font-size:1.2rem;color:#00F0FF">${data.pin}</code>` : ''}`,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                    loadOrders();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ Reintento Fallido',
+                        html: `<b>No se pudo realizar la recarga:</b><br>${data.message}<br><br><small style="color:#FFD93D">⚠️ Revisa el saldo en jadh.shop o intenta de nuevo más tarde.</small>`,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#FF3D71'
+                    });
+                }
+            } catch (err) {
+                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
+            }
         }
 
         let allTransactions = [];
@@ -1377,12 +1455,12 @@
                     <td><code>${uid}</code></td>
                     <td>${data.name}</td>
                     <td>${dateStr}</td>
-                    <td style="color:var(--secondary); font-weight:800">${data.points}</td>
+                    <td style="color:#00e676; font-weight:800">$${(data.points * 0.003).toFixed(2)} <span style="font-size:0.7rem; color:#aaa; font-weight:400">(${data.points} pts)</span></td>
                     <td style="color:${data.password ? '#25D366' : '#FF3D71'}; font-size:0.8rem; font-weight:600;">
                         ${data.password ? '<i class="fa-solid fa-lock" style="color:#25D366;"></i> Protegido' : '<i class="fa-solid fa-lock-open" style="color:#FF3D71;"></i> SIN CLAVE'}
                     </td>
                     <td>
-                        <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar Puntos"><i class="fa-solid fa-edit"></i></button>
+                        <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar $"><i class="fa-solid fa-edit"></i></button>
                         <button onclick="editPassword('${uid}')" class="btn-action" style="background:#1a0a2e;" title="Cambiar Contraseña"><i class="fa-solid fa-key"></i></button>
                         <button onclick="deleteUser('${uid}')" class="btn-action" style="background:rgba(255, 75, 43, 0.2); color:#ff4b2b; border:1px solid #ff4b2b;" title="Eliminar Usuario"><i class="fa-solid fa-trash"></i></button>
                     </td>
@@ -1401,7 +1479,8 @@
         }
 
         async function editPoints(uid, current) {
-            const { value: newPoints } = await Swal.fire({ title: 'Editar Puntos', input: 'number', inputValue: current, showCancelButton: true });
+            const currentUsdt = (current * 0.003).toFixed(2);
+            const { value: newPoints } = await Swal.fire({ title: `Editar Cashback (actual: $${currentUsdt} USDT / ${current} pts)`, input: 'number', inputLabel: 'Nuevo valor en $ (1000 pts = $3.00 USDT)', inputValue: current, showCancelButton: true });
             if (newPoints !== null) {
                 try {
                     await adminFetch(`${SERVER_URL}/admin/usuarios/update_points`, {
@@ -1448,7 +1527,7 @@
         async function deleteUser(uid) {
             const { isConfirmed } = await Swal.fire({
                 title: '¿Eliminar usuario?',
-                text: `Vas a borrar al usuario con ID: ${uid}. Esta acción no se puede deshacer y perderá sus puntos.`,
+                text: `Vas a borrar al usuario con ID: ${uid}. Esta acción no se puede deshacer y perderá sus $.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4b2b',
@@ -1812,6 +1891,334 @@
                     options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
                 });
             } catch (e) {}
+        }
+
+        // =============================================
+        // GESTIÓN DE JUEGOS
+        // =============================================
+        let juegosData = {};
+
+        async function loadJuegos() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/api/config`);
+                const data = await res.json();
+                juegosData = data.juegos || {};
+                renderJuegos();
+            } catch(e) {
+                document.getElementById('juegos-list').innerHTML = `<p style="color:var(--danger);">Error cargando juegos.</p>`;
+            }
+        }
+
+        function renderJuegos() {
+            const list = document.getElementById('juegos-list');
+            if (!juegosData || Object.keys(juegosData).length === 0) {
+                list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-gray);">
+                    <i class="fa-solid fa-gamepad" style="font-size:3rem;display:block;margin-bottom:15px;"></i>
+                    No hay juegos configurados. Haz clic en "Añadir Juego".
+                </div>`;
+                return;
+            }
+            list.innerHTML = Object.entries(juegosData).map(([key, juego]) => `
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:25px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:45px;height:45px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                                <i class="fa-solid ${juego.icono || 'fa-gamepad'}" style="font-size:1.3rem;color:#fff;"></i>
+                            </div>
+                            <div>
+                                <h3 style="font-family:'Montserrat',sans-serif;font-size:1.1rem;font-weight:800;">${juego.nombre}</h3>
+                                <span style="font-size:0.75rem;color:var(--text-gray);">ID: <code style="color:var(--secondary);">${key}</code> &bull; ${Object.keys(juego.paquetes || {}).length} paquetes</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="editGame('${key}')" class="btn-action" style="background:rgba(0,240,255,0.15);color:var(--secondary);border:1px solid var(--secondary);">
+                                <i class="fa-solid fa-pen"></i> Editar
+                            </button>
+                            <button onclick="deleteGame('${key}')" class="btn-action btn-reject">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
+                        ${Object.entries(juego.paquetes || {}).map(([pkId, pk]) => `
+                            <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.05);gap:10px;">
+                                <div style="display:flex;flex-direction:column;gap:2px;">
+                                    <span style="font-size:0.85rem;font-weight:700;">${pk.label}</span>
+                                    <span style="color:var(--secondary);font-weight:800;font-size:0.9rem;">${pk.usdt} $</span>
+                                </div>
+                                <div style="display:flex;gap:4px;">
+                                    <button onclick="editPackage('${key}', '${pkId}')" class="btn-action" style="padding:4px 8px;font-size:0.75rem;background:rgba(0,240,255,0.15);color:var(--secondary);border:1px solid var(--secondary);" title="Editar"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deletePackage('${key}', '${pkId}')" class="btn-action" style="padding:4px 8px;font-size:0.75rem;background:rgba(255,75,43,0.15);color:#ff4b2b;border:1px solid #ff4b2b;" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                        `).join('')}
+                        <div onclick="addPackage('${key}')" style="background:rgba(157,0,255,0.1);border:1px dashed rgba(157,0,255,0.4);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--primary);font-size:0.85rem;font-weight:700;transition:all 0.2s;" onmouseover="this.style.background='rgba(157,0,255,0.2)'" onmouseout="this.style.background='rgba(157,0,255,0.1)'">
+                            <i class="fa-solid fa-plus"></i> Paquete
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddGameModal() {
+            Swal.fire({
+                title: '<span style="color:#fff;font-family:Montserrat">🎮 Nuevo Juego</span>',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                html: `
+                    <div style="text-align:left;display:grid;gap:12px;">
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">ID único (sin espacios, ej: freefire)</label>
+                        <input id="swal-game-id" class="swal2-input" placeholder="ej: freefire" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Nombre para mostrar</label>
+                        <input id="swal-game-nombre" class="swal2-input" placeholder="ej: Free Fire" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta del campo de ID</label>
+                        <input id="swal-game-label" class="swal2-input" placeholder="ej: ID de Jugador" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Placeholder (texto de ejemplo)</label>
+                        <input id="swal-game-placeholder" class="swal2-input" placeholder="ej: Ej: 123456789" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Ícono Font Awesome (ej: fa-fire)</label>
+                        <input id="swal-game-icono" class="swal2-input" placeholder="fa-fire" style="margin:0;width:100%;"></div>
+                    </div>`,
+                confirmButtonText: '<i class="fa-solid fa-plus"></i> Crear Juego',
+                confirmButtonColor: '#9D00FF',
+                showCancelButton: true,
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const id = document.getElementById('swal-game-id').value.trim().replace(/\s+/g,'').toLowerCase();
+                    const nombre = document.getElementById('swal-game-nombre').value.trim();
+                    if (!id || !nombre) { Swal.showValidationMessage('ID y nombre son obligatorios'); return false; }
+                    if (juegosData[id]) { Swal.showValidationMessage('Ese ID de juego ya existe'); return false; }
+                    return {
+                        id,
+                        nombre,
+                        inputLabel: document.getElementById('swal-game-label').value.trim() || 'ID de Jugador',
+                        inputPlaceholder: document.getElementById('swal-game-placeholder').value.trim() || 'Ej: 123456789',
+                        icono: document.getElementById('swal-game-icono').value.trim() || 'fa-gamepad',
+                        paquetes: {}
+                    };
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                const { id, ...gameData } = result.value;
+                juegosData[id] = gameData;
+                await saveJuegos();
+            });
+        }
+
+        function editGame(key) {
+            const j = juegosData[key];
+            Swal.fire({
+                title: `<span style="color:#fff;font-family:Montserrat">✏️ Editar: ${j.nombre}</span>`,
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                html: `
+                    <div style="text-align:left;display:grid;gap:12px;">
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Nombre para mostrar</label>
+                        <input id="swal-edit-nombre" class="swal2-input" value="${j.nombre}" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta del campo de ID</label>
+                        <input id="swal-edit-label" class="swal2-input" value="${j.inputLabel || ''}" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Placeholder</label>
+                        <input id="swal-edit-placeholder" class="swal2-input" value="${j.inputPlaceholder || ''}" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Ícono Font Awesome (ej: fa-fire)</label>
+                        <input id="swal-edit-icono" class="swal2-input" value="${j.icono || 'fa-gamepad'}" style="margin:0;width:100%;"></div>
+                    </div>`,
+                confirmButtonText: '<i class="fa-solid fa-save"></i> Guardar',
+                confirmButtonColor: '#9D00FF',
+                showCancelButton: true,
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => ({
+                    nombre: document.getElementById('swal-edit-nombre').value.trim(),
+                    inputLabel: document.getElementById('swal-edit-label').value.trim(),
+                    inputPlaceholder: document.getElementById('swal-edit-placeholder').value.trim(),
+                    icono: document.getElementById('swal-edit-icono').value.trim()
+                })
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                juegosData[key] = { ...juegosData[key], ...result.value };
+                await saveJuegos();
+            });
+        }
+
+        function addPackage(gameKey) {
+            Swal.fire({
+                title: `<span style="color:#fff;font-family:Montserrat">💎 Nuevo Paquete</span>`,
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                html: `
+                    <div style="text-align:left;display:grid;gap:12px;">
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta (ej: 100 Diamantes)</label>
+                        <input id="swal-pk-label" class="swal2-input" placeholder="100 Diamantes" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Precio en USDT</label>
+                        <input id="swal-pk-usdt" class="swal2-input" type="number" step="0.01" placeholder="1.00" style="margin:0;width:100%;"></div>
+                    </div>`,
+                confirmButtonText: '<i class="fa-solid fa-plus"></i> Agregar',
+                confirmButtonColor: '#9D00FF',
+                showCancelButton: true,
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const label = document.getElementById('swal-pk-label').value.trim();
+                    const usdt = parseFloat(document.getElementById('swal-pk-usdt').value);
+                    if (!label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
+                    return { label, usdt };
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                const pkId = Date.now().toString();
+                if (!juegosData[gameKey].paquetes) juegosData[gameKey].paquetes = {};
+                juegosData[gameKey].paquetes[pkId] = result.value;
+                await saveJuegos();
+            });
+        }
+
+        function editPackage(gameKey, pkId) {
+            const pk = juegosData[gameKey].paquetes[pkId];
+            Swal.fire({
+                title: `<span style="color:#fff;font-family:Montserrat">💎 Editar Paquete</span>`,
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                html: `
+                    <div style="text-align:left;display:grid;gap:12px;">
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta (ej: 100 Diamantes)</label>
+                        <input id="swal-edit-pk-label" class="swal2-input" value="${pk.label}" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Precio en USDT</label>
+                        <input id="swal-edit-pk-usdt" class="swal2-input" type="number" step="0.01" value="${pk.usdt}" style="margin:0;width:100%;"></div>
+                    </div>`,
+                confirmButtonText: '<i class="fa-solid fa-save"></i> Guardar',
+                confirmButtonColor: '#9D00FF',
+                showCancelButton: true,
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const label = document.getElementById('swal-edit-pk-label').value.trim();
+                    const usdt = parseFloat(document.getElementById('swal-edit-pk-usdt').value);
+                    if (!label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
+                    return { label, usdt };
+                }
+            }).then(async result => {
+                if (!result.isConfirmed) return;
+                juegosData[gameKey].paquetes[pkId] = result.value;
+                await saveJuegos();
+            });
+        }
+
+        async function deletePackage(gameKey, pkId) {
+            const pk = juegosData[gameKey].paquetes[pkId];
+            const result = await Swal.fire({
+                title: '¿Eliminar paquete?',
+                text: `Esto eliminará el paquete "${pk.label}" de la tienda.`,
+                icon: 'warning',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                confirmButtonColor: '#FF3D71',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!result.isConfirmed) return;
+            delete juegosData[gameKey].paquetes[pkId];
+            await saveJuegos();
+        }
+
+        async function deleteGame(key) {
+            const result = await Swal.fire({
+                title: '¿Eliminar juego?',
+                text: `Esto eliminará "${juegosData[key].nombre}" y todos sus paquetes de la tienda.`,
+                icon: 'warning',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                confirmButtonColor: '#FF3D71',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!result.isConfirmed) return;
+            delete juegosData[key];
+            await saveJuegos();
+        }
+
+        async function saveJuegos() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/settings`, {
+                    method: 'POST',
+                    body: JSON.stringify({ juegos: juegosData })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Los juegos se actualizaron correctamente.', timer: 1800, showConfirmButton: false, background: 'rgba(20,10,35,0.98)', color: '#fff' });
+                    renderJuegos();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar.', background: 'rgba(20,10,35,0.98)', color: '#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: e.message, background: 'rgba(20,10,35,0.98)', color: '#fff' });
+            }
+        }
+
+        async function simulateBinancePayment() {
+            // Obtener pedidos de binance pendientes
+            const pendingBinance = allOrders.filter(o => o.status === 'pending' && o.method === 'binance');
+            
+            let htmlOptions = '';
+            if (pendingBinance.length > 0) {
+                let optionItems = '<option value="">-- Seleccionar pedido --</option>';
+                pendingBinance.forEach(function(o) {
+                    const amt = parseFloat(o.price.split('USDT')[0].trim());
+                    optionItems += '<option value="' + amt + '">' + o.name + ' (' + o.pack + ') - ' + amt + ' USDT [Ref: ' + o.ref.substring(0,6) + '...]</option>';
+                });
+                htmlOptions = '<div style="margin-bottom:15px; text-align:left;">' +
+                    '<label style="font-weight:600;font-size:0.85rem;color:#b0a8c0;">Autocompletar desde pedido pendiente:</label>' +
+                    '<select id="swal-sim-select" class="swal2-input" style="margin:5px 0 0 0; width:100%; display:block; box-sizing:border-box;" onchange="document.getElementById(\'swal-sim-amount\').value = this.value">' +
+                    optionItems +
+                    '</select></div>';
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: '⚡ Simular Pago Binance',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                html: htmlOptions +
+                    '<div style="text-align:left;">' +
+                    '<label style="font-weight:600;font-size:0.85rem;color:#b0a8c0;">Monto a simular (USDT):</label>' +
+                    '<input id="swal-sim-amount" type="number" step="0.01" class="swal2-input" placeholder="Ej: 1.00" style="margin:5px 0 0 0; width:100%; display:block; box-sizing:border-box;">' +
+                    '</div>',
+                showCancelButton: true,
+                confirmButtonText: 'Inyectar Pago',
+                confirmButtonColor: '#f3ba2f',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const amount = document.getElementById('swal-sim-amount').value.trim();
+                    if (!amount || parseFloat(amount) <= 0) {
+                        Swal.showValidationMessage('Ingresa un monto válido mayor a 0');
+                        return false;
+                    }
+                    return { amount };
+                }
+            });
+
+            if (formValues) {
+                Swal.fire({ title: 'Procesando pago...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await adminFetch(`${SERVER_URL}/admin/test-binance-payment`, {
+                        method: 'POST',
+                        body: JSON.stringify({ amount: formValues.amount })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pago Inyectado',
+                            text: data.message,
+                            background: 'rgba(20, 10, 35, 0.98)',
+                            color: '#fff',
+                            confirmButtonColor: '#f3ba2f'
+                        });
+                        loadOrders();
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                } catch (err) {
+                    Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                }
+            }
         }
     </script>
 </body>
