@@ -1135,22 +1135,32 @@ setInterval(async () => {
 // 🔒 NÚMEROS DE WHATSAPP AUTORIZADOS PARA APROBAR/RECHAZAR (ambos admins)
 const ADMIN_WA_PHONES = ['04243790757', '04125313735'];
 
-// 🔒 USER IDs DE TELEGRAM AUTORIZADOS (obtener con @userinfobot en Telegram)
-// IMPORTANTE: Llenar con los IDs reales de cada administrador
-const ADMIN_TELEGRAM_IDS = (
-    process.env.ADMIN_TELEGRAM_IDS
-        ? process.env.ADMIN_TELEGRAM_IDS.split(',')
-              .map(id => parseInt(id.trim()))
-              .filter(id => !isNaN(id))
-        : []
-);
+// 🔒 USER IDs DE TELEGRAM AUTORIZADOS
+// Usa ADMIN_TELEGRAM_IDS si está configurado, o cae en TELEGRAM_CHAT_ID como fallback
+const ADMIN_TELEGRAM_IDS = (() => {
+    // Prioridad 1: variable explícita con uno o más IDs
+    if (process.env.ADMIN_TELEGRAM_IDS) {
+        return process.env.ADMIN_TELEGRAM_IDS
+            .split(',')
+            .map(id => parseInt(id.trim()))
+            .filter(id => !isNaN(id));
+    }
+    // Prioridad 2: usar TELEGRAM_CHAT_ID (que ya existe en Render)
+    if (process.env.TELEGRAM_CHAT_ID) {
+        const fallbackId = parseInt(process.env.TELEGRAM_CHAT_ID);
+        if (!isNaN(fallbackId)) {
+            console.log(`[TELEGRAM-AUTH] Usando TELEGRAM_CHAT_ID (${fallbackId}) como admin autorizado.`);
+            return [fallbackId];
+        }
+    }
+    return [];
+})();
 
 // Helper: verifica si un user_id de Telegram es admin autorizado
 function isTelegramAdmin(userId) {
     if (!userId) return false;
     if (ADMIN_TELEGRAM_IDS.length === 0) {
-        // Si no hay IDs configurados, bloquear TODO por defecto (seguridad máxima)
-        console.warn('[TELEGRAM-AUTH] ⚠️ ADMIN_TELEGRAM_IDS no configurado en .env — todos los clics de Telegram bloqueados.');
+        console.warn('[TELEGRAM-AUTH] ⚠️ No hay IDs de admin configurados — todos los clics de Telegram bloqueados.');
         return false;
     }
     return ADMIN_TELEGRAM_IDS.includes(Number(userId));
