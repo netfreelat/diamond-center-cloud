@@ -127,6 +127,9 @@ client.on('message', async (msg) => {
     try {
         const text = msg.body.trim();
         
+        // Resolver el ID real del remitente (evita vulnerabilidad en grupos donde msg.from es el JID del grupo)
+        const realSenderId = msg.author || msg.from;
+        
         // Resolver número real del remitente - múltiples métodos de fallback
         let senderPhone = '';
         try {
@@ -136,14 +139,14 @@ client.on('message', async (msg) => {
                 ? contact.id.user.replace(/\D/g, '') 
                 : (contact.number || '').replace(/\D/g, '');
         } catch (e) {
-            // Fallback: extraer de msg.from si viene @c.us
-            senderPhone = msg.from.replace('@c.us', '').replace('@lid', '').replace(/\D/g, '');
+            // Fallback: extraer de realSenderId si viene @c.us
+            senderPhone = realSenderId.replace('@c.us', '').replace('@lid', '').replace(/\D/g, '');
         }
         
-        console.log(`[WHATSAPP-MSG] 📩 Remitente: ${msg.from} | Phone resuelto: ${senderPhone} | Texto: "${text}" | isAdmin: ${isAdminJID(msg.from, senderPhone)}`);
+        console.log(`[WHATSAPP-MSG] 📩 Remitente: ${realSenderId} (Chat: ${msg.from}) | Phone resuelto: ${senderPhone} | Texto: "${text}" | isAdmin: ${isAdminJID(realSenderId, senderPhone)}`);
 
         // 🛡️ LÓGICA DE ADMINISTRADOR: Aprobar/Rechazar Pedidos
-        if (isAdminJID(msg.from, senderPhone)) {
+        if (isAdminJID(realSenderId, senderPhone)) {
             // Caso 1: Responder a un mensaje (Quoted Message)
             if (msg.hasQuotedMsg) {
                 const quotedMsg = await msg.getQuotedMessage();
@@ -444,10 +447,8 @@ const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
 // Los valores @lid se obtuvieron de los logs del servidor y corresponden a:
 //   265132844298371@lid -> 04243790757 (Admin principal - Telegram + WhatsApp)
 //   59931990483031@lid  -> 04125313735 (Admin secundario - solo WhatsApp)
-const ADMIN_LID_CACHE = new Set([
-    '265132844298371@lid',
-    '59931990483031@lid'
-]);
+// Lista de JIDs @lid/@c.us conocidos de los administradores. Inicialmente vacía para prevenir inyecciones.
+const ADMIN_LID_CACHE = new Set();
 
 // Verificación de admin: compara por JID completo (cache @lid), por teléfono normalizado, o por cualquier campo conocido
 function isAdminJID(jid, resolvedPhone) {
