@@ -2640,7 +2640,7 @@ const server = http.createServer(async (req, res) => {
                 sendPushToUser(
                     uid,
                     '🎉 ¡Bienvenido a RECARGASNEY.COM!',
-                    `¡Hola ${nombreRegistrado}! Tu cuenta está activa. Acumula puntos en cada compra y canjéalos por diamantes gratis. 💎`,
+                    `¡Hola ${nombreRegistrado}! Tu cuenta está activa. Acumula $ en cada compra y canjéalos por diamantes gratis. 💎`,
                     '/icon-192.png',
                     '/'
                 );
@@ -2657,7 +2657,7 @@ const server = http.createServer(async (req, res) => {
                         `👤 *Jugador:* ${nombreRegistrado}\n` +
                         `🆔 *ID Garena:* ${uid}\n` +
                         `━━━━━━━━━━━━━━━\n\n` +
-                        `✅ Ya puedes *acumular puntos* en cada recarga y canjearlos por diamantes gratis. 💎\n\n` +
+                        `✅ Ya puedes *acumular $* en cada recarga y canjearlos por diamantes gratis. 💎\n\n` +
                         `🌐 *Tu tienda:* https://recargasney.com\n\n` +
                         `¡Gracias por unirte a *RECARGASNEY.COM*! 🚀`;
 
@@ -3056,7 +3056,7 @@ const server = http.createServer(async (req, res) => {
                                       `🎁 *¿Cómo funciona?*\n` +
                                       `1. Comparte tu link único de referido con tus amigos.\n` +
                                       `2. Por cada amigo que ingrese con tu link y realice su primera compra, ¡tú ganas *+$0.03 USDT*! 💰\n` +
-                                      `3. Acumula tus puntos y canjéalos por recargas gratis en la página. 🎟️\n\n` +
+                                      `3. Acumula tus $ y canjéalos por recargas gratis en la página. 🎟️\n\n` +
                                       `🔗 *Tu Link de Referido Único:*\n` +
                                       `${referralLink}\n\n` +
                                       `¡Comparte tu link y empieza a ganar hoy mismo! 🎯🛡️`;
