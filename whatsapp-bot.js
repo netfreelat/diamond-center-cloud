@@ -210,6 +210,13 @@ client.on('message', async (msg) => {
 
         // --- COMANDO DE PRECIOS PARA TODOS (Clientes y Admin) ---
         const cleanText = text.toLowerCase().trim();
+
+        // Precios en USDT (debe ir antes para que "precios usdt" no lo atrape el de bolívares)
+        if (['precios usdt', 'precio usdt', 'precios en usdt', 'usdt', 'precios dolares', 'precio dolares', 'precios dólares', 'precio dólares'].includes(cleanText)) {
+            await handleSendPricesUSDT(msg);
+            return;
+        }
+
         if (['precios', 'precio', 'diamantes', 'costos', 'paquetes'].includes(cleanText)) {
             await handleSendPrices(msg);
             return;
@@ -624,3 +631,66 @@ async function handleSendPrices(msg) {
     }
 }
 
+async function handleSendPricesUSDT(msg) {
+    try {
+        const url = new URL(`${SERVER_URL}/api/config`);
+        const isHttps = SERVER_URL.startsWith('https');
+        const httpLib = isHttps ? require('https') : require('http');
+
+        console.log(`[WHATSAPP-PRECIOS-USDT] Consultando precios al servidor: ${url.href}`);
+
+        httpLib.get(url, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', async () => {
+                try {
+                    if (res.statusCode !== 200) {
+                        throw new Error(`Código de estado del servidor: ${res.statusCode}`);
+                    }
+                    const config = JSON.parse(body);
+                    const precios = config.precios || {};
+                    const canal = (config.whatsapp && config.whatsapp.canal) ? config.whatsapp.canal : 'https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K';
+
+                    // Ordenar las claves de precios numéricamente
+                    const sortedKeys = Object.keys(precios).sort((a, b) => parseInt(a) - parseInt(b));
+
+                    let msgText = `💎 *RECARGASNEY.COM - PRECIOS EN USDT* 💎\n`;
+                    msgText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                    msgText += `💵 _Precios expresados en USDT (Dólares):_\n\n`;
+
+                    sortedKeys.forEach(key => {
+                        const item = precios[key];
+                        const priceUsdt = parseFloat(item.usdt);
+                        // Mostrar decimales solo si son necesarios
+                        const priceFormatted = priceUsdt % 1 === 0
+                            ? priceUsdt.toFixed(0)
+                            : priceUsdt.toFixed(2);
+
+                        let icon = '🔹';
+                        if (parseInt(key) >= 1060) icon = '🔥';
+                        if (parseInt(key) >= 5600) icon = '👑';
+
+                        msgText += `${icon} *${item.label || (key + ' Diamantes')}* ➔ *$${priceFormatted} USDT*\n`;
+                    });
+
+                    msgText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                    msgText += `🌐 *Compra aquí:* https://recargasney.com\n`;
+                    msgText += `📱 *Únete a nuestro Canal:* \n🔗 ${canal}\n\n`;
+                    msgText += `⚡ _¡Recargas al instante con tu ID Garena!_ 🚀`;
+
+                    await client.sendMessage(msg.from, msgText);
+                    console.log(`[WHATSAPP-PRECIOS-USDT] Precios USDT enviados con éxito a ${msg.from}`);
+                } catch (e) {
+                    console.error('[WHATSAPP-PRECIOS-USDT] Error parseando respuesta de config:', e.message);
+                    await msg.reply('❌ No se pudo obtener la lista de precios en este momento. Por favor intenta más tarde.');
+                }
+            });
+        }).on('error', async (err) => {
+            console.error('[WHATSAPP-PRECIOS-USDT] Error en petición GET:', err.message);
+            await msg.reply('❌ Error al conectar con el servidor para obtener los precios.');
+        });
+    } catch (err) {
+        console.error('[WHATSAPP-PRECIOS-USDT] Error general en handleSendPricesUSDT:', err.message);
+        await msg.reply('❌ Error al procesar la solicitud de precios en USDT.');
+    }
+}
