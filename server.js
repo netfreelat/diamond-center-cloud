@@ -115,33 +115,24 @@ async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath 
     }
 }
 
-const BDV_TOKEN = process.env.BDV_TOKEN;
-const BDV_PASSWORD = process.env.BDV_PASSWORD;
-const BDV_API_URL = 'https://apicentral.pro/apis/movimientos_bdv.jsp';
+// =====================================================
+// 🏦 BDV AUTO-PAGO — SERVICIO PUPPETEER
+// Toggle ON/OFF: bdvAutoApproveEnabled (default: false)
+// Los pagos manuales funcionan igual, esto es ADITIVO.
+// =====================================================
+const { bdvLogin, verificarPagoBDV, getBDVStatus, closeBDVBrowser } = require('./bdv-service.js');
 
-const { bdvLogin, verificarPagoBDV } = require('./bdv-service.js');
-let currentBdvToken = null;
+// 🔴 DESACTIVADO por defecto — activar desde el panel admin o con POST /admin/bdv-config
+let bdvAutoApproveEnabled = false;
+let bdvAutoApproveRunning = false; // mutex para evitar ciclos superpuestos
 
+// Wrapper de verificación BDV (sin token, Puppeteer maneja la sesión internamente)
 async function verifyBDVPayment(montoReportado, referencia4) {
     try {
-        if (!currentBdvToken) {
-            currentBdvToken = await bdvLogin();
-        }
-        
-        let result = await verificarPagoBDV(montoReportado, referencia4, currentBdvToken);
-        
-        if (!result.success && result.pending && !result.movimiento) {
-            const newToken = await bdvLogin();
-            if (newToken && newToken !== currentBdvToken) {
-                currentBdvToken = newToken;
-                result = await verificarPagoBDV(montoReportado, referencia4, currentBdvToken);
-            }
-        }
-        
-        return result;
+        return await verificarPagoBDV(montoReportado, referencia4);
     } catch (e) {
         console.error('[BDV] Error en verifyBDVPayment:', e.message);
-        return { success: false, pending: true };
+        return { success: false, checked: false, pending: true };
     }
 }
 
@@ -237,6 +228,20 @@ let settings = {
             "icono": "fa-gamepad",
             "paquetes": {
                 "10": { "usdt": 10.50, "label": "10 USD" }
+            }
+        },
+        "bloodstrike": {
+            "nombre": "Blood Strike",
+            "inputLabel": "ID de Jugador",
+            "inputPlaceholder": "Ej: 123456789",
+            "icono": "fa-skull-crossbones",
+            "paquetes": {
+                "100":  { "usdt": 0.73,  "label": "100 + 5 🪙 Monedas" },
+                "300":  { "usdt": 2.24,  "label": "300 + 20 🪙 Monedas" },
+                "500":  { "usdt": 3.66,  "label": "500 + 40 🪙 Monedas" },
+                "1000": { "usdt": 7.44,  "label": "1.000 + 100 🪙 Monedas" },
+                "2000": { "usdt": 14.59, "label": "2.000 + 260 🪙 Monedas" },
+                "5000": { "usdt": 36.19, "label": "5.000 + 800 🪙 Monedas" }
             }
         }
     },
@@ -338,8 +343,26 @@ async function loadFromSupabase() {
             settings.precios = settingsData.precios;
             if (settingsData.juegos) {
                 settings.juegos = settingsData.juegos;
+                if (settings.juegos.freefire && settings.juegos.freefire.paquetes) {
+                    settings.precios = settings.juegos.freefire.paquetes;
+                }
             }
             console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
+
+            // --- Inicializar estado del toggle bdvAutoApproveEnabled ---
+            if (settings.metodos_pago && settings.metodos_pago.pagomovil) {
+                bdvAutoApproveEnabled = !!settings.metodos_pago.pagomovil.auto_approve_enabled;
+            } else {
+                bdvAutoApproveEnabled = false;
+            }
+            console.log(`[SUPABASE] 🏦 Auto-aprobación BDV inicializada: ${bdvAutoApproveEnabled ? '✅ ACTIVADA' : '🔴 DESACTIVADA'}`);
+            if (bdvAutoApproveEnabled) {
+                console.log('[SUPABASE] 🏦 Iniciando login BDV en background...');
+                bdvLogin().then(ok => {
+                    if (ok) console.log('[BDV-STARTUP] ✅ Login BDV exitoso.');
+                    else console.error('[BDV-STARTUP] ❌ Login BDV falló.');
+                }).catch(e => console.error('[BDV-STARTUP] Error en login BDV:', e.message));
+            }
         }
         
         // Intentar cargar el token de sesión por separado (requiere columna admin_session_token)
@@ -389,6 +412,13 @@ function saveWaQueue() {
 function queueWhatsAppMessage(order, isAccepted, pin = null) {
     if (!order.wa || order.wa === 'No provisto') return;
 
+    // 🔒 MODO SEGURO: Evitar envío automático de notificaciones a clientes
+    const waModo = (settings.whatsapp && settings.whatsapp.modo) ? settings.whatsapp.modo : 'activo';
+    if (waModo === 'seguro') {
+        console.log(`[WA-QUEUE] 🔒 Modo Seguro activo. Evitando envío automático al cliente ${order.wa} para ref: ${order.ref}`);
+        return;
+    }
+
     // ⚠️ ANTI-DUPLICADO: IDs basados en ref del pedido (únicos por orden)
     const orderRef = order.ref || Date.now().toString();
     const ticketId = `wa_${orderRef}_ticket`;
@@ -404,38 +434,58 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
     
     let msg = '';
     if (isAccepted) {
-        const packStr = (order.pack || '').toLowerCase();
-        const isCard = packStr.includes('tarjeta') || packStr.includes('basica') || packStr.includes('semanal') || packStr.includes('mensual');
-        const isPass = packStr.includes('pase') || packStr.includes('booyah');
-        
-        let itemType = 'diamantes';
-        let itemStatus = '¡Diamantes Enviados! ✨';
-        
-        if (isCard) {
-            itemType = 'tarjetas';
-            itemStatus = '¡Tarjetas Enviadas! ✨';
-        } else if (isPass) {
-            itemType = 'pase booyah';
-            itemStatus = '¡Pase Enviado! ✨';
-        }
+        const isCanje = order.method === 'canje';
+        if (isCanje) {
+            msg = `💎 *¡CANJE DE CASHBACK EXITOSO!* 💎\n\n` +
+                  `¡Hola, *${order.name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
+                  `━━━━━━━━━━━━━━━\n` +
+                  `👤 *Jugador:* ${order.name}\n` +
+                  `🆔 *ID Garena:* ${order.uid}\n` +
+                  `💎 *Paquete:* ${order.pack}\n` +
+                  `━━━━━━━━━━━━━━━\n\n` +
+                  `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
+                  `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+        } else {
+            const packStr = (order.pack || '').toLowerCase();
+            const isCard = packStr.includes('tarjeta') || packStr.includes('basica') || packStr.includes('semanal') || packStr.includes('mensual');
+            const isPass = packStr.includes('pase') || packStr.includes('booyah');
+            
+            let itemType = 'diamantes';
+            let itemStatus = '¡Diamantes Enviados! ✨';
+            
+            if (isCard) {
+                itemType = 'tarjetas';
+                itemStatus = '¡Tarjetas Enviadas! ✨';
+            } else if (isPass) {
+                itemType = 'pase booyah';
+                itemStatus = '¡Pase Enviado! ✨';
+            }
 
-        msg = `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥\n\n` +
-              `¡Hola, *${order.name}*! Tu pedido de ${itemType} ha sido procesado con éxito. 🚀\n\n` +
-              `━━━━━━━━━━━━━━━\n` +
-              `👤 *Jugador:* ${order.name}\n` +
-              `🆔 *ID Garena:* ${order.uid}\n` +
-              `💎 *Paquete:* ${order.pack}\n` +
-              `━━━━━━━━━━━━━━━\n\n` +
-              `✅ *Estado:* ${itemStatus}`;
+            const isBloodStrike = order.juego === 'bloodstrike';
 
-        const userObj = users[order.login_uid || order.uid];
-        if (userObj) {
-            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-            if (!isNaN(usdtPrice) && usdtPrice > 0) {
-                const pointsEarned = Math.floor(usdtPrice * 10);
-                const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
-                const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
-                msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
+            const headerLine = isBloodStrike
+                ? `🔫 *¡DISPARO! COMPRA EXITOSA* 🔫`
+                : `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥`;
+            const idLabel = isBloodStrike ? 'ID Blood Strike' : 'ID Garena';
+
+            msg = `${headerLine}\n\n` +
+                  `¡Hola, *${order.name}*! Tu pedido de ${itemType} ha sido procesado con éxito. 🚀\n\n` +
+                  `━━━━━━━━━━━━━━━\n` +
+                  `👤 *Jugador:* ${order.name}\n` +
+                  `🆔 *${idLabel}:* ${order.uid}\n` +
+                  `💎 *Paquete:* ${order.pack}\n` +
+                  `━━━━━━━━━━━━━━━\n\n` +
+                  `✅ *Estado:* ${itemStatus}`;
+
+            const userObj = users[order.login_uid || order.uid];
+            if (userObj) {
+                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                if (!isNaN(usdtPrice) && usdtPrice > 0) {
+                    const pointsEarned = Math.floor(usdtPrice * (10 / 3));
+                    const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
+                    const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
+                    msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
+                }
             }
         }
 
@@ -468,13 +518,25 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
             return;
         }
-        msg += `\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-195-4469*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
     } else {
-        msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
-              `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
-              `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
-              `Envía captura de tu pago a soporte al *+584125322412*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
-              `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
+        const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
+        const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+
+        const isCanje = order.method === 'canje';
+        if (isCanje) {
+            msg = `⚠️ *AVISO DE TU CANJE* ⚠️\n\n` +
+                  `Hola *${order.name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
+                  `❌ *Motivo:* Tu canje fue rechazado por el administrador y tus puntos fueron devueltos a tu cuenta.\n\n` +
+                  `Si tienes dudas, contáctanos a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
+                  `¡Estamos aquí para ayudarte! 🤝`;
+        } else {
+            msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
+                  `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
+                  `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
+                  `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
+                  `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
+        }
     }
 
     const waItem = { id: singleId, number: order.wa, message: msg };
@@ -487,6 +549,39 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
 // --- NOTIFICACIÓN A ADMINS: Nuevo pedido recibido ---
 // Números de WhatsApp de los administradores que recibirán alertas de nuevos pedidos
 const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
+
+// ─────────────────────────────────────────────────────────
+// 🚨 ALERTA DE ERROR JADH.SHOP → Admin (WhatsApp + acción requerida)
+// ─────────────────────────────────────────────────────────
+function notifyAdminsJadhError(order, errorMsg, source = 'Automático') {
+    const now = getVEString();
+    const msg =
+        `🚨 *ERROR EN RECARGA JADH.SHOP* 🚨\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
+        `👤 *Jugador:* ${order.name}\n` +
+        `🆔 *ID/Usuario:* ${order.uid}\n` +
+        `💎 *Paquete:* ${order.pack}\n` +
+        `💰 *Monto:* ${order.price || 'N/A'}\n` +
+        `📝 *Referencia:* \`${order.ref}\`\n` +
+        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `❌ *Motivo del error:* ${errorMsg}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🔧 *Fuente:* ${source}\n` +
+        `⏰ *Hora:* ${now}\n\n` +
+        `⚠️ _El pedido quedó en estado PENDIENTE. Recarga manualmente o usa "Reintentar" en el panel._`;
+
+    for (const adminNumber of ADMIN_WA_NUMBERS) {
+        const msgId = `wa_admin_jadh_err_${order.ref}_${adminNumber.slice(-4)}`;
+        if (whatsappQueue.some(i => i.id === msgId)) continue;
+        const waItem = { id: msgId, number: adminNumber, message: msg };
+        whatsappQueue.push(waItem);
+        supabase.from('ff_wa_queue').insert(waItem)
+            .then(({ error }) => { if (error && error.code !== '23505') console.error('[JADH-ERR-NOTIFY] Error:', error.message); });
+        console.log(`[JADH-ERR-NOTIFY] 🚨 Alerta de error Jadh encolada para admin ${adminNumber} (ref: ${order.ref})`);
+    }
+}
 
 function notifyAdminsNewOrder(order) {
     const now = getVEString();
@@ -525,13 +620,51 @@ function notifyAdminsNewOrder(order) {
     }
 }
 
+// --- NOTIFICACIÓN A ADMINS: Canje de puntos recibido ---
+function notifyAdminsNewCanje(order) {
+    const now = getVEString();
+    const pointCosts = { 
+        "100": 500, "310": 1500, "520": 2500,
+        "basica": 400, "semanal": 1500, "booyah": 2300, "mensual": 7500
+    };
+    const cost = pointCosts[order.pack] || 0;
+
+    const msg =
+        `🎁 *SOLICITUD DE CANJE DE PUNTOS* 🎁\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 *Jugador:* ${order.name}\n` +
+        `🆔 *ID Garena:* ${order.uid}\n` +
+        `💎 *Paquete:* ${order.pack}\n` +
+        `📉 *Puntos a Descontar:* ${cost} pts\n` +
+        `💳 *Método:* Canje de Cashback 🎁\n` +
+        `📝 *Referencia:* \`${order.ref}\`\n` +
+        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⏰ *Hora:* ${now}\n` +
+        `\n💡 *Responde a este mensaje con:*\n` +
+        `👉 *Aprobar* (para procesar recarga)\n` +
+        `👉 *Rechazar* (para cancelar y devolver puntos)`;
+
+    for (const adminNumber of ADMIN_WA_NUMBERS) {
+        const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
+        if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
+
+        const waItem = { id: adminMsgId, number: adminNumber, message: msg };
+        whatsappQueue.push(waItem);
+        Promise.resolve(supabase.from('ff_wa_queue').insert(waItem)).catch(() => {});
+    }
+}
+
 // --- NOTIFICACIÓN A ADMINS: Pedido aprobado o rechazado ---
 function notifyAdminsOrderStatus(order, isApproved, source = 'sistema') {
     const now = getVEString();
     const statusEmoji = isApproved ? '✅' : '❌';
     const statusText  = isApproved ? 'APROBADO' : 'RECHAZADO';
-    const msg =
-        `${statusEmoji} *PEDIDO ${statusText}* ${statusEmoji}\n` +
+    const isCanje = order.method === 'canje';
+    const msgType = isCanje ? 'CANJE' : 'PEDIDO';
+    
+    let msg =
+        `${statusEmoji} *${msgType} ${statusText}* ${statusEmoji}\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
         `👤 *Jugador:* ${order.name}\n` +
@@ -540,7 +673,14 @@ function notifyAdminsOrderStatus(order, isApproved, source = 'sistema') {
         `💰 *Total:* ${order.price || 'N/A'}\n` +
         `📝 *Referencia:* \`${order.ref}\`\n` +
         `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n`;
+        
+    if (!isApproved && order.reason) {
+        msg += `❌ *Motivo:* ${order.reason}\n` +
+               `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    }
+    
+    msg +=
         `🔧 *Fuente:* ${source}\n` +
         `⏰ *Hora:* ${now}`;
 
@@ -565,6 +705,11 @@ const pendingReviewRequests = new Map(); // wa_number -> { uid, name, pack }
 
 function scheduleReviewRequest(order) {
     if (!order.wa || order.wa === 'No provisto') return;
+    
+    // 🔒 MODO SEGURO: Evitar solicitudes de reseña automáticas
+    const waModo = (settings.whatsapp && settings.whatsapp.modo) ? settings.whatsapp.modo : 'activo';
+    if (waModo === 'seguro') return;
+
     const delay = 15 * 60 * 1000; // 15 minutos
     setTimeout(() => {
         const reviewId = `wa_review_${order.ref}_${Date.now()}`;
@@ -635,9 +780,9 @@ async function saveUser(uid) {
 function isUserFullyRegistered(uid) {
     const user = users[uid];
     if (!user) return false;
-    // Si tiene contraseña en la cuenta, se considera registrado y apto para ganar puntos.
-    // Esto previene que se bloqueen los puntos si las columnas de cédula/teléfono no existen en la base de datos.
-    return !!(user.password);
+    // El referidor es elegible si existe en el sistema (tiene cuenta o ha comprado antes).
+    // Solo requerimos que el objeto usuario exista — no bloqueamos por falta de contraseña.
+    return true;
 }
 
 async function ensureUserLoaded(uid) {
@@ -674,7 +819,7 @@ async function ensureUserLoaded(uid) {
 
 async function addPoints(uid, amountUsdt, name = null) {
     const userObj = await ensureUserLoaded(uid);
-    const pointsToAdd = Math.floor(amountUsdt * 10);
+    const pointsToAdd = Math.floor(amountUsdt * (10 / 3));
     userObj.points = (userObj.points || 0) + pointsToAdd;
     if (name) {
         const currentName = (userObj.name || '').trim();
@@ -683,24 +828,30 @@ async function addPoints(uid, amountUsdt, name = null) {
         }
     }
 
-    // Lógica de Referidos: 10 pts al referrer en la PRIMERA recarga
+    // Lógica de Referidos: 17 pts al referrer en la PRIMERA recarga (equivale a $0.05 USDT)
     if (userObj.referred_by && !userObj.referral_claimed) {
         const referrerUid = userObj.referred_by;
         const referrerObj = await ensureUserLoaded(referrerUid);
         if (referrerObj && isUserFullyRegistered(referrerUid)) {
-            referrerObj.points = (referrerObj.points || 0) + 10;
+            referrerObj.points = (referrerObj.points || 0) + 17;
             userObj.referral_claimed = true;
             await saveUser(referrerUid);
-            console.log(`[REFERRAL_REWARD] ${referrerUid} gana 10 pts por la 1ra recarga de ${uid}`);
+            await saveUser(uid); // Persistir el flag referral_claimed del nuevo usuario
+            console.log(`[REFERRAL_REWARD] ✅ ${referrerUid} gana 17 pts por la 1ra recarga de ${uid}`);
 
             // Encolar mensaje de WhatsApp para el referidor
-            getLastUserWa(referrerUid).then(referrerWa => {
+            getLastUserWa(referrerUid).then(async referrerWa => {
+                // Fallback: usar el teléfono registrado si no se encontró WA en pedidos
+                if (!referrerWa) {
+                    const refUser = users[referrerUid];
+                    if (refUser && refUser.phone) referrerWa = refUser.phone;
+                }
                 if (referrerWa) {
                     const refMsgId = `wa_ref_${uid}_reward`;
                     const refTotalUsdt = ((referrerObj.points || 0) * 0.003).toFixed(2);
                     const refMsg = `🎉 *¡FELICIDADES! HAS GANADO CASHBACK* 🎉\n\n` +
                                    `¡Hola! Tu referido con ID *${uid}* ha realizado su primera compra. 🚀\n\n` +
-                                   `🎁 *Cashback ganado:* +$0.03 USDT\n` +
+                                   `🎁 *Cashback ganado:* +$0.05 USDT\n` +
                                    `💰 *Tu saldo total:* $${refTotalUsdt} USDT\n\n` +
                                    `¡Sigue compartiendo tu enlace para ganar más premios! 💎✨`;
                     
@@ -713,7 +864,7 @@ async function addPoints(uid, amountUsdt, name = null) {
             });
 
             // Push al referidor
-            sendPushToUser(referrerUid, '¡Referido Exitoso! 🎉💎', `Tu referido ${uid} hizo su primera compra. ¡Ganaste +$0.03 USDT de cashback!`, '/icon-192.png', '/');
+            sendPushToUser(referrerUid, '¡Referido Exitoso! 🎉💎', `Tu referido ${uid} hizo su primera compra. ¡Ganaste +$0.05 USDT de cashback!`, '/icon-192.png', '/');
         }
     }
 
@@ -724,7 +875,7 @@ async function addPoints(uid, amountUsdt, name = null) {
     
     // Push por cashback acumulado en la recarga
     if (pointsToAdd > 0) {
-        sendPushToUser(uid, '💰 ¡Ganaste Cashback! 🎁', `+$${earnedUsdtLog} USDT de cashback (3%). Saldo: $${totalUsdtLog} USDT`, '/icon-192.png', '/');
+        sendPushToUser(uid, '💰 ¡Ganaste Cashback! 🎁', `+$${earnedUsdtLog} USDT de cashback (1%). Saldo: $${totalUsdtLog} USDT`, '/icon-192.png', '/');
     }
     
     return pointsToAdd;
@@ -738,14 +889,56 @@ function saveRecent(name, pack, type = 'recarga') {
         .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando reciente:', error.message); });
 }
 
-function updateOrderStatus(ref, status, pin = null) {
+function updateOrderStatus(ref, status, pin = null, reason = null) {
     if (orders[ref]) {
         orders[ref].status = status;
         if (pin) orders[ref].pin = pin;
+        if (reason) orders[ref].reason = reason;
         const update = { status };
         if (pin) update.pin = pin;
+        if (reason) update.reason = reason;
+        
         supabase.from('ff_orders').update(update).eq('ref', ref)
-            .then(({ error }) => { if (error) console.error('[SUPABASE] Error actualizando pedido:', error.message); });
+            .then(({ error }) => {
+                if (error) {
+                    console.error('[SUPABASE] Error actualizando pedido:', error.message);
+                    // Si el error indica que la columna 'reason' no existe, reintentar sin ella
+                    if (error.message.includes('reason') && error.message.includes('column')) {
+                        console.log('[SUPABASE] ⚠️ Columna "reason" ausente en DB. Reintentando actualización sin "reason"...');
+                        const fallbackUpdate = { status };
+                        if (pin) fallbackUpdate.pin = pin;
+                        supabase.from('ff_orders').update(fallbackUpdate).eq('ref', ref)
+                            .then(({ error: fallbackErr }) => {
+                                if (fallbackErr) {
+                                    console.error('[SUPABASE] ❌ Error en reintento de actualización:', fallbackErr.message);
+                                } else {
+                                    console.log('[SUPABASE] ✅ Pedido actualizado correctamente (sin guardar motivo en DB).');
+                                }
+                            });
+                    }
+                }
+            });
+    }
+}
+
+function markPaymentAsUsed(method, ref) {
+    if ((method === 'pagomovil' || method === 'binance') && ref) {
+        const cleanRef = ref.trim();
+        let foundFullRef = null;
+        for (let fRef in pagosValidados) {
+            if (fRef === cleanRef) {
+                foundFullRef = fRef;
+                break;
+            }
+        }
+        const refToSave = foundFullRef || cleanRef;
+        pagosValidados[refToSave] = {
+            amount: pagosValidados[refToSave]?.amount || 0,
+            date: pagosValidados[refToSave]?.date || new Date().toISOString(),
+            used: true
+        };
+        savePagos();
+        console.log(`[SEGURIDAD] Referencia de pago '${refToSave}' marcada como usada (Método: ${method}).`);
     }
 }
 
@@ -890,8 +1083,8 @@ function updateTelegramStatus(ref) {
 }
 
 async function processPendingOrder(inputFullRef, inputShortRef) {
-    // Auto-aprobar pedidos de Free Fire y Roblox.
-    if (inputShortRef && orders[inputShortRef] && orders[inputShortRef].juego && orders[inputShortRef].juego !== 'freefire' && orders[inputShortRef].juego !== 'roblox') {
+    // Auto-aprobar pedidos de Free Fire, Roblox y Blood Strike.
+    if (inputShortRef && orders[inputShortRef] && orders[inputShortRef].juego && orders[inputShortRef].juego !== 'freefire' && orders[inputShortRef].juego !== 'roblox' && orders[inputShortRef].juego !== 'bloodstrike') {
         console.log(`[AUTO-APPROVE] ⏭️ Pedido ${inputShortRef} es de juego '${orders[inputShortRef].juego}'. Se requiere aprobación manual.`);
         return false;
     }
@@ -952,11 +1145,20 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
 
                 console.log(`[AUTO-APPROVE-BDV] Validando monto -> Recibido: ${pago.amount} Bs | Esperado: ${expectedBs} Bs`);
 
-                // Validación de seguridad: El pago debe ser igual o mayor al esperado (con margen de 0.50 Bs)
-                if (pago.amount >= (expectedBs - 0.50)) {
+                // Tolerancia: aceptar si pagó entre (precio - 5 Bs) y (precio + 200 Bs)
+                const MIN_BS = expectedBs - 5;
+                const MAX_BS = expectedBs + 200;
+                if (pago.amount >= MIN_BS && pago.amount <= MAX_BS) {
                     isValid = true;
+                    if (pago.amount < expectedBs) {
+                        console.log(`[AUTO-APPROVE-BDV] ⚠️ PAGO MENOR aceptado: ${pago.amount} Bs (esperado: ${expectedBs} Bs, diferencia: -${(expectedBs - pago.amount).toFixed(2)} Bs)`);
+                    } else if (pago.amount > expectedBs) {
+                        console.log(`[AUTO-APPROVE-BDV] ℹ️ PAGO MAYOR aceptado: ${pago.amount} Bs (esperado: ${expectedBs} Bs, diferencia: +${(pago.amount - expectedBs).toFixed(2)} Bs)`);
+                    }
+                } else if (pago.amount < MIN_BS) {
+                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO INSUFICIENTE. El pago de ${pago.amount} Bs es menor al mínimo aceptado (${MIN_BS.toFixed(2)} Bs).`);
                 } else {
-                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO INSUFICIENTE. El pago de ${pago.amount} Bs es menor a lo esperado (${expectedBs} Bs).`);
+                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO EXCESIVO. El pago de ${pago.amount} Bs supera el máximo aceptado (${MAX_BS.toFixed(2)} Bs).`);
                 }
             }
 
@@ -986,12 +1188,14 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                     
                     let orderIds = [];
                     let pins = [];
+                    let lastResult = null;
                     
                     for (let i = 0; i < qty; i++) {
                         console.log(`[AUTO-APPROVE] Ejecutando recarga ${i+1}/${qty} en Jadh.shop...`);
                         const result = isPaqueteEspecial(amountKey)
                             ? await rechargeViaJadhPaquetes(order.uid, amountKey)
                             : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire');
+                        lastResult = result;
                         if (result.success) {
                             // Solo actualizar el nick si Jadh devuelve un nombre real (no '—', '-' ni vacío)
                             const jadhNick = (result.nickname || '').trim();
@@ -1025,9 +1229,25 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                         updateTelegramStatus(targetShortRef);
                         console.log(`[AUTO-APPROVE] Recarga directa exitosa (Jadh) para ${order.uid}. Órdenes: ${orderIds.join(', ')}`);
                     } else {
-                        console.error(`[AUTO-APPROVE] Recarga automática Jadh.shop falló por completo para ID ${order.uid}`);
-                        orders[targetShortRef].status = 'failed';
-                        updateOrderStatus(targetShortRef, 'failed');
+                        const jadhErr = lastResult?.message || 'Error desconocido en Jadh.shop (sin stock o tiempo de espera agotado).';
+                        console.error(`[AUTO-APPROVE] ❌ Recarga Jadh.shop falló para ID ${order.uid}. Motivo: ${jadhErr}`);
+                        orders[targetShortRef].status = 'pending'; // Volver a pending para que el admin pueda reintentar
+                        updateOrderStatus(targetShortRef, 'pending');
+                        // 🚨 Notificar al admin con el motivo exacto
+                        notifyAdminsJadhError({ ...order, ref: targetShortRef }, jadhErr, 'Auto-Aprobación');
+                        // 📲 Avisar al usuario (sin revelar detalles técnicos)
+                        if (order.wa && order.wa !== 'No provisto') {
+                            const userErrId = `wa_user_jadh_err_${targetShortRef}`;
+                            if (!whatsappQueue.some(i => i.id === userErrId)) {
+                                const userMsg = `⚠️ *Hola ${order.name}*, tu pago fue recibido correctamente ✅ pero tuvimos un inconveniente al procesar tu recarga de *${order.pack}*. 😔\n\n` +
+                                    `Nuestro equipo ya fue notificado y está revisando tu caso. Te contactaremos en breve.\n\n` +
+                                    `_Si tienes prisa, escríbenos directamente por este chat._`;
+                                const waItem = { id: userErrId, number: order.wa, message: userMsg };
+                                whatsappQueue.push(waItem);
+                                supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error && error.code !== '23505') console.error('[USER-JADH-ERR] Error WA:', error.message); });
+                            }
+                        }
+                        sendPushToUser(order.login_uid || order.uid, 'Problema con tu recarga ⚠️', 'Tu pago fue recibido pero hubo un inconveniente. Te contactaremos pronto.', '/icon-192.png', '/historial');
                     }
                 })();
                 return true;
@@ -1040,101 +1260,208 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
     return false;
 }
 
-// --- AUTO-APROBACIÓN Y LIMPIADOR AUTOMÁTICO DE PEDIDOS ---
+// =====================================================
+// 🔄 CICLO DE AUTO-APROBACIÓN
+// Los pagos manuales NO se tocan aquí.
+// La sección BDV solo corre si bdvAutoApproveEnabled === true
+// =====================================================
 async function runAutoApprovalCycle() {
     const NOW = new Date();
-    let changed = false;
 
-    // 1. OBTENCIÓN DE CORREOS DE BINANCE DESACTIVADA A PETICIÓN DEL USUARIO
-    // let pendingBinanceOrders = Object.values(orders).filter(o => o.status === 'pending' && o.method === 'binance' && (!o.juego || o.juego === 'freefire'));
-    // let binanceEmails = [];
-    /*
-    if (pendingBinanceOrders.length > 0) {
-        try {
-            binanceEmails = await checkBinanceEmails();
-        } catch (e) {
-            console.error('[AUTO-BINANCE] Error al verificar correos:', e.message);
-        }
-        if (simulatedBinanceEmails.length > 0) {
-            binanceEmails = binanceEmails.concat(simulatedBinanceEmails);
-        }
-        if (binanceEmails.length > 0) {
-            console.log(`[AUTO-BINANCE] 📧 ${binanceEmails.length} correo(s) de pago encontrado(s) (incluyendo simulados).`);
-        }
-    }
-    */
+    // ── BDV AUTO-APROBACIÓN (solo si el toggle está ON) ──────────────────────
+    if (bdvAutoApproveEnabled && !bdvAutoApproveRunning) {
+        const pendingBDV = Object.entries(orders).filter(
+            ([, o]) => o.status === 'pending' && o.method === 'pagomovil'
+        );
 
-    for (let ref in orders) {
-        if (orders[ref].status === 'pending') {
-            const orderTime = new Date(orders[ref].time);
-            const diffMinutes = (NOW - orderTime) / (1000 * 60);
+        if (pendingBDV.length > 0) {
+            bdvAutoApproveRunning = true;
+            console.log(`[BDV-AUTO] 🔍 Verificando ${pendingBDV.length} pedido(s) pendiente(s) BDV...`);
 
-            if (diffMinutes > 10) {
-                console.log(`[AUTO-CLEAN] Rechazando pedido ${ref} por inactividad (10+ min).`);
-                orders[ref].status = 'rejected';
-                updateOrderStatus(ref, 'rejected');
-                changed = true;
-                continue;
-            }
+            try {
+                for (const [ref, order] of pendingBDV) {
+                    // No reprocesar lo que ya está en camino
+                    if (order.status !== 'pending') continue;
 
-            // --- AUTO APROBACIÓN BINANCE DESACTIVADA ---
-            // Los pedidos de Binance ahora requieren aprobación manual como los de Pago Móvil.
-            /*
-            if (orders[ref].method === 'binance' && binanceEmails.length > 0 && (!orders[ref].juego || orders[ref].juego === 'freefire')) {
-                let expectedUsdt = 0;
-                try {
-                    expectedUsdt = parseFloat(orders[ref].price.split('USDT')[0].trim());
-                } catch (e) {}
+                    // --- SEGURIDAD: RECHAZAR SI LA REFERENCIA YA FUE USADA ANTERIORMENTE ---
+                    // Condiciones: (1) ref exacta, (2) mismo monto, (3) dentro de los últimos 30 días
+                    let isUsedRef = false;
+                    let matchedUsedRef = '';
+                    const cleanRef = ref.trim();
+                    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+                    const now = Date.now();
 
-                if (expectedUsdt > 0) {
-                    // Buscar un correo cuyo monto sea igual o mayor al esperado
-                    const matchingEmail = binanceEmails.find(email => email.amount >= expectedUsdt);
-                    if (matchingEmail) {
-                        const emailUidStr = matchingEmail.uid.toString();
-                        console.log(`[AUTO-BINANCE] 💰 Pago de ${matchingEmail.amount} USDT encontrado (esperado: ${expectedUsdt} USDT). Procesando pedido ${ref}...`);
+                    // Extraer monto del pedido actual para comparar
+                    let orderAmountBs = 0;
+                    try {
+                        const pp = (order.price || '').split('/');
+                        if (pp[1]) orderAmountBs = parseFloat(pp[1].replace('Bs', '').trim());
+                    } catch (_) {}
 
-                        // Guardar en pagosValidados
-                        if (!pagosValidados[emailUidStr]) {
-                            pagosValidados[emailUidStr] = {
-                                amount: matchingEmail.amount,
+                    for (let fRef in pagosValidados) {
+                        const pago = pagosValidados[fRef];
+                        if (!pago.used) continue;
+
+                        // Condición 1: referencia exacta
+                        if (fRef.trim() !== cleanRef) continue;
+
+                        // Condición 2: mismo monto (tolerancia ±1 Bs por redondeo)
+                        const pagoAmount = parseFloat(pago.amount) || 0;
+                        if (orderAmountBs > 0 && pagoAmount > 0 && Math.abs(pagoAmount - orderAmountBs) > 1) continue;
+
+                        // Condición 3: dentro de los últimos 30 días
+                        const pagoDate = pago.date ? new Date(pago.date).getTime() : 0;
+                        if (pagoDate > 0 && (now - pagoDate) > THIRTY_DAYS_MS) continue;
+
+                        // Pasa las 3 condiciones → es duplicado
+                        isUsedRef = true;
+                        matchedUsedRef = fRef;
+                        break;
+                    }
+
+                    if (isUsedRef) {
+                        console.log(`[BDV-AUTO] 🛑 Pedido ${ref} detectado como DUPLICADO de pago ya usado (${matchedUsedRef}). Auto-rechazando inmediatamente...`);
+                        
+                        orders[ref].status = 'rejected';
+                        orders[ref].reason = 'Referencia duplicada (pago ya usado)';
+                        updateOrderStatus(ref, 'rejected', null, 'Referencia duplicada (pago ya usado)');
+
+                        // Notificar cliente por WhatsApp (Rechazo)
+                        queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                        
+                        // Notificar admins
+                        notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Duplicado Auto-Rechazo');
+                        
+                        // Enviar notificación Push
+                        sendPushToUser(
+                            orders[ref].login_uid || orders[ref].uid, 
+                            'Pago Rechazado ❌', 
+                            `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque esta referencia ya fue utilizada anteriormente.`, 
+                            '/icon-192.png', 
+                            '/historial'
+                        );
+                        
+                        // Actualizar Telegram
+                        updateTelegramStatus(ref);
+                        continue;
+                    }
+
+                    // Extraer monto esperado en Bolívares del campo price (formato: "X.XXUSDT/YYY.YYBs")
+                    let expectedBs = 0;
+                    try {
+                        const priceParts = (order.price || '').split('/');
+                        if (priceParts[1]) {
+                            expectedBs = parseFloat(priceParts[1].replace('Bs', '').trim());
+                        }
+                    } catch (e) {}
+
+                    if (expectedBs <= 0) {
+                        console.log(`[BDV-AUTO] ⚠️ No se pudo extraer el monto esperado de: ${order.price}`);
+                        continue;
+                    }
+
+                    // Verificar si existe el pago en los movimientos BDV
+                    const bdvResult = await verifyBDVPayment(expectedBs, ref);
+
+                    if (bdvResult.success) {
+                        console.log(`[BDV-AUTO] ✅ Pago BDV confirmado para ref ${ref} (${expectedBs} Bs). Auto-aprobando...`);
+
+                        // Registrar como pago válido para que processPendingOrder lo use
+                        const fullRef = bdvResult.movimiento?.referencia || ref;
+                        if (!pagosValidados[fullRef]) {
+                            pagosValidados[fullRef] = {
+                                amount: expectedBs,
                                 date: new Date().toISOString(),
                                 used: false
                             };
                             savePagos();
                         }
 
-                        if (!pagosValidados[emailUidStr].used) {
-                            const approved = await processPendingOrder(emailUidStr, ref);
-                            if (approved) {
-                                // Solo marcar correo como leído si el pedido se aprobó con éxito
-                                await markEmailAsRead(matchingEmail.uid);
-                                console.log(`[AUTO-BINANCE] ✅ Pedido ${ref} aprobado y correo marcado como leído.`);
+                        // Disparar el proceso de aprobación (ejecuta la recarga automática)
+                        if (!pagosValidados[fullRef].used) {
+                            await processPendingOrder(fullRef, ref);
+                        } else {
+                            console.log(`[BDV-AUTO] 🛑 Pago BDV verificado pero YA USADO para ref ${ref} (Banco: ${fullRef}). Auto-rechazando...`);
+                            
+                            orders[ref].status = 'rejected';
+                            orders[ref].reason = 'Referencia duplicada (pago ya usado)';
+                            updateOrderStatus(ref, 'rejected', null, 'Referencia duplicada (pago ya usado)');
+
+                            // Notificar cliente por WhatsApp (Rechazo)
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            
+                            // Notificar admins
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Duplicado Auto-Rechazo');
+                            
+                            // Enviar notificación Push
+                            sendPushToUser(
+                                orders[ref].login_uid || orders[ref].uid, 
+                                'Pago Rechazado ❌', 
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque esta referencia ya fue utilizada anteriormente.`, 
+                                '/icon-192.png', 
+                                '/historial'
+                            );
+                            
+                            // Actualizar Telegram
+                            updateTelegramStatus(ref);
+                        }
+                    } else {
+                        // Pedido sin pago encontrado en BDV — auto-rechazar si lleva +5 min
+                        // Pero SOLO si la consulta al banco fue exitosa (checked === true)
+                        if (bdvResult.checked) {
+                            const orderTime = new Date(order.time);
+                            const diffMin = (NOW - orderTime) / (1000 * 60);
+                            if (diffMin > 5) {
+                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 5 min. Auto-rechazando...`);
+                                
+                                orders[ref].status = 'rejected';
+                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
+                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
+
+                                // Notificar cliente por WhatsApp (Rechazo)
+                                queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                                
+                                // Notificar admins
+                                notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Auto-Rechazo');
+                                
+                                // Enviar notificación Push
+                                sendPushToUser(
+                                    orders[ref].login_uid || orders[ref].uid, 
+                                    'Pago Rechazado ❌', 
+                                    `No pudimos verificar tu pago para el pedido de ${orders[ref].pack}. Contáctanos por WhatsApp si es un error.`, 
+                                    '/icon-192.png', 
+                                    '/historial'
+                                );
+                                
+                                // Actualizar Telegram
+                                updateTelegramStatus(ref);
                             }
                         } else {
-                            // Correo ya usado: marcar de todas formas para limpiar la bandeja
-                            await markEmailAsRead(matchingEmail.uid);
+                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} no se pudo verificar en BDV (bot inactivo o error). Se mantiene PENDIENTE.`);
                         }
-
-                        // Remover de la lista temporal para no aplicarlo a dos pedidos en el mismo ciclo
-                        binanceEmails = binanceEmails.filter(e => e.uid !== matchingEmail.uid);
                     }
                 }
+            } catch (bdvCycleErr) {
+                console.error('[BDV-AUTO] ❌ Error en ciclo BDV:', bdvCycleErr.message);
+            } finally {
+                bdvAutoApproveRunning = false;
             }
-            */
         }
     }
-
-    if (changed) {
-        console.log('[AUTO-CLEAN] Cambios detectados en pedidos pendientes.');
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // NOTA: El flujo de aprobación MANUAL sigue igual, sin cambios.
+    // Los admins pueden seguir respondiendo "Aprobar/Rechazar" por WhatsApp
+    // o usando el panel admin, independientemente de si BDV-AUTO está ON o OFF.
+    // ─────────────────────────────────────────────────────────────────────────
 }
+
 setInterval(async () => {
     try {
         await runAutoApprovalCycle();
     } catch (e) {
         console.error('[AUTO-CYCLE] Error en ciclo:', e.message);
     }
-}, 60000); // Se ejecuta cada 60 segundos // Se ejecuta cada 60 segundos
+}, 60000); // cada 60 segundos
 // --- SISTEMA DE AUTENTICACIÓN ADMIN ---
 
 // 🔒 NÚMEROS DE WHATSAPP AUTORIZADOS PARA APROBAR/RECHAZAR (ambos admins)
@@ -1202,6 +1529,87 @@ function checkAdminAuth(req, res) {
     return true;
 }
 
+function fetchGarenaNickname(uid) {
+    return new Promise((resolve) => {
+        const hosts = ['netfreelat.net'];
+        let currentHostIndex = 0;
+
+        const attemptRequest = (hostname) => {
+            const apiPath = `/redeem/conexion_api/api.php`;
+            const postData = `action=ValidarParametros&id=${encodeURIComponent(uid)}`;
+            
+            const options = {
+                hostname: hostname,
+                path: apiPath,
+                method: 'POST',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Referer': `https://${hostname}/redeem/`,
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(postData)
+                },
+                timeout: 8000
+            };
+
+            const apiReq = https.request(options, (apiRes) => {
+                let body = '';
+                apiRes.setEncoding('utf8');
+                apiRes.on('data', chunk => body += chunk);
+                apiRes.on('end', () => {
+                    try {
+                        let data = null;
+                        const jsonMatch = body.match(/\{.*\}/s);
+                        if (jsonMatch) {
+                            try {
+                                data = JSON.parse(jsonMatch[0]);
+                            } catch (e) {}
+                        }
+
+                        const invalidNicknames = ['jugador inválido', 'jugador invalido', 'invalid player', 'not found', ''];
+                        const isValidPlayer = data && 
+                                              data.alerta === 'green' && 
+                                              data.Nickname && 
+                                              !invalidNicknames.includes(data.Nickname.toLowerCase().trim());
+
+                        if (isValidPlayer) {
+                            resolve(data.Nickname.trim());
+                        } else if (currentHostIndex < hosts.length - 1) {
+                            currentHostIndex++;
+                            attemptRequest(hosts[currentHostIndex]);
+                        } else {
+                            resolve(null);
+                        }
+                    } catch (e) {
+                        handleError(e, hostname);
+                    }
+                });
+            });
+
+            apiReq.on('error', (e) => handleError(e, hostname));
+            apiReq.on('timeout', () => {
+                apiReq.destroy();
+                handleError(new Error('Timeout'), hostname);
+            });
+            apiReq.write(postData);
+            apiReq.end();
+        };
+
+        const handleError = (e, hostname) => {
+            console.error(`[ERROR-NICKNAME] en ${hostname} buscando nickname para ${uid}:`, e.message);
+            if (currentHostIndex < hosts.length - 1) {
+                currentHostIndex++;
+                attemptRequest(hosts[currentHostIndex]);
+            } else {
+                resolve(null);
+            }
+        };
+
+        attemptRequest(hosts[currentHostIndex]);
+    });
+}
+
 const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const searchParams = parsedUrl.searchParams;
@@ -1234,110 +1642,39 @@ const server = http.createServer(async (req, res) => {
     // parsedUrl ya está definida al inicio del handler
     if (parsedUrl.pathname === '/verificar') {
         const uid = parsedUrl.searchParams.get('uid');
+        const juego = parsedUrl.searchParams.get('juego') || 'freefire';
 
         if (!uid) {
             res.writeHead(400);
             return res.end(JSON.stringify({ error: 'Falta el parámetro uid' }));
         }
 
-        console.log(`[VERIFICAR] Consultando ID: ${uid}`);
+        console.log(`[VERIFICAR] Consultando ID: ${uid} | Juego: ${juego}`);
 
-        const hosts = ['netfreelat.net'];
-        let currentHostIndex = 0;
-        let responseSent = false; // ✅ Guard contra doble respuesta
-
-        const sendResponse = (code, body) => {
-            if (responseSent || res.headersSent) return;
-            responseSent = true;
-            res.writeHead(code);
-            res.end(JSON.stringify(body));
-        };
-
-        const attemptRequest = (hostname) => {
-            const apiPath = `/redeem/conexion_api/api.php`;
-            const postData = `action=ValidarParametros&id=${encodeURIComponent(uid)}`;
-            
-            const options = {
-                hostname: hostname,
-                path: apiPath,
-                method: 'POST',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Referer': `https://${hostname}/redeem/`,
-                    'Accept': 'application/json, text/javascript, */*; q=0.01',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Content-Length': Buffer.byteLength(postData)
-                },
-                timeout: 10000
-            };
-
-            const apiReq = https.request(options, (apiRes) => {
-                let body = '';
-                apiRes.setEncoding('utf8');
-                apiRes.on('data', chunk => body += chunk);
-                apiRes.on('end', () => {
-                    if (responseSent) return;
-                    try {
-                        console.log(`[LOG] Respuesta de ${hostname}: ${body.substring(0, 100)}...`);
-                        
-                        // Intentar encontrar JSON en cualquier parte de la respuesta
-                        let data = null;
-                        const jsonMatch = body.match(/\{.*\}/s);
-                        if (jsonMatch) {
-                            try {
-                                data = JSON.parse(jsonMatch[0]);
-                            } catch (e) {
-                                console.error('Error parseando JSON match:', e.message);
-                            }
-                        }
-
-                        // VALIDACIÓN ESTRICTA: solo aceptar si alerta es 'green' (ID real en Garena)
-                        const invalidNicknames = ['jugador inválido', 'jugador invalido', 'invalid player', 'not found', ''];
-                        const isValidPlayer = data && 
-                                              data.alerta === 'green' && 
-                                              data.Nickname && 
-                                              !invalidNicknames.includes(data.Nickname.toLowerCase().trim());
-
-                        if (isValidPlayer) {
-                            const nombre = data.Nickname || data.perfil;
-                            console.log(`[OK] ID ${uid} verificado como: ${nombre}`);
-                            sendResponse(200, { success: true, nombre: nombre });
-                        } else if (currentHostIndex < hosts.length - 1) {
-                            console.log(`[!] Falló con ${hostname}, probando con el siguiente...`);
-                            currentHostIndex++;
-                            attemptRequest(hosts[currentHostIndex]);
-                        } else {
-                            const mensaje = (data && data.mensaje) ? data.mensaje : 'ID no encontrado en Garena';
-                            sendResponse(200, { success: false, mensaje });
-                        }
-                    } catch (e) {
-                        handleError(e, hostname);
-                    }
-                });
-            });
-
-            apiReq.on('error', (e) => handleError(e, hostname));
-            apiReq.on('timeout', () => {
-                apiReq.destroy();
-                handleError(new Error('Timeout'), hostname);
-            });
-            apiReq.write(postData);
-            apiReq.end();
-        };
-
-        const handleError = (e, hostname) => {
-            console.error(`[ERROR] en ${hostname}:`, e.message);
-            if (responseSent) return; // ✅ Guard: evita ERR_HTTP_HEADERS_SENT
-            if (currentHostIndex < hosts.length - 1) {
-                currentHostIndex++;
-                attemptRequest(hosts[currentHostIndex]);
-            } else {
-                res.end(JSON.stringify({ success: false, error: 'Error de conexión con servidores de Garena' }));
+        // Blood Strike no tiene API de verificación de Garena — aceptar cualquier ID numérico
+        if (juego === 'bloodstrike') {
+            if (!/^\d{5,15}$/.test(uid.trim())) {
+                res.writeHead(200);
+                return res.end(JSON.stringify({ success: false, mensaje: 'El ID de Blood Strike debe ser numérico (5-15 dígitos).' }));
             }
-        };
+            console.log(`[VERIFICAR-BS] ✅ ID Blood Strike aceptado: ${uid}`);
+            res.writeHead(200);
+            return res.end(JSON.stringify({ success: true, nombre: `BS-${uid}` }));
+        }
 
-        attemptRequest(hosts[currentHostIndex]);
+        fetchGarenaNickname(uid).then(nombre => {
+            if (nombre) {
+                console.log(`[OK] ID ${uid} verificado como: ${nombre}`);
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, nombre: nombre }));
+            } else {
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: false, mensaje: 'ID no encontrado en Garena' }));
+            }
+        }).catch(err => {
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: false, error: 'Error de conexión con servidores de Garena' }));
+        });
 
     } else if (parsedUrl.pathname === '/notificar') {
         console.log('[DEBUG] Entrando en /notificar...');
@@ -1355,6 +1692,16 @@ const server = http.createServer(async (req, res) => {
 
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
+
+        // --- SEGURIDAD ADICIONAL: LONGITUD MÍNIMA DE REFERENCIA PAGO MÓVIL ---
+        if (method === 'pagomovil' && (!ref || ref.trim().length < 4)) {
+            console.log(`[NOTIFICACIÓN] 🛑 Referencia Pago Móvil muy corta rechazada: '${ref}'`);
+            res.writeHead(200);
+            return res.end(JSON.stringify({ 
+                success: false, 
+                message: 'LA REFERENCIA DE PAGO MÓVIL DEBE TENER AL MENOS 4 DÍGITOS.' 
+            }));
+        }
 
         // --- SEGURIDAD DOBLE: EVITAR DUPLICADOS (memoria + Supabase) ---
         if (orders[ref]) {
@@ -1386,6 +1733,18 @@ const server = http.createServer(async (req, res) => {
         const ip_address = rawIp.split(',')[0].trim() || 'N/A';
 
         orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address, juego };
+        
+        // Sincronizar teléfono en perfil de usuario si está vacío
+        ensureUserLoaded(login_uid || uid).then(async (userObj) => {
+            if (userObj && (!userObj.phone || userObj.phone.trim() === '') && wa && wa !== 'No provisto') {
+                userObj.phone = wa;
+                await saveUser(login_uid || uid);
+                console.log(`[PHONE-SYNC] 📱 Teléfono de UID ${login_uid || uid} guardado desde pedido: ${wa}`);
+            }
+        }).catch(err => {
+            console.error('[PHONE-SYNC] Error sincronizando teléfono:', err.message);
+        });
+
         const { error: insertError } = await supabase.from('ff_orders').insert({
             ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address, juego
         });
@@ -1635,6 +1994,45 @@ const server = http.createServer(async (req, res) => {
                     }
 
                     if (action === 'accept') {
+                        // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS (TELEGRAM) ---
+                        if (ref) {
+                            const cleanRef = ref.trim();
+                            if (pagosValidados[cleanRef] && pagosValidados[cleanRef].used) {
+                                console.log(`[WEBHOOK-APPROVE] 🛑 BLOQUEADO DUPLICADO DIRECTO: La referencia '${ref}' ya fue usada.`);
+                                const errPayload = JSON.stringify({
+                                    chat_id: chatId,
+                                    message_id: messageId,
+                                    text: `🚫 *DUPLICADO DETECTADO*\n\nEsta referencia (\`${ref}\`) ya fue utilizada y aprobada anteriormente en otro pedido.\n\n_Doble recarga cancelada por seguridad._`,
+                                    parse_mode: 'Markdown',
+                                    reply_markup: { inline_keyboard: [] }
+                                });
+                                const errReq = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(errPayload) } });
+                                errReq.on('error', () => {});
+                                errReq.write(errPayload);
+                                errReq.end();
+                                return;
+                            }
+                            if (order.method === 'pagomovil') {
+                                for (let fRef in pagosValidados) {
+                                    if (pagosValidados[fRef].used && (fRef.endsWith(cleanRef) || cleanRef.endsWith(fRef))) {
+                                        console.log(`[WEBHOOK-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${ref}' coincide con el pago usado '${fRef}'.`);
+                                        const errPayload = JSON.stringify({
+                                            chat_id: chatId,
+                                            message_id: messageId,
+                                            text: `🚫 *DUPLICADO PARCIAL DETECTADO*\n\nLa referencia (\`${ref}\`) coincide con el pago ya usado *${fRef}*.\n\n_Doble recarga cancelada por seguridad._`,
+                                            parse_mode: 'Markdown',
+                                            reply_markup: { inline_keyboard: [] }
+                                        });
+                                        const errReq = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(errPayload) } });
+                                        errReq.on('error', () => {});
+                                        errReq.write(errPayload);
+                                        errReq.end();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+
                         // 🔒 DOBLE CANDADO SUPABASE: verificar estado real ANTES de bloquear el pedido
                         // Previene doble recarga si el panel admin o WhatsApp bot aprobaron primero
                         const { data: dbLock } = await supabase.from('ff_orders').select('status').eq('ref', ref).single();
@@ -1665,6 +2063,7 @@ const server = http.createServer(async (req, res) => {
                             console.log(`[WEBHOOK] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
                             orders[ref].status = 'approved';
                             updateOrderStatus(ref, 'approved', 'Manual');
+                            markPaymentAsUsed(order.method, ref);
                             saveRecent(order.name, order.pack);
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
@@ -1723,6 +2122,7 @@ const server = http.createServer(async (req, res) => {
                                 const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
                                 const pinVal = pins.length > 0 ? pins.join(' / ') : null;
                                 updateOrderStatus(ref, 'approved', pinVal || jadhOrdersStr);
+                                markPaymentAsUsed(order.method, ref);
                                 saveRecent(nick, order.pack);
 
                                 const usdtPrice = parseFloat(order.price.split('USDT')[0]);
@@ -1743,10 +2143,22 @@ const server = http.createServer(async (req, res) => {
                             } else {
                                 orders[ref].status = 'pending'; // Revertimos a pending para reintento manual
                                 updateOrderStatus(ref, 'pending');
-                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido volvió a estado pendiente. Revisa manualmente._`;
-                                
-                                queueWhatsAppMessage({ ...order, ref }, false);
-                                sendPushToUser(order.login_uid || order.uid, 'Error en Recarga ❌', `Tuvimos un problema al recargar tus diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
+                                editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido volvió a estado pendiente. Usa 🔁 Reintentar en el panel._`;
+                                // 🚨 Notificar al admin con el motivo exacto del error
+                                notifyAdminsJadhError({ ...order, ref }, lastError, 'Telegram (Jadh)');
+                                // 📲 Avisar al usuario con mensaje amigable (no el error técnico)
+                                if (order.wa && order.wa !== 'No provisto') {
+                                    const userErrId = `wa_user_jadh_err_${ref}`;
+                                    if (!whatsappQueue.some(i => i.id === userErrId)) {
+                                        const userMsg = `⚠️ *Hola ${order.name}*, tu pago fue recibido ✅ pero tuvimos un inconveniente al procesar tu recarga de *${order.pack}*. 😔\n\n` +
+                                            `Nuestro equipo ya fue notificado y está revisando tu caso. Te contactaremos en breve.\n\n` +
+                                            `_Si tienes prisa, escríbenos directamente por este chat._`;
+                                        const waItem = { id: userErrId, number: order.wa, message: userMsg };
+                                        whatsappQueue.push(waItem);
+                                        supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error && error.code !== '23505') console.error('[USER-JADH-ERR-TG] Error WA:', error.message); });
+                                    }
+                                }
+                                sendPushToUser(order.login_uid || order.uid, 'Problema con tu recarga ⚠️', 'Tu pago fue recibido pero hubo un inconveniente. Te contactaremos pronto.', '/icon-192.png', '/historial');
                             }
 
                             const editPayload = JSON.stringify({
@@ -1774,7 +2186,8 @@ const server = http.createServer(async (req, res) => {
                     } else {
                         newText = `❌ *PEDIDO RECHAZADO*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n\n⚠️ _El pago no fue aprobado._`;
                         orders[ref].status = 'rejected';
-                        updateOrderStatus(ref, 'rejected');
+                        orders[ref].reason = 'Rechazado desde Telegram por el administrador';
+                        updateOrderStatus(ref, 'rejected', null, 'Rechazado desde Telegram por el administrador');
                         queueWhatsAppMessage({ ...order, ref }, false);
                         notifyAdminsOrderStatus({ ...order, ref }, false, 'Telegram');
                         sendPushToUser(order.login_uid || order.uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${order.pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
@@ -1819,10 +2232,102 @@ const server = http.createServer(async (req, res) => {
         console.log('[ADMIN] 🔄 REINICIO DE WHATSAPP SOLICITADO');
         res.writeHead(200);
         res.end(JSON.stringify({ success: true, message: 'Solicitud de reinicio enviada al bot' }));
+
+    } else if (parsedUrl.pathname === '/admin/reset-wa-session' && req.method === 'POST') {
+        const { exec } = require('child_process');
+        const path = require('path');
+        const authDir = path.join(__dirname, '.wwebjs_auth');
+        console.log('[ADMIN] 🔄 CAMBIO DE NÚMERO: Borrando sesión y reiniciando bot...');
+        exec(`rm -rf "${authDir}" && pm2 restart recargasney-wa`, (err, stdout, stderr) => {
+            if (err) {
+                console.error('[ADMIN] ❌ Error al resetear sesión WA:', err.message);
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, error: err.message }));
+            } else {
+                console.log('[ADMIN] ✅ Sesión WA borrada y bot reiniciado. Se generará un nuevo QR.');
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, message: 'Sesión borrada. El bot generará un nuevo QR.' }));
+            }
+        });
+
+    // =====================================================
+    // 🏦 BDV AUTO-PAGO CONFIG: Activar/Desactivar toggle
+    // GET  /admin/bdv-config  → estado actual
+    // POST /admin/bdv-config  → { enabled: true/false }
+    // =====================================================
+    } else if (parsedUrl.pathname === '/admin/bdv-config' && req.method === 'GET') {
+        res.writeHead(200);
+        res.end(JSON.stringify({
+            success: true,
+            enabled: bdvAutoApproveEnabled,
+            bdvStatus: getBDVStatus()
+        }));
+
+    } else if (parsedUrl.pathname === '/admin/bdv-config' && req.method === 'POST') {
+        let bdvBody = '';
+        req.on('data', chunk => bdvBody += chunk);
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(bdvBody);
+                const newEnabled = Boolean(payload.enabled);
+
+                if (newEnabled === bdvAutoApproveEnabled) {
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({
+                        success: true,
+                        enabled: bdvAutoApproveEnabled,
+                        message: `BDV Auto ya estaba ${bdvAutoApproveEnabled ? 'ACTIVADO' : 'DESACTIVADO'}`
+                    }));
+                }
+
+                bdvAutoApproveEnabled = newEnabled;
+
+                // Persistir estado en Supabase dentro de metodos_pago.pagomovil
+                if (!settings.metodos_pago) settings.metodos_pago = {};
+                if (!settings.metodos_pago.pagomovil) settings.metodos_pago.pagomovil = {};
+                settings.metodos_pago.pagomovil.auto_approve_enabled = bdvAutoApproveEnabled;
+
+                supabase.from('ff_settings')
+                    .update({ metodos_pago: settings.metodos_pago })
+                    .eq('id', 1)
+                    .then(({ error }) => {
+                        if (error) console.error('[BDV-CONFIG] Error al persistir bdvAutoApproveEnabled:', error.message);
+                        else console.log('[BDV-CONFIG] Estado bdvAutoApproveEnabled persistido en Supabase.');
+                    });
+
+                if (bdvAutoApproveEnabled) {
+                    console.log('[BDV-CONFIG] ✅ Auto-aprobación BDV ACTIVADA. Iniciando login BDV...');
+                    // Iniciar login BDV en background sin bloquear la respuesta
+                    bdvLogin().then(ok => {
+                        if (ok) {
+                            console.log('[BDV-CONFIG] ✅ Login BDV exitoso. Bot listo para auto-aprobar pagos.');
+                        } else {
+                            console.error('[BDV-CONFIG] ❌ Login BDV falló. Revisa credenciales en .env');
+                        }
+                    }).catch(e => console.error('[BDV-CONFIG] Error en login BDV:', e.message));
+                } else {
+                    console.log('[BDV-CONFIG] 🔴 Auto-aprobación BDV DESACTIVADA.');
+                    closeBDVBrowser().catch(() => {});
+                }
+
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                    success: true,
+                    enabled: bdvAutoApproveEnabled,
+                    message: `BDV Auto-aprobación ${bdvAutoApproveEnabled ? '✅ ACTIVADA' : '🔴 DESACTIVADA'}`
+                }));
+            } catch (e) {
+                console.error('[BDV-CONFIG] Error:', e.message);
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+
     } else if (parsedUrl.pathname === '/webhook/notificacion' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', () => {
+
             // Responder de inmediato para evitar reintentos de Macrodroid
             res.writeHead(200);
             res.end(JSON.stringify({ success: true }));
@@ -1866,6 +2371,138 @@ const server = http.createServer(async (req, res) => {
                 console.error('[DEBUG-WEBHOOK] ❌ Error:', e.message);
             }
         });
+    } else if (parsedUrl.pathname === '/api/wa_order_status') {
+        const ref = parsedUrl.searchParams.get('ref');
+        if (!ref) {
+            res.writeHead(400);
+            return res.end(JSON.stringify({ success: false, message: 'Falta la referencia' }));
+        }
+
+        try {
+            const { data: dbOrders, error } = await supabase
+                .from('ff_orders')
+                .select('*')
+                .eq('ref', ref);
+            
+            if (error || !dbOrders || dbOrders.length === 0) {
+                res.writeHead(200);
+                return res.end(JSON.stringify({ success: false, message: 'Pedido no encontrado. Verifica la referencia.' }));
+            }
+            
+            const order = dbOrders[0];
+            const isApproved = order.status === 'approved';
+            const isRejected = order.status === 'rejected';
+            const isCanje = order.method === 'canje';
+            
+            let msg = '';
+            if (isApproved) {
+                if (isCanje) {
+                    msg = `💎 *¡CANJE DE CASHBACK EXITOSO!* 💎\n\n` +
+                          `¡Hola, *${order.name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
+                          `━━━━━━━━━━━━━━━\n` +
+                          `👤 *Jugador:* ${order.name}\n` +
+                          `🆔 *ID Garena:* ${order.uid}\n` +
+                          `💎 *Paquete:* ${order.pack}\n` +
+                          `━━━━━━━━━━━━━━━\n\n` +
+                          `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
+                          `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+                } else {
+                    const packStr = (order.pack || '').toLowerCase();
+                    const isCard = packStr.includes('tarjeta') || packStr.includes('basica') || packStr.includes('semanal') || packStr.includes('mensual');
+                    const isPass = packStr.includes('pase') || packStr.includes('booyah');
+                    
+                    let itemType = 'diamantes';
+                    let itemStatus = '¡Diamantes Enviados! ✨';
+                    if (isCard) {
+                        itemType = 'tarjetas';
+                        itemStatus = '¡Tarjetas Enviadas! ✨';
+                    } else if (isPass) {
+                        itemType = 'pase booyah';
+                        itemStatus = '¡Pase Enviado! ✨';
+                    }
+                    
+                    const isBloodStrike = order.juego === 'bloodstrike';
+                    const isRoblox = order.juego === 'roblox';
+                    
+                    let headerLine = `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥`;
+                    let idLabel = 'ID Garena';
+                    if (isBloodStrike) {
+                        headerLine = `🔫 *¡DISPARO! COMPRA EXITOSA* 🔫`;
+                        idLabel = 'ID Blood Strike';
+                    } else if (isRoblox) {
+                        headerLine = `🎮 *¡COMPRA EXITOSA DE ROBLOX!* 🎮`;
+                        idLabel = 'Usuario Roblox';
+                    }
+                    
+                    if (isRoblox) {
+                        const amount = order.pack.split('+')[0].trim();
+                        msg = `${headerLine}\n\n` +
+                              `¡Hola, *${order.name}*! Tu código de Roblox ha sido procesado con éxito. 🚀\n\n` +
+                              `━━━━━━━━━━━━━━━\n` +
+                              `👤 *Usuario:* ${order.name}\n` +
+                              `🎮 *Juego:* Roblox\n` +
+                              `💎 *Paquete:* $${amount}\n` +
+                              `━━━━━━━━━━━━━━━\n\n` +
+                              `✅ *Estado:* ¡Código Generado! ✨\n\n` +
+                              `⚡ *CANJEE SU CÓDIGO AQUÍ:* \n` +
+                              `Presiona el link para ir directo a canjear tu código de Roblox:\n` +
+                              `🔗 https://www.roblox.com/redeem\n\n` +
+                              `🔑 *CÓDIGO (PIN):* \`${order.pin || 'Aún no disponible'}\`\n\n` +
+                              `¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+                    } else {
+                        const amount = order.pack.split('+')[0].trim();
+                        msg = `${headerLine}\n\n` +
+                              `¡Hola, *${order.name}*! Tu pedido de ${itemType} ha sido procesado con éxito. 🚀\n\n` +
+                              `━━━━━━━━━━━━━━━\n` +
+                              `👤 *Jugador:* ${order.name}\n` +
+                              `🆔 *${idLabel}:* ${order.uid}\n` +
+                              `💎 *Paquete:* ${amount + (order.juego === 'bloodstrike' ? ' oro' : (order.juego === 'roblox' ? '' : ' diamantes'))}\n` +
+                              `━━━━━━━━━━━━━━━\n\n` +
+                              `✅ *Estado:* ${itemStatus}`;
+                              
+                        const userObj = users[order.login_uid || order.uid];
+                        if (userObj) {
+                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                            if (!isNaN(usdtPrice) && usdtPrice > 0) {
+                                const pointsEarned = Math.floor(usdtPrice * (10 / 3));
+                                const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
+                                const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
+                                msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
+                            }
+                        }
+                        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-195-4469*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+                    }
+                }
+            } else if (isRejected) {
+                const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
+                const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+                
+                if (isCanje) {
+                    msg = `⚠️ *AVISO DE TU CANJE* ⚠️\n\n` +
+                          `Hola *${order.name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
+                          `❌ *Motivo:* Tu canje fue rechazado por el administrador y tus puntos fueron devueltos a tu cuenta.\n\n` +
+                          `Si tienes dudas, contáctanos a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
+                          `¡Estamos aquí para ayudarte! 🤝`;
+                } else {
+                    msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
+                          `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
+                          `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
+                          `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
+                          `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
+                }
+            } else {
+                msg = `⏳ *TU RECARGA ESTÁ EN PROCESO* ⏳\n\n` +
+                      `¡Hola, *${order.name}*! Tu pedido de *${order.pack}* con la referencia \`${ref}\` está siendo verificado. 🔍\n\n` +
+                      `Recibirás tu recarga en unos minutos. ¡Gracias por tu paciencia! 🚀`;
+            }
+
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: true, message: msg, status: order.status }));
+        } catch (e) {
+            console.error('[WA-ORDER-STATUS] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, message: 'Error interno del servidor.' }));
+        }
     } else if (parsedUrl.pathname === '/status') {
         const ref = parsedUrl.searchParams.get('ref');
         const order = orders[ref];
@@ -1892,7 +2529,7 @@ const server = http.createServer(async (req, res) => {
         try {
             const { data, error } = await supabase
                 .from('ff_orders')
-                .select('ref, control_num, pack, status, time, pin, method, price')
+                .select('ref, control_num, pack, status, time, pin, method, price, juego, uid, name')
                 .eq('uid', uid)
                 .order('time', { ascending: false })
                 .limit(20);
@@ -1914,11 +2551,164 @@ const server = http.createServer(async (req, res) => {
         };
         res.writeHead(200);
         res.end(JSON.stringify(stats));
+
+    } else if (parsedUrl.pathname === '/admin/financial-summary' && req.method === 'GET') {
+        try {
+            // Costos de Jadh.shop por paquete en USDT (precio que te cobra Jadh)
+            const JADH_COSTS = {
+                '100':  0.81,   // 110  💎
+                '310':  2.59,   // 341  💎
+                '520':  3.76,   // 572  💎
+                '1060': 6.99,   // 1166 💎
+                '2180': 13.88,  // 2376 💎
+                '5600': 35.32,  // 6138 💎
+                'basica':  0.67,   // Tarjeta Básica
+                'semanal': 2.61,   // Tarjeta Semanal
+                'mensual': 12.54,  // Tarjeta Mensual
+                'booyah':  4.00    // Pase Booyah
+            };
+
+            const { data: allOrders, error } = await supabase
+                .from('ff_orders')
+                .select('time, pack, method, price, status')
+                .eq('status', 'approved')
+                .order('time', { ascending: false });
+
+            if (error) throw error;
+
+            const tasa = settings.tasa_del_dia || 1;
+
+            function getCaracasDateParts(date = new Date()) {
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'America/Caracas',
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    second: 'numeric',
+                    hour12: false
+                });
+                const parts = formatter.formatToParts(date);
+                const map = {};
+                parts.forEach(p => map[p.type] = p.value);
+                return {
+                    year: parseInt(map.year),
+                    month: parseInt(map.month) - 1,
+                    day: parseInt(map.day)
+                };
+            }
+
+            const now = new Date();
+            const partsVE = getCaracasDateParts(now);
+
+            // Venezuela es UTC-4 (00:00:00 VET = 04:00:00 UTC)
+            const startOfToday = new Date(Date.UTC(partsVE.year, partsVE.month, partsVE.day, 4, 0, 0, 0));
+
+            const startOfYesterday = new Date(startOfToday);
+            startOfYesterday.setUTCDate(startOfYesterday.getUTCDate() - 1);
+
+            // Inicio de la semana calendario (Lunes a Domingo) en Venezuela
+            const dayOfWeek = new Date(Date.UTC(partsVE.year, partsVE.month, partsVE.day)).getUTCDay();
+            const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const startOfWeek = new Date(startOfToday);
+            startOfWeek.setUTCDate(startOfWeek.getUTCDate() - daysToSubtract);
+
+            const startOfMonth = new Date(Date.UTC(partsVE.year, partsVE.month, 1, 4, 0, 0, 0));
+
+
+            function calcPeriod(orders, from, to = null) {
+                let revenueUsdt = 0;
+                let revenueBs   = 0;
+                let costUsdt    = 0;
+                let countPM     = 0;
+                let countBin    = 0;
+                let totalOrders = 0;
+
+                for (const o of orders) {
+                    const t = new Date(o.time);
+                    if (t < from) continue;
+                    if (to && t >= to) continue;
+
+                    totalOrders++;
+
+                    // Parsear precio de venta
+                    const priceStr = (o.price || '').toString().trim();
+                    let saleUsdt = 0;
+                    let saleBs   = 0;
+                    if (priceStr.includes('/')) {
+                        const parts = priceStr.split('/');
+                        saleUsdt = parseFloat(parts[0].replace(/usdt/i, '').trim()) || 0;
+                        saleBs   = parseFloat(parts[1].replace(/bs/i, '').trim()) || 0;
+                    } else if (priceStr.toUpperCase().includes('USDT')) {
+                        saleUsdt = parseFloat(priceStr.replace(/usdt/i, '').trim()) || 0;
+                        saleBs   = saleUsdt * tasa;
+                    } else if (priceStr.toUpperCase().includes('BS')) {
+                        saleBs   = parseFloat(priceStr.replace(/bs/i, '').trim()) || 0;
+                        saleUsdt = saleBs / tasa;
+                    } else {
+                        const val = parseFloat(priceStr) || 0;
+                        if (o.method === 'binance') {
+                            saleUsdt = val;
+                            saleBs   = saleUsdt * tasa;
+                        } else {
+                            saleBs   = val;
+                            saleUsdt = saleBs / tasa;
+                        }
+                    }
+
+                    if (o.method === 'binance') {
+                        countBin++;
+                    } else {
+                        countPM++;
+                    }
+
+                    revenueUsdt += saleUsdt;
+                    revenueBs   += saleBs;
+
+                    // Costo Jadh
+                    const packKey = (o.pack || '').toString().split(' ')[0].replace(',','').trim();
+                    costUsdt += JADH_COSTS[packKey] || 0;
+                }
+
+                const profitUsdt = revenueUsdt - costUsdt;
+                const profitBs   = profitUsdt * tasa;
+                const margin     = revenueUsdt > 0 ? ((profitUsdt / revenueUsdt) * 100).toFixed(1) : '0.0';
+
+                return {
+                    totalOrders,
+                    revenueUsdt: +revenueUsdt.toFixed(2),
+                    revenueBs:   +revenueBs.toFixed(2),
+                    costUsdt:    +costUsdt.toFixed(2),
+                    costBs:      +(costUsdt * tasa).toFixed(2),
+                    profitUsdt:  +profitUsdt.toFixed(2),
+                    profitBs:    +profitBs.toFixed(2),
+                    margin,
+                    countPM,
+                    countBin
+                };
+            }
+
+            const summary = {
+                tasa,
+                today:     calcPeriod(allOrders, startOfToday),
+                yesterday: calcPeriod(allOrders, startOfYesterday, startOfToday),
+                week:      calcPeriod(allOrders, startOfWeek),
+                month:     calcPeriod(allOrders, startOfMonth)
+            };
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, summary }));
+        } catch (e) {
+            console.error('[FINANCIAL-SUMMARY] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, error: e.message }));
+        }
     } else if (parsedUrl.pathname === '/admin/orders/all' && req.method === 'GET') {
         try {
             const { data, error } = await supabase
                 .from('ff_orders')
-                .select('ref, control_num, uid, login_uid, name, pack, method, price, status, time, pin, ip_address')
+                .select('*')
                 .order('time', { ascending: false });
             if (error) throw error;
             res.writeHead(200);
@@ -2019,6 +2809,31 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 if (order && order.status === 'pending') {
+                    // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS ---
+                    if (targetRef) {
+                        const cleanRef = targetRef.trim();
+                        if (pagosValidados[cleanRef] && pagosValidados[cleanRef].used) {
+                            console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO DUPLICADO DIRECTO: La referencia '${targetRef}' ya fue usada.`);
+                            res.writeHead(200);
+                            return res.end(JSON.stringify({ 
+                                success: false, 
+                                message: `🚫 Esta referencia ya fue utilizada y aprobada anteriormente. Evitando recarga duplicada.` 
+                            }));
+                        }
+                        if (order.method === 'pagomovil') {
+                            for (let fRef in pagosValidados) {
+                                if (pagosValidados[fRef].used && (fRef.endsWith(cleanRef) || cleanRef.endsWith(fRef))) {
+                                    console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${targetRef}' coincide con el pago usado '${fRef}'.`);
+                                    res.writeHead(200);
+                                    return res.end(JSON.stringify({ 
+                                        success: false, 
+                                        message: `🚫 Esta referencia coincide con el pago ya usado '${fRef}'. Evitando recarga duplicada.` 
+                                    }));
+                                }
+                            }
+                        }
+                    }
+
                     // 🔒 DOBLE CANDADO SUPABASE: verificar estado en BD antes de proceder
                     // Previene race conditions si Telegram o WhatsApp bot aprobaron al mismo tiempo
                     const { data: dbCheck } = await supabase.from('ff_orders').select('status').eq('ref', targetRef).single();
@@ -2033,14 +2848,18 @@ const server = http.createServer(async (req, res) => {
 
                     // ===== JUEGOS NO-AUTOMATIZADOS: Aprobación manual directa =====
                     const juego = order.juego || 'freefire';
-                    const esAutomatizado = juego === 'freefire' || juego === 'roblox';
+                    const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike';
                     if (!esAutomatizado) {
                         console.log(`[ADMIN-APPROVE] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
                         orders[targetRef].status = 'approved';
                         updateOrderStatus(targetRef, 'approved', 'Manual');
+                        markPaymentAsUsed(order.method, targetRef);
                         saveRecent(order.name, order.pack);
-                        const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                        if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                        const isCanje = order.method === 'canje';
+                        if (!isCanje) {
+                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                            if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                        }
                         queueWhatsAppMessage({ ...order, ref: targetRef }, true);
                         notifyAdminsOrderStatus({ ...order, ref: targetRef }, true, 'Panel Admin (manual)');
                         scheduleReviewRequest({ ...order, ref: targetRef });
@@ -2070,9 +2889,27 @@ const server = http.createServer(async (req, res) => {
                             if (result.pin) pins.push(result.pin);
                         } else {
                             allSuccess = false;
+                            const jadhErrMsg = result.message || 'Error desconocido en Jadh.shop';
                             order.status = 'pending'; // Revertimos para permitir reintento manual
+                            if (orders[targetRef]) orders[targetRef].status = 'pending';
+                            updateOrderStatus(targetRef, 'pending');
+                            // 🚨 Notificar al admin con el motivo exacto del error
+                            notifyAdminsJadhError({ ...order, ref: targetRef }, jadhErrMsg, 'Panel Admin (Jadh)');
+                            // 📲 Avisar al usuario con mensaje amigable
+                            if (order.wa && order.wa !== 'No provisto') {
+                                const userErrId = `wa_user_jadh_err_${targetRef}`;
+                                if (!whatsappQueue.some(i => i.id === userErrId)) {
+                                    const userMsg = `⚠️ *Hola ${order.name}*, tu pago fue recibido ✅ pero tuvimos un inconveniente al procesar tu recarga de *${order.pack}*. 😔\n\n` +
+                                        `Nuestro equipo ya fue notificado y está revisando tu caso. Te contactaremos en breve.\n\n` +
+                                        `_Si tienes prisa, escríbenos directamente por este chat._`;
+                                    const waItem = { id: userErrId, number: order.wa, message: userMsg };
+                                    whatsappQueue.push(waItem);
+                                    supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error && error.code !== '23505') console.error('[USER-JADH-ERR-ADM] Error WA:', error.message); });
+                                }
+                            }
+                            sendPushToUser(order.login_uid || order.uid, 'Problema con tu recarga ⚠️', 'Tu pago fue recibido pero hubo un inconveniente. Te contactaremos pronto.', '/icon-192.png', '/historial');
                             res.writeHead(200);
-                            return res.end(JSON.stringify({ success: false, message: `Error en recarga ${i+1}/${qty}: ${result.message}` }));
+                            return res.end(JSON.stringify({ success: false, message: `❌ Error en recarga ${i+1}/${qty}: ${jadhErrMsg}` }));
                         }
                     }
 
@@ -2082,9 +2919,13 @@ const server = http.createServer(async (req, res) => {
                         const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
                         const pinVal = pins.length > 0 ? pins.join(' / ') : null;
                         updateOrderStatus(targetRef, 'approved', pinVal || jadhOrdersStr);
+                        markPaymentAsUsed(order.method, targetRef);
                         saveRecent(nick, order.pack);
-                        const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                        if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                        const isCanje = order.method === 'canje';
+                        if (!isCanje) {
+                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                            if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                        }
                         
                         queueWhatsAppMessage({ ...order, ref: targetRef, name: nick, pin: pinVal }, true, pinVal);
                         notifyAdminsOrderStatus({ ...order, ref: targetRef, name: nick, pin: pinVal }, true, 'Panel Admin (Jadh)');
@@ -2178,6 +3019,18 @@ const server = http.createServer(async (req, res) => {
                     updateOrderStatus(ref, 'approved', pinVal || jadhOrdersStr);
                     saveRecent(nick, order.pack);
 
+                    // 💰 CASHBACK: Acreditar puntos al usuario (igual que en aprobación normal)
+                    const isCanje = order.method === 'canje';
+                    if (!isCanje) {
+                        const usdtPrice = parseFloat((order.price || '').split('USDT')[0]);
+                        if (!isNaN(usdtPrice)) {
+                            await addPoints(order.login_uid || order.uid, usdtPrice, nick);
+                            console.log(`[RETRY-RECHARGE] 💰 Cashback acreditado para UID=${order.login_uid || order.uid} | $${usdtPrice} USDT`);
+                        } else {
+                            console.warn(`[RETRY-RECHARGE] ⚠️ No se pudo calcular el cashback: price='${order.price}' no es válido.`);
+                        }
+                    }
+
                     // Notificar al cliente por WhatsApp
                     queueWhatsAppMessage({ ...order, ref, name: nick, pin: pinVal }, true, pinVal);
 
@@ -2211,7 +3064,7 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
-                const { ref } = JSON.parse(body);
+                const { ref, reason } = JSON.parse(body);
                 let targetRef = ref;
                 let order = orders[targetRef];
                 
@@ -2253,10 +3106,29 @@ const server = http.createServer(async (req, res) => {
 
                 if (order) {
                     orders[targetRef].status = 'rejected';
-                    updateOrderStatus(targetRef, 'rejected');
+                    orders[targetRef].reason = reason || 'Rechazado por el administrador';
+                    updateOrderStatus(targetRef, 'rejected', null, reason || 'Rechazado por el administrador');
+
+                    // Si es un canje de puntos, devolver los puntos al balance del usuario
+                    if (order.method === 'canje') {
+                        const pointCosts = { 
+                            "100": 500, "310": 1500, "520": 2500,
+                            "basica": 400, "semanal": 1500, "booyah": 2300, "mensual": 7500
+                        };
+                        const cost = pointCosts[order.pack];
+                        if (cost) {
+                            const userObj = await ensureUserLoaded(order.login_uid || order.uid);
+                            if (userObj) {
+                                userObj.points = (userObj.points || 0) + cost;
+                                await saveUser(order.login_uid || order.uid);
+                                console.log(`[CANJE-REJECT] ↩️ Reversión de puntos exitosa para UID ${order.uid}: +${cost} pts. Nuevo saldo: ${userObj.points}`);
+                            }
+                        }
+                    }
+
                     queueWhatsAppMessage({ ...orders[targetRef], ref: targetRef }, false);
                     notifyAdminsOrderStatus({ ...orders[targetRef], ref: targetRef }, false, 'Panel Admin');
-                    sendPushToUser(orders[targetRef].login_uid || orders[targetRef].uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${orders[targetRef].pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
+                    sendPushToUser(orders[targetRef].login_uid || orders[targetRef].uid, 'Canje/Pago Rechazado ❌', order.method === 'canje' ? `Tu solicitud de canje de ${order.pack} fue rechazada. Puntos devueltos.` : `No pudimos verificar tu pago para el pedido de ${orders[targetRef].pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
                     updateTelegramStatus(targetRef);
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: 'Pedido rechazado con éxito.' }));
@@ -2356,17 +3228,168 @@ const server = http.createServer(async (req, res) => {
             // Filtrar y devolver únicamente los usuarios reales (con contraseña, puntos o datos de contacto)
             // Esto excluye visitas de consulta temporal de ID y mantiene la coherencia total con el Dashboard.
             const realUsers = {};
+            const genericUsersToFix = [];
+
             Object.entries(users).forEach(([uid, data]) => {
                 if (data.password || data.points > 0 || data.cedula || data.phone) {
                     realUsers[uid] = data;
+
+                    // Identificar si tiene un nombre genérico
+                    const nameClean = (data.name || '').trim().toLowerCase();
+                    const isGeneric = nameClean === 'jugador' || 
+                                      nameClean === 'pruebaff' || 
+                                      nameClean === 'jugadorpruebaff' || 
+                                      nameClean.includes('jugador') || 
+                                      nameClean.includes('pruebaff') || 
+                                      /^[\s\-—_~]*$/.test(nameClean);
+
+                    if (isGeneric) {
+                        // Limpiar el UID de caracteres no numéricos (por si tiene (1799) o algo similar)
+                        const cleanUid = uid.replace(/\D/g, '');
+                        if (cleanUid.length >= 4) {
+                            genericUsersToFix.push({ uid, cleanUid, data });
+                        }
+                    }
                 }
             });
+
+            // Si hay usuarios genéricos, intentar resolver sus nombres originales de Garena de forma asíncrona en segundo plano
+            if (genericUsersToFix.length > 0) {
+                console.log(`[ADMIN-USUARIOS] Intentando resolver ${genericUsersToFix.length} nombres genéricos en segundo plano...`);
+                genericUsersToFix.forEach(({ uid, cleanUid, data }) => {
+                    fetchGarenaNickname(cleanUid).then(async (garenaName) => {
+                        if (garenaName) {
+                            console.log(`[ADMIN-USUARIOS] ✅ Resuelto UID ${uid} -> ${garenaName} (anterior: ${data.name})`);
+                            // Actualizar en memoria
+                            if (users[uid]) users[uid].name = garenaName;
+                            // Actualizar en Supabase
+                            await supabase.from('ff_users').update({ name: garenaName }).eq('uid', uid);
+                        }
+                    }).catch(err => {
+                        console.error(`[ADMIN-USUARIOS] ❌ Error resolviendo UID ${uid}:`, err.message);
+                    });
+                });
+            }
+
             res.writeHead(200);
             res.end(JSON.stringify(realUsers));
         } catch (e) {
             res.writeHead(500);
             res.end(JSON.stringify({ success: false, error: 'Error al obtener usuarios' }));
         }
+    } else if (parsedUrl.pathname === '/admin/referidos' && req.method === 'GET') {
+        try {
+            // Consultar Supabase directamente para obtener TODOS los usuarios referidos (incluso históricos)
+            const { data: refUsers, error: refErr } = await supabase
+                .from('ff_users')
+                .select('uid, name, referred_by, referral_claimed, points, registered')
+                .not('referred_by', 'is', null);
+
+            if (refErr) throw new Error('Supabase error: ' + refErr.message);
+
+            // Helper: obtener nombre real desde ff_orders si ff_users no lo tiene
+            const GENERIC_NAMES = ['jugador', 'player', '—', '-', ''];
+            async function getRealName(uid, fallbackName) {
+                const fn = (fallbackName || '').trim().toLowerCase();
+                if (fn && !GENERIC_NAMES.includes(fn)) return fallbackName.trim();
+                // Buscar en pedidos el nombre real del jugador
+                try {
+                    const { data: orders } = await supabase
+                        .from('ff_orders')
+                        .select('name')
+                        .eq('uid', uid)
+                        .not('name', 'is', null)
+                        .order('time', { ascending: false })
+                        .limit(1);
+                    if (orders && orders.length > 0) {
+                        const n = (orders[0].name || '').trim();
+                        if (n && !GENERIC_NAMES.includes(n.toLowerCase())) return n;
+                    }
+                } catch (_) {}
+                // También buscar por login_uid
+                try {
+                    const { data: orders2 } = await supabase
+                        .from('ff_orders')
+                        .select('name')
+                        .eq('login_uid', uid)
+                        .not('name', 'is', null)
+                        .order('time', { ascending: false })
+                        .limit(1);
+                    if (orders2 && orders2.length > 0) {
+                        const n = (orders2[0].name || '').trim();
+                        if (n && !GENERIC_NAMES.includes(n.toLowerCase())) return n;
+                    }
+                } catch (_) {}
+                return fallbackName || uid;
+            }
+
+            // Construir mapa: referrer_uid -> lista de referidos
+            const refMap = {};
+            for (const u of (refUsers || [])) {
+                const refUid = u.referred_by;
+                if (!refMap[refUid]) refMap[refUid] = [];
+                // Enriquecer nombre del referido también
+                const referidoName = await getRealName(u.uid, u.name);
+                refMap[refUid].push({
+                    uid: u.uid,
+                    name: referidoName,
+                    claimed: u.referral_claimed || false,
+                    registered: u.registered || null,
+                    points: u.points || 0
+                });
+                // Sincronizar en memoria
+                if (!users[u.uid]) {
+                    users[u.uid] = {
+                        name: referidoName,
+                        points: u.points || 0,
+                        referred_by: u.referred_by,
+                        referral_claimed: u.referral_claimed || false,
+                        registered: u.registered
+                    };
+                } else {
+                    users[u.uid].referred_by = u.referred_by;
+                    users[u.uid].referral_claimed = u.referral_claimed || false;
+                    if (GENERIC_NAMES.includes((users[u.uid].name || '').trim().toLowerCase())) {
+                        users[u.uid].name = referidoName;
+                    }
+                }
+            }
+
+            // Armar resultado con info del referidor
+            const result = [];
+            for (const [referrerUid, referidos] of Object.entries(refMap)) {
+                const referrerData = await ensureUserLoaded(referrerUid);
+                // Buscar nombre real del referidor en ff_orders si es genérico
+                const referrerName = await getRealName(referrerUid, referrerData ? referrerData.name : null);
+                // Actualizar en memoria si obtuvimos un nombre mejor
+                if (referrerData && GENERIC_NAMES.includes((referrerData.name || '').trim().toLowerCase())) {
+                    referrerData.name = referrerName;
+                }
+                const totalClaimed = referidos.filter(r => r.claimed).length;
+                const usdtEarned   = (totalClaimed * 10 * 0.003).toFixed(2);
+                result.push({
+                    referrer_uid:    referrerUid,
+                    referrer_name:   referrerName,
+                    referrer_points: (referrerData && referrerData.points) ? referrerData.points : 0,
+                    total_referidos: referidos.length,
+                    total_claimed:   totalClaimed,
+                    total_pending:   referidos.length - totalClaimed,
+                    usdt_earned:     usdtEarned,
+                    referidos
+                });
+            }
+
+            // Ordenar: primero los que más comisiones han cobrado
+            result.sort((a, b) => b.total_claimed - a.total_claimed || b.total_referidos - a.total_referidos);
+
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: true, data: result, total_from_db: (refUsers || []).length }));
+        } catch (e) {
+            console.error('[ADMIN-REFERIDOS] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+
     } else if (parsedUrl.pathname === '/admin/usuarios/update_points' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
@@ -2695,10 +3718,23 @@ const server = http.createServer(async (req, res) => {
                 const dbUpdate = {};
                 if (newSettings.tasa_del_dia !== undefined) dbUpdate.tasa_del_dia = newSettings.tasa_del_dia;
                 if (newSettings.barra_informativa !== undefined) dbUpdate.barra_informativa = newSettings.barra_informativa;
-                if (newSettings.metodos_pago !== undefined) dbUpdate.metodos_pago = newSettings.metodos_pago;
+                if (newSettings.metodos_pago !== undefined) {
+                    // Preservar auto_approve_enabled si ya estaba configurado en memoria
+                    if (settings.metodos_pago && settings.metodos_pago.pagomovil && settings.metodos_pago.pagomovil.auto_approve_enabled !== undefined) {
+                        if (!newSettings.metodos_pago.pagomovil) newSettings.metodos_pago.pagomovil = {};
+                        newSettings.metodos_pago.pagomovil.auto_approve_enabled = settings.metodos_pago.pagomovil.auto_approve_enabled;
+                    }
+                    dbUpdate.metodos_pago = newSettings.metodos_pago;
+                }
                 if (newSettings.whatsapp !== undefined) dbUpdate.whatsapp_config = newSettings.whatsapp;
                 if (newSettings.precios !== undefined) dbUpdate.precios = newSettings.precios;
-                if (newSettings.juegos !== undefined) dbUpdate.juegos = newSettings.juegos;
+                if (newSettings.juegos !== undefined) {
+                    dbUpdate.juegos = newSettings.juegos;
+                    if (newSettings.juegos.freefire && newSettings.juegos.freefire.paquetes) {
+                        dbUpdate.precios = newSettings.juegos.freefire.paquetes;
+                        settings.precios = newSettings.juegos.freefire.paquetes;
+                    }
+                }
                 
                 let passwordChanged = false;
                 if (newSettings.admin) {
@@ -2820,15 +3856,39 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, message: 'Puntos insuficientes o paquete inválido' }));
                 }
 
-                // Todos los canjes ahora se hacen por recarga directa vía Jadh
+                // Todos los canjes ahora se hacen por recarga directa vía Jadh tras aprobación admin
                 const pointsBefore = Number(user.points);
                 user.points = pointsBefore - cost;
                 await saveUser(uid);
                 const canjeUsdtCost = (cost * 0.003).toFixed(2);
                 const canjeUsdtNew = (user.points * 0.003).toFixed(2);
-                console.log(`[CANJE] ✅ ÉXITO: Usuario ${uid} canjeó ${cost} pts ($${canjeUsdtCost} USDT) por ${pack}. Balance: ${pointsBefore} -> ${user.points}`);
+                console.log(`[CANJE] ✅ SOLICITUD REGISTRADA: Usuario ${uid} canjeó ${cost} pts ($${canjeUsdtCost} USDT) por ${pack}. Balance: ${pointsBefore} -> ${user.points}`);
                 
                 saveRecent(user.name || uid, pack, 'canje');
+
+                // Crear pedido de canje pendiente en memoria y Supabase
+                const ref = `CANJE-${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
+                const control_num = `${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
+                const currentTime = getVEISO();
+                const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+                const ip_address = rawIp.split(',')[0].trim() || 'N/A';
+                const wa = user.phone || 'No provisto';
+                const price = `0 USDT (Canje ${cost} pts)`;
+                const juego = 'freefire';
+
+                const orderObj = { 
+                    ref, uid, login_uid: uid, name: user.name || uid, pack, method: 'canje', 
+                    price, status: 'pending', time: currentTime, wa, control_num, ip_address, juego 
+                };
+
+                orders[ref] = orderObj;
+                const { error: insertError } = await supabase.from('ff_orders').insert(orderObj);
+                if (insertError) {
+                    console.error('[SUPABASE] Error guardando pedido de canje:', insertError.message);
+                }
+
+                // Notificar a admins vía WhatsApp
+                notifyAdminsNewCanje(orderObj);
 
                 getLastUserWa(uid).then(userWa => {
                     if (userWa) {
@@ -2840,34 +3900,26 @@ const server = http.createServer(async (req, res) => {
                         else if(pack === 'booyah') packLabel = 'Pase Booyah';
                         else packLabel = `${pack} Diamantes`;
 
-                        const redemptionMsg = `💎 *¡CANJE DE CASHBACK EXITOSO!* 💎\n\n` +
-                                             `¡Hola! Has canjeado tu cashback por *${packLabel}*. 🚀\n\n` +
+                        const redemptionMsg = `💎 *SOLICITUD DE CANJE DE PUNTOS RECIBIDA* 💎\n\n` +
+                                             `¡Hola! Hemos recibido tu solicitud de canje por *${packLabel}*. 🚀\n\n` +
                                              `━━━━━━━━━━━━━━━\n` +
                                              `🆔 *ID Garena:* ${uid}\n` +
-                                             `📉 *Costo del canje:* -$${canjeUsdtCost} USDT\n` +
+                                             `📉 *Costo del canje:* -${cost} pts\n` +
                                              `💰 *Tu nuevo saldo:* $${canjeUsdtNew} USDT\n` +
                                              `━━━━━━━━━━━━━━━\n\n` +
-                                             `⚡ *Nota:* Esta es una recarga directa. Tu recarga ya se está procesando y llegará a tu cuenta en los próximos minutos.\n\n` +
-                                             `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+                                             `⏳ *Estado:* Pendiente de aprobación.\n\n` +
+                                             `Tu recarga se procesará una vez que el administrador apruebe el canje. ¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
                         
                         const waItem = { id: redemptionMsgId, number: userWa, message: redemptionMsg };
                         whatsappQueue.push(waItem);
-                        supabase.from('ff_wa_queue').insert(waItem).catch(() => {});
+                        Promise.resolve(supabase.from('ff_wa_queue').insert(waItem)).catch(() => {});
                     }
                 });
 
-                sendPushToUser(uid, '🎁 ¡Canje de Cashback Exitoso!', `Canjeaste $${canjeUsdtCost} USDT por ${pack}. Recarga en proceso.`, '/icon-192.png', '/historial');
-
-                // Lanzar recarga en background usando Jadh
-                const jadhService = require('./jadh-service');
-                if (typeof isPaqueteEspecial === 'function' && isPaqueteEspecial(pack)) {
-                    jadhService.rechargeViaJadhPaquetes(uid, pack).catch(e => console.error('[CANJE_JADH_ESP] Error:', e));
-                } else {
-                    jadhService.rechargeViaJadh(uid, pack).catch(e => console.error('[CANJE_JADH] Error:', e));
-                }
+                sendPushToUser(uid, '🎁 Solicitud de Canje Recibida', `Canjeaste $${canjeUsdtCost} USDT por ${pack}. Pendiente de aprobación.`, '/icon-192.png', '/historial');
 
                 res.writeHead(200);
-                return res.end(JSON.stringify({ success: true, message: '¡Canje exitoso! Recarga en proceso directo a tu cuenta.' }));
+                return res.end(JSON.stringify({ success: true, message: '¡Solicitud de canje registrada! Tu recarga se procesará tras la aprobación del administrador.' }));
             } catch (e) {
                 res.writeHead(400);
                 res.end(JSON.stringify({ error: 'Error procesando canje' }));
@@ -3060,7 +4112,7 @@ const server = http.createServer(async (req, res) => {
                                       `¡Hola, *${name}*! Queremos recordarte que puedes ganar diamantes gratis invitando a tus amigos a recargar con nosotros. 💎🚀\n\n` +
                                       `🎁 *¿Cómo funciona?*\n` +
                                       `1. Comparte tu link único de referido con tus amigos.\n` +
-                                      `2. Por cada amigo que ingrese con tu link y realice su primera compra, ¡tú ganas *+$0.03 USDT*! 💰\n` +
+                                      `2. Por cada amigo que ingrese con tu link y realice su primera compra, ¡tú ganas *+$0.05 USDT*! 💰\n` +
                                       `3. Acumula tus $ y canjéalos por recargas gratis en la página. 🎟️\n\n` +
                                       `🔗 *Tu Link de Referido Único:*\n` +
                                       `${referralLink}\n\n` +
@@ -3121,10 +4173,15 @@ const server = http.createServer(async (req, res) => {
                 
                 if (targetType === 'single') {
                     if (!targetPhone) return res.end(JSON.stringify({ success: false, message: 'Falta el número de teléfono' }));
-                    const waItem = { id: `broadcast_${Date.now()}_single`, number: targetPhone, message };
-                    whatsappQueue.push(waItem);
-                    supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error) console.error('Supabase wa_queue err:', error.message); });
-                    enqueued++;
+                    const phones = targetPhone.split(',').map(p => p.trim()).filter(p => p);
+                    if (phones.length === 0) return res.end(JSON.stringify({ success: false, message: 'Falta el número de teléfono' }));
+                    
+                    for (const phone of phones) {
+                        const waItem = { id: `broadcast_${Date.now()}_single_${Math.random().toString(36).substr(2, 5)}`, number: phone, message };
+                        whatsappQueue.push(waItem);
+                        supabase.from('ff_wa_queue').insert(waItem).then(({ error }) => { if (error) console.error('Supabase wa_queue err:', error.message); });
+                        enqueued++;
+                    }
                 } else if (targetType === 'all') {
                     // ═══════════════════════════════════════════════════════════════
                     // BROADCAST MASIVO: Usuarios registrados + Todos los compradores

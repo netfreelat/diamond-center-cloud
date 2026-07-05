@@ -36,21 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.color = key === currentJuego ? 'var(--secondary)' : '#fff';
             
             if (key === 'bloodstrike') {
-                btn.style.position = 'relative';
-                btn.innerHTML = `<span style="position: absolute; top: -6px; left: 50%; transform: translateX(-50%); font-size: 0.52rem; background: rgba(255, 0, 229, 0.15); color: #ff00e5; border: 1px solid rgba(255, 0, 229, 0.35); padding: 1px 5px; border-radius: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; z-index: 5; pointer-events: none; backdrop-filter: blur(2px);">Próximamente</span><i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
-                btn.style.opacity = '0.65';
-                btn.style.cursor = 'not-allowed';
-                btn.onclick = (e) => {
-                    e.preventDefault();
-                    Swal.fire({
-                        icon: 'info',
-                        title: '¡Próximamente!',
-                        text: `Las recargas para ${juego.nombre} estarán disponibles muy pronto.`,
-                        background: 'rgba(20, 10, 35, 0.98)',
-                        color: '#fff',
-                        confirmButtonColor: '#9D00FF',
-                        confirmButtonText: 'Entendido'
+                // Blood Strike: flujo normal con ID (igual que Free Fire)
+                btn.innerHTML = `<i class="fa-solid ${juego.icono || 'fa-skull-crossbones'}"></i> ${juego.nombre}`;
+                btn.onclick = () => {
+                    document.querySelectorAll('.game-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.borderColor = 'rgba(255,255,255,0.2)';
+                        b.style.color = '#fff';
                     });
+                    btn.classList.add('active');
+                    btn.style.borderColor = 'var(--secondary)';
+                    btn.style.color = 'var(--secondary)';
+                    currentJuego = key;
+                    const input = document.getElementById('player-id');
+                    if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID de Jugador';
+                    // Restaurar vista normal con campo de ID
+                    document.querySelector('.input-group').style.display = 'flex';
+                    document.getElementById('verify-btn').style.display = 'flex';
+                    document.getElementById('packages-section').style.display = 'none';
+                    document.getElementById('welcome-section').style.display = 'none';
+                    document.querySelector('.main-container').classList.remove('expanded');
+                    const titleEl = document.getElementById('packages-section-title');
+                    if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Monedas';
+                    renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
                 };
             } else {
                 btn.innerHTML = `<i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
@@ -390,6 +398,110 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    window.showOrderTicket = (ref) => {
+        const order = currentPlayerHistory.find(o => o.ref === ref);
+        if (!order) return;
+
+        const statusText  = order.status === 'approved' ? 'APROBADO' : (order.status === 'rejected' ? 'RECHAZADO' : 'PENDIENTE');
+        const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
+        const juegoName   = order.juego ? (order.juego.charAt(0).toUpperCase() + order.juego.slice(1)) : 'Free Fire';
+        
+        let currencyLabel = 'diamantes';
+        if (order.juego === 'roblox') currencyLabel = 'Robux';
+        else if (order.juego === 'bloodstrike') currencyLabel = 'oro';
+
+        let productText = `${order.pack} ${currencyLabel}`;
+        if (order.juego === 'roblox') {
+            const amount = order.pack.split('+')[0].trim();
+            productText = `$${amount}`;
+        }
+
+        const ticketHtml = `
+            <div id="ticket-receipt" style="text-align: left; padding: 18px; background: #0c0617; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); font-family: 'Inter', sans-serif; position: relative; overflow: hidden; box-shadow: inset 0 0 15px rgba(157,0,255,0.15);">
+                <div style="text-align: center; margin-bottom: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 14px;">
+                    <h3 style="margin: 0; color: #9D00FF; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px;">RECARGASNEY.COM</h3>
+                    <p style="font-size: 0.72rem; color: #888; margin: 4px 0 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Comprobante de Pago</p>
+                </div>
+                <div style="display: grid; gap: 9px; font-size: 0.82rem; margin-bottom: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">N° Control:</span><strong style="color: #fff;">#${order.control_num || '-'}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Fecha/Hora:</span><span style="color: #fff;">${dateStr}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Juego:</span><span style="color: #fff; font-weight: 700; text-transform: uppercase;">${juegoName}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">ID Jugador:</span><span style="color: #fff; font-family: monospace; font-weight: 700;">${order.uid || '-'}${order.name ? ` <span style="color:#aaa; font-size:0.78rem; font-family:inherit; font-weight:400;">(${order.name})</span>` : ''}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Método de Pago:</span><span style="color: #fff;">${order.method === 'binance' ? 'Binance Pay' : 'Pago Móvil'}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Referencia:</span><code style="color: var(--secondary); font-weight: 700;">${order.ref}</code></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Estado:</span><span style="color: ${order.status === 'approved' ? '#00FF94' : order.status === 'rejected' ? '#FF3D71' : '#FFD93D'}; font-weight: 900; letter-spacing: 0.5px;">${statusText}</span></div>
+                </div>
+                <div style="background: rgba(157, 0, 255, 0.04); border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: center; border: 1px solid rgba(157, 0, 255, 0.15);">
+                    <span style="font-size: 0.72rem; color: #888; display: block; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600;">Detalle del Producto</span>
+                    <strong style="font-size: 1.2rem; color: #fff; display: block; font-weight: 800;">${productText}</strong>
+                    <span style="font-size: 0.88rem; color: #00FF94; font-weight: 800; margin-top: 6px; display: inline-block;">${order.price || 'N/A'}</span>
+                </div>
+                ${order.pin ? `
+                <div style="background: rgba(0,240,255,0.04); border: 1px dashed rgba(0,240,255,0.25); border-radius: 10px; padding: 12px; text-align: center;">
+                    <span style="font-size: 0.7rem; color: #00f0ff; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.5px;">CÓDIGO ENTREGADO</span>
+                    <code style="font-family: monospace; font-size: 0.95rem; color: #fff; font-weight: bold; word-break: break-all; display: block; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 6px;">${order.pin}</code>
+                </div>
+                ` : ''}
+                ${(APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? `
+                <div style="margin-top: 14px; text-align: center;">
+                    <a href="https://wa.me/${(APP_CONFIG.whatsapp.bot || '').replace(/\D/g, '')}?text=${encodeURIComponent(order.ref)}" target="_blank" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px rgba(37,211,102,0.2); border: 1px solid #20ba5a;">
+                        <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> Consultar estado por WhatsApp
+                    </a>
+                    <p style="font-size: 0.68rem; color: #888; margin: 6px 0 0;">El bot responderá automáticamente con el estado de tu pedido</p>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        Swal.fire({
+            title: '<i class="fa-solid fa-receipt"></i> Ticket de Compra',
+            html: ticketHtml,
+            background: 'rgba(20, 10, 35, 0.98)',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-share-nodes"></i> Compartir',
+            cancelButtonText: 'Cerrar',
+            confirmButtonColor: '#9D00FF',
+            cancelButtonColor: '#444',
+            width: '380px'
+        }).then(res => {
+            if (res.isConfirmed) {
+                const shareText = `🧾 *TICKET DE COMPRA - RECARGASNEY.COM* 🧾\n\n` +
+                    `*N° Control:* #${order.control_num || '-'}\n` +
+                    `*Fecha/Hora:* ${dateStr}\n` +
+                    `*Juego:* ${juegoName.toUpperCase()}\n` +
+                    `*ID Jugador:* ${order.uid || '-'}${order.name ? ` (${order.name})` : ''}\n` +
+                    `*Producto:* ${productText}\n` +
+                    `*Precio:* ${order.price || 'N/A'}\n` +
+                    `*Método:* ${order.method === 'binance' ? 'Binance Pay' : 'Pago Móvil'}\n` +
+                    `*Referencia:* ${order.ref}\n` +
+                    `*Estado:* ${statusText}\n` +
+                    (order.pin ? `*Código Entregado:* ${order.pin}\n` : '') +
+                    `\n¡Gracias por tu preferencia! 🚀`;
+
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'RecargasNey - Comprobante',
+                        text: shareText
+                    }).catch(e => console.log('Share aborted', e));
+                } else {
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Ticket copiado al portapapeles',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            background: 'rgba(20, 10, 35, 0.95)',
+                            color: '#fff'
+                        });
+                    });
+                }
+            }
+        });
+    };
+
     // Manejar Último ID usado
     const lastId = localStorage.getItem('ff_last_id');
     if (lastId && loadLastIdBtn) {
@@ -468,6 +580,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const methodIcon  = order.method === 'binance' ? '₿' : '📱';
                 const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
 
+                let packFormatted = `💎 ${order.pack} diamantes`;
+                if (order.juego === 'roblox') {
+                    const amount = order.pack.split('+')[0].trim();
+                    packFormatted = `🎮 Roblox $${amount}`;
+                } else if (order.juego === 'bloodstrike') {
+                    packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
+                }
+
                 const pinBox = order.pin
                     ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                            <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
@@ -480,11 +600,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                             <div style="flex:1;">
                                 <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
-                                <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">💎 ${order.pack} diamantes</p>
+                                <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">${packFormatted}</p>
                                 ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
                             </div>
-                            <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap;">
+                            <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap; display:flex; align-items:center; gap:8px;">
                                 <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
+                                <button onclick="window.showOrderTicket('${order.ref}')" style="background:rgba(255,255,255,0.08) !important; border:1px solid rgba(255,255,255,0.15) !important; color:#fff !important; border-radius:4px !important; padding:2px 5px !important; font-size:0.75rem !important; cursor:pointer !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; height:auto !important; min-height:auto !important; width:auto !important; margin:0 !important;" title="Ver Ticket"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </div>
                         <div style="margin-top:6px; font-size:0.72rem; color:#666;">
@@ -590,6 +711,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusBg    = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
             const methodIcon  = order.method === 'binance' ? '₿' : '📱';
             const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
+
+            let packFormatted = `💎 ${order.pack} diamantes`;
+            if (order.juego === 'roblox') {
+                const amount = order.pack.split('+')[0].trim();
+                packFormatted = `🎮 Roblox $${amount}`;
+            } else if (order.juego === 'bloodstrike') {
+                packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
+            }
+
             const pinBox = order.pin
                 ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                        <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
@@ -601,11 +731,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                         <div style="flex:1;">
                             <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
-                            <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">💎 ${order.pack} diamantes</p>
+                            <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">${packFormatted}</p>
                             ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
                         </div>
-                        <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap;">
+                        <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap; display:flex; align-items:center; gap:8px;">
                             <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
+                            <button onclick="window.showOrderTicket('${order.ref}')" style="background:rgba(255,255,255,0.08) !important; border:1px solid rgba(255,255,255,0.15) !important; color:#fff !important; border-radius:4px !important; padding:2px 5px !important; font-size:0.75rem !important; cursor:pointer !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; height:auto !important; min-height:auto !important; width:auto !important; margin:0 !important;" title="Ver Ticket"><i class="fa-solid fa-eye"></i></button>
                         </div>
                     </div>
                     <div style="margin-top:6px; font-size:0.72rem; color:#666;">
@@ -834,9 +965,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (id) {
             loginTriggerBtn.style.display = 'none';
             userDisplay.style.display = 'flex';
-            loadUserPoints(id).then(points => {
-                headerPointsVal.innerText = points || 0;
-            });
+            // Mostrar $0 mientras carga el saldo real
+            if (headerPointsVal) headerPointsVal.textContent = '0';
+            loadUserPoints(id); // loadUserPoints ya actualiza header-points-val internamente
             if (pushBellBtn) {
                 pushBellBtn.style.display = 'flex';
                 checkSubscriptionState().then(() => {
@@ -848,6 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             loginTriggerBtn.style.display = 'flex';
             userDisplay.style.display = 'none';
+            if (headerPointsVal) headerPointsVal.textContent = '0';
             if (pushBellBtn) pushBellBtn.style.display = 'none';
         }
     };
@@ -1557,6 +1689,217 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- FIN LÓGICA DE CUENTA ---
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // MODO REGALO: "Recargar a otro ID"
+    // El usuario logueado compra diamantes para OTRO jugador,
+    // pero los puntos/cashback se acreditan a SU cuenta.
+    // ─────────────────────────────────────────────────────────────────────────
+    let giftingMode = false;         // ¿Estamos en modo regalo?
+    let giftingTargetUid = null;     // UID del jugador que RECIBE los diamantes
+    let giftingTargetName = null;    // Nombre del jugador receptor
+
+    function setGiftingMode(uid, name) {
+        giftingMode = true;
+        giftingTargetUid = uid;
+        giftingTargetName = name;
+
+        // Mostrar banner informativo
+        const banner = document.getElementById('gifting-mode-banner');
+        const nameEl = document.getElementById('gifting-target-name');
+        const idEl   = document.getElementById('gifting-target-id');
+        if (banner)  banner.style.display  = 'block';
+        if (nameEl)  nameEl.textContent    = name;
+        if (idEl)    idEl.textContent      = uid;
+
+        // Ocultar el botón para no activarlo dos veces
+        const rechargeBtn = document.getElementById('recharge-other-btn');
+        if (rechargeBtn) rechargeBtn.style.display = 'none';
+    }
+
+    function clearGiftingMode() {
+        giftingMode = false;
+        giftingTargetUid  = null;
+        giftingTargetName = null;
+
+        const banner = document.getElementById('gifting-mode-banner');
+        if (banner) banner.style.display = 'none';
+
+        const rechargeBtn = document.getElementById('recharge-other-btn');
+        if (rechargeBtn) rechargeBtn.style.display = 'flex';
+    }
+
+    // Botón "Cancelar" dentro del banner de modo regalo
+    const cancelGiftingBtn = document.getElementById('cancel-gifting-btn');
+    if (cancelGiftingBtn) {
+        cancelGiftingBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearGiftingMode();
+        });
+    }
+
+    // Botón principal "Recargar a otro ID"
+    const rechargeOtherBtn = document.getElementById('recharge-other-btn');
+    if (rechargeOtherBtn) {
+        rechargeOtherBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+
+            const myUid = localStorage.getItem('ff_user_id');
+            if (!myUid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Inicia sesión primero',
+                    text: 'Debes estar logueado con tu ID para poder regalar diamantes a otro jugador.',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
+                return;
+            }
+
+            // Paso 1: Pedir el ID del otro jugador
+            const { value: targetId } = await Swal.fire({
+                title: '<i class="fa-solid fa-people-arrows" style="color:#FFD93D;"></i> Recargar a otro ID',
+                html: `
+                    <p style="font-size:0.88rem; color:#aaa; margin-bottom:16px; line-height:1.5;">
+                        Los diamantes irán al <strong style="color:#fff;">ID del otro jugador</strong>.<br>
+                        <span style="color:#FFD93D;"><i class="fa-solid fa-star"></i> Los puntos/cashback se acreditan a <em>tu</em> cuenta.</span>
+                    </p>
+                    <input id="swal-gift-uid" type="text" class="swal2-input" inputmode="numeric"
+                        placeholder="ID del jugador a regalar"
+                        style="margin:0; width:100%; box-sizing:border-box;
+                               background:rgba(0,0,0,0.3); color:#fff;
+                               border:1px solid rgba(255,215,0,0.4); border-radius:8px;
+                               height:48px; padding:0 14px; font-size:1.1rem;
+                               font-family:monospace; text-align:center;">
+                    <p id="swal-gift-uid-hint" style="font-size:0.75rem; color:rgba(255,255,255,0.35); margin-top:8px;">
+                        Solo números · Puedes encontrar el ID en el perfil del juego
+                    </p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-solid fa-magnifying-glass"></i> Verificar ID',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                didOpen: () => {
+                    const inp = document.getElementById('swal-gift-uid');
+                    if (inp) {
+                        inp.focus();
+                        inp.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter') Swal.clickConfirm();
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const val = document.getElementById('swal-gift-uid').value.trim().replace(/\D/g, '');
+                    if (!val || val.length < 4) {
+                        Swal.showValidationMessage('Ingresa un ID de jugador válido (mínimo 4 dígitos)');
+                        return false;
+                    }
+                    if (val === myUid) {
+                        Swal.showValidationMessage('No puedes regalarle a tu propio ID. Usa la compra normal.');
+                        return false;
+                    }
+                    return val;
+                }
+            });
+
+            if (!targetId) return; // Cancelado
+
+            // Paso 2: Verificar que el ID existe en Garena
+            Swal.fire({
+                title: 'Verificando ID...',
+                html: `
+                    <div class="ff-loader-container">
+                        <div class="ff-loader-text">Consultando servidores de Garena...</div>
+                        <div class="ff-progress-bar"><div class="ff-progress-fill"></div></div>
+                    </div>
+                `,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: 'rgba(20, 10, 35, 0.95)',
+                color: '#fff'
+            });
+
+            try {
+                const result = await checkPlayerId(targetId);
+
+                if (!result.found && result.networkError) {
+                    const { isConfirmed } = await Swal.fire({
+                        icon: 'warning',
+                        title: '⚠️ Error de Conexión',
+                        html: `<p style="color:#eee;">No se pudo conectar con Garena para verificar el ID.<br>
+                               <strong style="color:#ffd700;">El ID puede ser válido.</strong><br>
+                               <span style="color:#aaa;font-size:0.85rem;">¿Deseas continuar de todos modos?</span></p>`,
+                        showCancelButton: true,
+                        confirmButtonText: '✅ Continuar igual',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#9D00FF',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    });
+                    if (!isConfirmed) return;
+                    // Si el usuario decide continuar sin verificación, usar el ID sin nombre
+                    setGiftingMode(targetId, `Jugador ${targetId}`);
+                    // Mostrar paquetes para el modo regalo
+                    _showGiftingPackages(targetId, `Jugador ${targetId}`);
+                    return;
+                }
+
+                if (!result.found) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ ID No Válido',
+                        html: `<p style="color:#eee;">El ID <strong style="color:#ff4b2b;">${targetId}</strong> no existe en los servidores de Garena.</p>
+                               <p style="color:#aaa;font-size:0.82rem;">Verifica que el ID sea correcto e intenta de nuevo.</p>`,
+                        confirmButtonText: '🔄 Intentar de nuevo',
+                        confirmButtonColor: '#9D00FF',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    });
+                    return;
+                }
+
+                // ID válido — activar modo regalo
+                const targetName = result.name || `Jugador ${targetId}`;
+                Swal.close();
+
+                setGiftingMode(targetId, targetName);
+                _showGiftingPackages(targetId, targetName);
+
+            } catch (err) {
+                console.error('[GIFTING] Error verificando ID:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Inesperado',
+                    text: 'No se pudo verificar el ID. Intenta de nuevo.',
+                    confirmButtonColor: '#9D00FF',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff'
+                });
+            }
+        });
+    }
+
+    // Mostrar la sección de paquetes apuntando al jugador receptor
+    function _showGiftingPackages(targetUid, targetName) {
+        // Actualizar el display de nombre (aunque sea temporal, para que el recibo sea correcto)
+        const nameDisplay = document.getElementById('player-name-display');
+        if (nameDisplay) nameDisplay.innerText = targetName;
+
+        // Mostrar paquetes
+        document.getElementById('packages-section').style.display = 'block';
+        document.querySelector('.main-container').classList.add('expanded');
+        document.querySelector('.input-group').style.display = 'none';
+        document.getElementById('verify-btn').style.display = 'none';
+
+        // Scroll suave a los paquetes
+        const pkgSection = document.getElementById('packages-section');
+        if (pkgSection) setTimeout(() => pkgSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+
     favoritesBtn.addEventListener('click', () => {
         const favorites = JSON.parse(localStorage.getItem('ff_favorites') || '[]');
         if (favorites.length === 0) {
@@ -2103,8 +2446,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const refPM = refPagoMovil.value.trim();
         const refB = refBinance.value.trim();
 
-        if (selectedMethod === 'pagomovil' && refPM.length < 1) {
-            return Swal.fire({ icon: 'warning', title: 'Falta Referencia', text: 'Por favor, ingresa el número de referencia de tu Pago Móvil.', confirmButtonColor: '#9D00FF' });
+        if (selectedMethod === 'pagomovil' && refPM.length < 4) {
+            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 4 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
         }
         if (selectedMethod === 'binance' && refB.length < 1) {
             return Swal.fire({ icon: 'warning', title: 'Falta ID Binance', text: 'Por favor, ingresa tu ID de transacción de Binance Pay.', confirmButtonColor: '#9D00FF' });
@@ -2148,7 +2491,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Para Roblox: uid = número WA (no hay ID Garena)
-            const effectiveUid = isRobloxOrder ? waFull : playerInput.value;
+            // En modo regalo: uid = jugador receptor, loginUid = tú (quien gana los puntos)
+            let effectiveUid;
+            if (giftingMode && giftingTargetUid) {
+                effectiveUid = giftingTargetUid;
+            } else {
+                effectiveUid = isRobloxOrder ? waFull : playerInput.value;
+            }
             const loginUid = localStorage.getItem('ff_user_id') || effectiveUid;
             const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${currentJuego}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
@@ -2203,7 +2552,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
                                 <p><strong>PLAN:</strong> <span class="val">${esEspecialOrder ? packText : `${selectedPackage.amount} + ${selectedPackage.bonus} Bonus`}</span></p>
-                                <p><strong>ID / JUGADOR:</strong> <span class="val">${playerInput.value} (${name})</span></p>
+                                <p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>
+                                ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
                                 <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
                                 <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
                                 <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
@@ -2216,10 +2566,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>
                         
-                        <div class="receipt-actions">
-                            <button class="btn-action btn-share" title="Compartir"><i class="fa-solid fa-share-nodes"></i></button>
-                            <button class="btn-action btn-fav" title="Favorito"><i class="fa-solid fa-star"></i></button>
-                            <button class="btn-action btn-continue-receipt" onclick="location.reload()">Continuar</button>
+                        <div class="receipt-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
+                            <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+                                <button class="btn-action btn-share" title="Compartir" style="flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
+                                <button class="btn-action btn-fav" title="Favorito" style="margin: 0;"><i class="fa-solid fa-star"></i></button>
+                            </div>
+                            ${(APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? `
+                            <button class="btn-action" onclick="window.open('https://wa.me/${(APP_CONFIG.whatsapp.bot || '').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}', '_blank')" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0;">
+                                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
+                            </button>
+                            ` : ''}
+                            <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0;">Continuar</button>
                         </div>
                     </div>
                 `,
@@ -2228,6 +2585,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 width: window.innerWidth < 600 ? '95%' : '450px',
                 allowOutsideClick: false,
                 didOpen: () => {
+                    // Si era modo regalo, limpiar el estado para el siguiente ciclo
+                    clearGiftingMode();
+
                     const shareBtn = document.querySelector('.btn-share');
                     const favBtn = document.querySelector('.btn-fav');
                     const statusEl = document.getElementById('order-status');
@@ -2345,7 +2705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function checkPlayerId(uid) {
-        const localServerUrl = `${SERVER_URL}/verificar?uid=${uid}`;
+        const localServerUrl = `${SERVER_URL}/verificar?uid=${uid}&juego=${currentJuego}`;
 
         try {
             console.log('Consultando servidor local...');
@@ -2444,11 +2804,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const headerPointsEl = document.getElementById('header-points-val');
             
             if (pointsEl) {
-                pointsEl.textContent = `$${usdtDisplay} USDT`;
+                // El HTML ya tiene el ícono $ (fa-dollar-sign) antes del span, no duplicar
+                pointsEl.textContent = `${usdtDisplay} USDT`;
                 pointsEl.dataset.rawPoints = points; // Guardar valor real para el canje
             }
             if (headerPointsEl) {
-                headerPointsEl.textContent = `$${usdtDisplay}`;
+                // El HTML ya tiene el símbolo $ fuera del span, solo escribir el número
+                headerPointsEl.textContent = usdtDisplay;
                 headerPointsEl.dataset.rawPoints = points;
             }
             
