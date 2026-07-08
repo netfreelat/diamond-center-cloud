@@ -442,14 +442,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <code style="font-family: monospace; font-size: 0.95rem; color: #fff; font-weight: bold; word-break: break-all; display: block; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 6px;">${order.pin}</code>
                 </div>
                 ` : ''}
-                ${(APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? `
                 <div style="margin-top: 14px; text-align: center;">
-                    <a href="https://wa.me/${(APP_CONFIG.whatsapp.bot || '').replace(/\D/g, '')}?text=${encodeURIComponent(order.ref)}" target="_blank" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px rgba(37,211,102,0.2); border: 1px solid #20ba5a;">
+                    <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(order.ref)}" target="_blank" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px rgba(37,211,102,0.2); border: 1px solid #20ba5a;">
                         <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> Consultar estado por WhatsApp
                     </a>
                     <p style="font-size: 0.68rem; color: #888; margin: 6px 0 0;">El bot responderá automáticamente con el estado de tu pedido</p>
                 </div>
-                ` : ''}
             </div>
         `;
 
@@ -2571,11 +2569,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="btn-action btn-share" title="Compartir" style="flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
                                 <button class="btn-action btn-fav" title="Favorito" style="margin: 0;"><i class="fa-solid fa-star"></i></button>
                             </div>
-                            ${(APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? `
-                            <button class="btn-action" onclick="window.open('https://wa.me/${(APP_CONFIG.whatsapp.bot || '').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}', '_blank')" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0;">
+                            <button class="btn-action" onclick="window.open('https://wa.me/' + ((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '') + '?text=' + encodeURIComponent('${ref}'), '_blank')" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0;">
                                 <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
                             </button>
-                            ` : ''}
                             <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0;">Continuar</button>
                         </div>
                     </div>
@@ -2758,6 +2754,94 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }).catch(err => {
             console.error('Error al copiar: ', err);
+        });
+    };
+
+    // ===== PAGO DIRECTO: BDVapp =====
+    window.pagarBDVapp = function() {
+        if (!APP_CONFIG || !APP_CONFIG.metodos_pago || !APP_CONFIG.metodos_pago.pagomovil) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los datos de pago. Intenta de nuevo.', background: 'rgba(20,10,35,0.97)', color: '#fff' });
+            return;
+        }
+
+        const pm = APP_CONFIG.metodos_pago.pagomovil;
+        const amountRaw = document.getElementById('amount-pagomovil').value;
+
+        if (!amountRaw || amountRaw.trim() === '') {
+            Swal.fire({ icon: 'warning', title: 'Selecciona un paquete', text: 'Primero selecciona un paquete para ver el monto.', background: 'rgba(20,10,35,0.97)', color: '#fff' });
+            return;
+        }
+
+        // Extraer datos limpios
+        const tel        = pm.telefono.replace(/\D/g, '');
+        const ced        = pm.cedula.replace(/\D/g, '');
+        const bancoMatch = pm.banco.match(/\d{4}/);
+        const codBanco   = bancoMatch ? bancoMatch[0] : '0102'; // 0102 = BDV por defecto
+        // Monto: quitar " Bs" y convertir coma a punto
+        const montoStr = amountRaw.replace(/\s*Bs/i, '').replace(',', '.').trim();
+        const monto    = parseFloat(montoStr);
+
+        if (isNaN(monto) || monto <= 0) {
+            Swal.fire({ icon: 'warning', title: 'Monto inválido', text: 'El monto no es válido. Selecciona un paquete primero.', background: 'rgba(20,10,35,0.97)', color: '#fff' });
+            return;
+        }
+
+        // Deep link BDVapp para Pago Móvil
+        const concepto = encodeURIComponent('Recarga Free Fire - RecargasNey');
+        const deepLink = `bdvapp://pagomovil?banco=${codBanco}&telefono=${tel}&cedula=${ced}&monto=${monto.toFixed(2)}&concepto=${concepto}`;
+
+        // Fallback a Play Store si no está instalada la app
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.mercantil.bdv';
+
+        Swal.fire({
+            icon: 'info',
+            title: '<span style="font-size:1rem; font-family:Montserrat,sans-serif;">Abriendo BDVapp</span>',
+            html: `
+                <div style="text-align:left; font-size:0.85rem; color:#ccc; line-height:1.7;">
+                    <div style="margin-bottom:8px; padding:10px; background:rgba(220,20,30,0.1); border:1px solid rgba(220,20,30,0.3); border-radius:10px;">
+                        <div><strong style="color:#fff;">Banco:</strong> ${pm.banco}</div>
+                        <div><strong style="color:#fff;">Teléfono:</strong> ${pm.telefono}</div>
+                        <div><strong style="color:#fff;">Cédula:</strong> ${pm.cedula}</div>
+                        <div style="margin-top:6px;"><strong style="color:#00f0ff; font-size:1.05rem;">Monto: ${amountRaw}</strong></div>
+                    </div>
+                    <p style="font-size:0.78rem; color:#aaa; margin-top:8px;">
+                        <i class="fa-solid fa-circle-info" style="color:#FFD93D;"></i>
+                        Los datos se pre-cargarán en BDVapp. Verifica y confirma el pago dentro de la app.
+                    </p>
+                </div>
+            `,
+            confirmButtonText: '<i class="fa-solid fa-mobile-screen-button"></i>&nbsp; Abrir BDVapp',
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc1417',
+            cancelButtonColor: 'rgba(80,80,80,0.5)',
+            background: 'rgba(20,10,35,0.98)',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const startTime = Date.now();
+                window.location.href = deepLink;
+
+                // Fallback: si después de 2.5s sigue en la página, la app no está instalada
+                setTimeout(() => {
+                    if (Date.now() - startTime < 3500) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'BDVapp no encontrada',
+                            html: `<p style="color:#ccc; font-size:0.88rem;">Parece que no tienes BDVapp instalada.<br>¿Deseas descargarla desde Play Store?</p>`,
+                            confirmButtonText: '<i class="fa-brands fa-google-play"></i>&nbsp; Ir a Play Store',
+                            showCancelButton: true,
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#dc1417',
+                            cancelButtonColor: 'rgba(80,80,80,0.5)',
+                            background: 'rgba(20,10,35,0.98)',
+                            color: '#fff'
+                        }).then(r => {
+                            if (r.isConfirmed) window.open(playStoreUrl, '_blank');
+                        });
+                    }
+                }, 2500);
+            }
         });
     };
 

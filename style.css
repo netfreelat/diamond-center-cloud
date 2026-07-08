@@ -1075,7 +1075,111 @@ body::before {
     transform: translateY(-2px);
 }
 
-/* Custom SweetAlert Styles */
+/* ===== PAGO DIRECTO BDVapp ===== */
+.bdv-pago-directo-box {
+    margin-top: 18px;
+    background: linear-gradient(135deg, rgba(220, 20, 30, 0.15), rgba(120, 0, 0, 0.1));
+    border: 1px solid rgba(220, 40, 40, 0.45);
+    border-radius: 14px;
+    padding: 14px 16px 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.bdv-pago-directo-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255, 80, 80, 0.08), transparent 60%);
+    pointer-events: none;
+}
+
+.bdv-directo-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(220, 20, 30, 0.75);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    animation: bdv-pulse 2s ease-in-out infinite;
+}
+
+@keyframes bdv-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 20, 30, 0.5); }
+    50%       { box-shadow: 0 0 0 6px rgba(220, 20, 30, 0); }
+}
+
+.bdv-directo-desc {
+    font-size: 0.82rem;
+    color: #ccc;
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+.bdv-directo-desc strong {
+    color: #fff;
+}
+
+.btn-bdvapp {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #dc1417, #a00e10);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 800;
+    font-family: 'Montserrat', 'Inter', sans-serif;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(220, 20, 23, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-bdvapp::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 60%;
+    height: 200%;
+    background: rgba(255,255,255,0.12);
+    transform: skewX(-20deg);
+    transition: left 0.4s ease;
+}
+
+.btn-bdvapp:hover::after {
+    left: 110%;
+}
+
+.btn-bdvapp:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(220, 20, 23, 0.6);
+    background: linear-gradient(135deg, #f01a1d, #c01215);
+}
+
+.btn-bdvapp:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(220, 20, 23, 0.4);
+}
+
+.btn-bdvapp i {
+    font-size: 1.1rem;
+}
+
+
 .swal2-popup {
     background: #121217 !important;
     color: white !important;
@@ -2310,4 +2414,44 @@ body::before {
 @keyframes referralShine {
     0%       { left: -100%; }
     50%, 100% { left: 160%; }
+}
+
+/* ============================== */
+/* BOTÓN: RECARGAR A OTRO ID      */
+/* ============================== */
+.btn-recharge-other {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(157, 0, 255, 0.15));
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    border-radius: 13px;
+    color: #FFD93D;
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 18px rgba(255, 215, 0, 0.12);
+}
+.btn-recharge-other:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.22), rgba(157, 0, 255, 0.25));
+    border-color: rgba(255, 215, 0, 0.7);
+    box-shadow: 0 8px 28px rgba(255, 215, 0, 0.28);
+    transform: translateY(-2px);
+    color: #fff;
+}
+.btn-recharge-other:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(255, 215, 0, 0.15);
+}
+.btn-recharge-other i {
+    font-size: 1rem;
 }
