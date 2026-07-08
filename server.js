@@ -518,7 +518,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
             return;
         }
-        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-195-4469*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-349-1068*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
     } else {
         const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
         const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
@@ -2131,9 +2131,9 @@ const server = http.createServer(async (req, res) => {
                                 }
 
                                 if (pinVal) {
-                                    editMessageText = `✅ *RECARGA GENERADA VÍA PIN (JADH.SHOP)*\n\n👤 *Usuario:* ${nick}\n🆔 *ID/Usuario:* ${order.uid}\n📦 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n🔑 *PIN:* \`${pinVal}\`\n📝 *Ref:* \`${ref}\`\n\n✨ _PIN enviado al cliente por WhatsApp._`;
+                                    editMessageText = `✅ *RECARGA GENERADA VÍA PIN (PROVEEDOR)*\n\n👤 *Usuario:* ${nick}\n🆔 *ID/Usuario:* ${order.uid}\n📦 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n🔑 *PIN:* \`${pinVal}\`\n📝 *Ref:* \`${ref}\`\n\n✨ _PIN enviado al cliente por WhatsApp._`;
                                 } else {
-                                    editMessageText = `✅ *RECARGA DIRECTA EXITOSA (JADH.SHOP)*\n\n👤 *Jugador:* ${nick}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔢 *Órdenes Jadh:* \`${orderIds.join(', ')}\`\n\n✨ _Acreditado automáticamente en la cuenta del jugador._`;
+                                    editMessageText = `✅ *RECARGA DIRECTA EXITOSA (RECARGASNEY.COM)*\n\n👤 *Jugador:* ${nick}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n🔢 *Órdenes Ney:* \`${orderIds.join(', ')}\`\n\n✨ _Acreditado automáticamente en la cuenta del jugador._`;
                                 }
                                 
                                 queueWhatsAppMessage({ ...order, name: nick, ref, pin: pinVal }, true, pinVal);
@@ -2934,7 +2934,7 @@ const server = http.createServer(async (req, res) => {
                         updateTelegramStatus(targetRef);
                         
                         res.writeHead(200);
-                        res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: `Recarga exitosa. Nickname: ${nick}. Órdenes Jadh: ${orderIds.join(', ')}` }));
+                        res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: `Recarga exitosa. Nickname: ${nick}. Órdenes Ney: ${orderIds.join(', ')}` }));
                     }
                 } else {
                     res.writeHead(404);
@@ -3038,7 +3038,7 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(200);
                     res.end(JSON.stringify({ 
                         success: true, 
-                        message: `Reintento exitoso. Nickname: ${nick}. Órdenes Jadh: ${jadhOrdersStr}${pinVal ? '. PIN: ' + pinVal : ''}`,
+                        message: `Reintento exitoso. Nickname: ${nick}. Órdenes Ney: ${jadhOrdersStr}${pinVal ? '. PIN: ' + pinVal : ''}`,
                         resolvedRef: ref,
                         nick,
                         orderIds,
