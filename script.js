@@ -2832,12 +2832,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const concepto = encodeURIComponent('Recarga Free Fire - RecargasNey');
         const deepLink = `bdvapp://pagomovil?banco=${codBanco}&telefono=${tel}&cedula=${ced}&monto=${monto.toFixed(2)}&concepto=${concepto}`;
 
-        // Fallback a Play Store si no está instalada la app
+        // Link a Play Store para la app de Banco de Venezuela (BDV)
         const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.mercantil.bdv';
 
         Swal.fire({
             icon: 'info',
-            title: '<span style="font-size:1rem; font-family:Montserrat,sans-serif;">Abriendo BDVapp</span>',
+            title: '<span style="font-size:1rem; font-family:Montserrat,sans-serif;">Pagar por BDVapp</span>',
             html: `
                 <div style="text-align:left; font-size:0.85rem; color:#ccc; line-height:1.7;">
                     <div style="margin-bottom:8px; padding:10px; background:rgba(220,20,30,0.1); border:1px solid rgba(220,20,30,0.3); border-radius:10px;">
@@ -2846,10 +2846,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div><strong style="color:#fff;">Cédula:</strong> ${pm.cedula}</div>
                         <div style="margin-top:6px;"><strong style="color:#00f0ff; font-size:1.05rem;">Monto: ${amountRaw}</strong></div>
                     </div>
-                    <p style="font-size:0.78rem; color:#aaa; margin-top:8px;">
+                    <p style="font-size:0.78rem; color:#aaa; margin-top:8px; line-height:1.4;">
                         <i class="fa-solid fa-circle-info" style="color:#FFD93D;"></i>
-                        Los datos se pre-cargarán en BDVapp. Verifica y confirma el pago dentro de la app.
+                        Los datos de pago móvil se pre-cargarán en la aplicación de BDVapp.
                     </p>
+                    <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); text-align:center;">
+                        <a href="${playStoreUrl}" target="_blank" style="color:#00f0ff; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                            <i class="fa-brands fa-google-play"></i> ¿No tienes la app? Descárgala de Play Store
+                        </a>
+                    </div>
                 </div>
             `,
             confirmButtonText: '<i class="fa-solid fa-mobile-screen-button"></i>&nbsp; Abrir BDVapp',
@@ -2861,28 +2866,7 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#fff'
         }).then((result) => {
             if (result.isConfirmed) {
-                const startTime = Date.now();
                 window.location.href = deepLink;
-
-                // Fallback: si después de 2.5s sigue en la página, la app no está instalada
-                setTimeout(() => {
-                    if (Date.now() - startTime < 3500) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'BDVapp no encontrada',
-                            html: `<p style="color:#ccc; font-size:0.88rem;">Parece que no tienes BDVapp instalada.<br>¿Deseas descargarla desde Play Store?</p>`,
-                            confirmButtonText: '<i class="fa-brands fa-google-play"></i>&nbsp; Ir a Play Store',
-                            showCancelButton: true,
-                            cancelButtonText: 'Cancelar',
-                            confirmButtonColor: '#dc1417',
-                            cancelButtonColor: 'rgba(80,80,80,0.5)',
-                            background: 'rgba(20,10,35,0.98)',
-                            color: '#fff'
-                        }).then(r => {
-                            if (r.isConfirmed) window.open(playStoreUrl, '_blank');
-                        });
-                    }
-                }, 2500);
             }
         });
     };
