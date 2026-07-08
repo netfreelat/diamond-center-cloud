@@ -2833,7 +2833,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deepLink = `bdvapp://pagomovil?banco=${codBanco}&telefono=${tel}&cedula=${ced}&monto=${monto.toFixed(2)}&concepto=${concepto}`;
 
         // Link a Play Store para la app de Banco de Venezuela (BDV)
-        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.mercantil.bdv';
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.bancodevenezuela.bdvdigital';
 
         Swal.fire({
             icon: 'info',
@@ -2848,7 +2848,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <p style="font-size:0.78rem; color:#aaa; margin-top:8px; line-height:1.4;">
                         <i class="fa-solid fa-circle-info" style="color:#FFD93D;"></i>
-                        Los datos de pago móvil se pre-cargarán en la aplicación de BDVapp.
+                        Se abrirá la aplicación del Banco de Venezuela en tu teléfono. Copia los datos de arriba para realizar el Pago Móvil.
                     </p>
                     <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); text-align:center;">
                         <a href="${playStoreUrl}" target="_blank" style="color:#00f0ff; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
@@ -2866,7 +2866,17 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#fff'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = deepLink;
+                // Auto-copiar datos para comodidad del cliente
+                window.copyData('pagomovil');
+                
+                const isAndroid = /Android/i.test(navigator.userAgent);
+                if (isAndroid) {
+                    // Intent URI oficial de Android para lanzar la app de BDV por su package name
+                    window.location.href = "intent://#Intent;package=com.bancodevenezuela.bdvdigital;end;";
+                } else {
+                    // Fallback en iOS u otros
+                    window.location.href = "bdvdigital://";
+                }
             }
         });
     };
