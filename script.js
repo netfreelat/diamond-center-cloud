@@ -2820,12 +2820,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Extraer datos limpios
-        const tel        = pm.telefono.replace(/\D/g, '');
-        const ced        = pm.cedula.replace(/\D/g, '');
-        const bancoMatch = pm.banco.match(/\d{4}/);
-        const codBanco   = bancoMatch ? bancoMatch[0] : '0102'; // 0102 = BDV por defecto
-        // Monto: quitar " Bs" y convertir coma a punto
         const montoStr = amountRaw.replace(/\s*Bs/i, '').replace(',', '.').trim();
         const monto    = parseFloat(montoStr);
 
@@ -2834,57 +2828,51 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Deep link BDVapp para Pago Móvil
-        const concepto = encodeURIComponent('Recarga Free Fire - RecargasNey');
-        const deepLink = `bdvapp://pagomovil?banco=${codBanco}&telefono=${tel}&cedula=${ced}&monto=${monto.toFixed(2)}&concepto=${concepto}`;
+        // Texto optimizado para "Pegar datos" de BDVapp — el banco lo detecta automáticamente
+        const pasteText = `${pm.telefono} ${pm.banco} ${pm.cedula} ${monto.toFixed(2)}`;
 
-        // Link a Play Store para la app de Banco de Venezuela (BDV)
-        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.bancodevenezuela.bdvdigital';
+        // 1️⃣ Copiar datos al portapapeles
+        navigator.clipboard.writeText(pasteText).catch(() => {});
 
-        Swal.fire({
-            icon: 'info',
-            title: '<span style="font-size:1rem; font-family:Montserrat,sans-serif;">Pagar por BDVapp</span>',
-            html: `
-                <div style="text-align:left; font-size:0.85rem; color:#ccc; line-height:1.7;">
-                    <div style="margin-bottom:8px; padding:10px; background:rgba(220,20,30,0.1); border:1px solid rgba(220,20,30,0.3); border-radius:10px;">
-                        <div><strong style="color:#fff;">Banco:</strong> ${pm.banco}</div>
-                        <div><strong style="color:#fff;">Teléfono:</strong> ${pm.telefono}</div>
-                        <div><strong style="color:#fff;">Cédula:</strong> ${pm.cedula}</div>
-                        <div style="margin-top:6px;"><strong style="color:#00f0ff; font-size:1.05rem;">Monto: ${amountRaw}</strong></div>
+        // 2️⃣ Abrir la app de BDV directamente (sin cuadro de diálogo)
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid) {
+            window.location.href = 'intent://#Intent;package=com.bancodevenezuela.bdvdigital;end;';
+        } else {
+            window.open('https://play.google.com/store/apps/details?id=com.bancodevenezuela.bdvdigital', '_blank');
+        }
+
+        // 3️⃣ Mostrar guía paso a paso con los datos visibles (tras medio segundo)
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: '<span style="font-size:0.95rem; font-family:Montserrat,sans-serif;">✅ Datos Copiados</span>',
+                html: `
+                    <div style="font-family:'Montserrat',sans-serif; font-size:0.85rem; color:#ccc; text-align:left; line-height:1.6;">
+                        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:0.8rem; color:#00f0ff; word-break:break-all;">
+                            ${pasteText}
+                        </div>
+                        <p style="font-size:0.75rem; color:#aaa; margin-bottom:10px;">
+                            <i class="fa-solid fa-circle-check" style="color:#25D366;"></i>
+                            Los datos están copiados en tu portapapeles. Sigue estos pasos en la app del banco:
+                        </p>
+                        <ol style="padding-left:18px; margin:0; font-size:0.8rem; line-height:1.8;">
+                            <li>Abre <strong style="color:#fff;">BDVApp</strong> e inicia sesión</li>
+                            <li>Ve a <strong style="color:#fff;">Pagos → PagomóvilBDV</strong></li>
+                            <li>Toca el botón <strong style="color:#FFD93D;">"Pegar datos"</strong></li>
+                            <li>Los datos se llenarán solos ✔</li>
+                            <li>Confirma el pago</li>
+                        </ol>
                     </div>
-                    <p style="font-size:0.78rem; color:#aaa; margin-top:8px; line-height:1.4;">
-                        <i class="fa-solid fa-circle-info" style="color:#FFD93D;"></i>
-                        Se abrirá la aplicación del Banco de Venezuela en tu teléfono. Copia los datos de arriba para realizar el Pago Móvil.
-                    </p>
-                    <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); text-align:center;">
-                        <a href="${playStoreUrl}" target="_blank" style="color:#00f0ff; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
-                            <i class="fa-brands fa-google-play"></i> ¿No tienes la app? Descárgala de Play Store
-                        </a>
-                    </div>
-                </div>
-            `,
-            confirmButtonText: '<i class="fa-solid fa-mobile-screen-button"></i>&nbsp; Abrir BDVapp',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#dc1417',
-            cancelButtonColor: 'rgba(80,80,80,0.5)',
-            background: 'rgba(20,10,35,0.98)',
-            color: '#fff'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Auto-copiar datos para comodidad del cliente
-                window.copyData('pagomovil');
-                
-                const isAndroid = /Android/i.test(navigator.userAgent);
-                if (isAndroid) {
-                    // Intent URI oficial de Android para lanzar la app de BDV por su package name
-                    window.location.href = "intent://#Intent;package=com.bancodevenezuela.bdvdigital;end;";
-                } else {
-                    // Fallback en iOS u otros
-                    window.location.href = "bdvdigital://";
-                }
-            }
-        });
+                `,
+                showConfirmButton: true,
+                confirmButtonText: 'Entendido ✓',
+                confirmButtonColor: '#dc1417',
+                showCloseButton: true,
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff'
+            });
+        }, 500);
     };
 
     window.copyPin = () => {
