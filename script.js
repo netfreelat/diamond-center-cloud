@@ -2403,9 +2403,10 @@ document.addEventListener('DOMContentLoaded', () => {
             pmCard.click();
         }
 
-        // Scroll suave al inicio de la sección de pago
-        if (paymentSection) {
-            paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Scroll suave al inicio de la tarjeta contenedora principal para evitar saltos y espacios vacíos
+        const card = document.querySelector('.card');
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 
@@ -2501,8 +2502,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.classList.add('float-cta-active');
             }
         }
-        if (packagesSection) {
-            packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const card = document.querySelector('.card');
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     });
 

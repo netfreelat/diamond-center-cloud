@@ -846,7 +846,7 @@ body::before {
     max-width: 800px;
 }
 
-.packages-container {
+.packages-container, .payment-container {
     background: linear-gradient(135deg, rgba(157, 0, 255, 0.12) 0%, rgba(0, 240, 255, 0.08) 100%);
     border: 1px solid rgba(0, 240, 255, 0.25);
     border-radius: 24px;
@@ -1604,7 +1604,7 @@ body::before {
         font-size: 1rem;
     }
 
-    .packages-container {
+    .packages-container, .payment-container {
         padding: 15px 10px;
         margin-top: 15px;
         border-radius: 16px;
