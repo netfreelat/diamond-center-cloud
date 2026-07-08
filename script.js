@@ -2891,7 +2891,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
         
         // Mensaje persuasivo con emojis
-        const promoMessage = `🔥 ¡Recarga tus DIAMANTES de Free Fire al instante, 100% automático y seguro! 💎✨ En RecargasNey.com recargas las 24 horas y al mejor precio del mercado. 🚀 Regístrate y compra con mi link de referido para empezar a acumular cashback y diamantes gratis: ${refLink} ¡Nos vemos en el juego! 🎮⚔️`;
+        const promoMessage = `🔥 ¡Recarga tus DIAMANTES de Free Fire al instante, 100% automático y seguro! 💎✨ recargas las 24 horas y al mejor precio del mercado. 🚀 Regístrate y compra con mi link de referido para empezar a acumular juntos cashback en $ y diamantes gratis: ${refLink} ¡Nos vemos en el juego! 🎮⚔️`;
         const encodedMessage = encodeURIComponent(promoMessage);
         
         const canNativeShare = typeof navigator.share === 'function';
