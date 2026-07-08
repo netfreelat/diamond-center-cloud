@@ -1179,6 +1179,139 @@ body::before {
     font-size: 1.1rem;
 }
 
+/* ===== BARRA FLOTANTE CTA ===== */
+.float-cta-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 12px 16px 20px;
+    background: linear-gradient(180deg, rgba(7,3,13,0) 0%, rgba(7,3,13,0.97) 30%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+.float-cta-bar.visible {
+    transform: translateY(0);
+    pointer-events: all;
+}
+
+.float-cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    max-width: 480px;
+    margin: 0 auto;
+    background: rgba(20, 10, 40, 0.85);
+    border: 1px solid rgba(157, 0, 255, 0.35);
+    border-radius: 18px;
+    padding: 10px 10px 10px 16px;
+    box-shadow: 0 -4px 30px rgba(157, 0, 255, 0.2), 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.float-cta-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+.float-cta-diamonds {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.float-cta-price {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #00f0ff;
+    font-family: 'Montserrat', sans-serif;
+    line-height: 1.2;
+}
+
+.float-cta-btn {
+    flex-shrink: 0;
+    padding: 13px 22px;
+    background: linear-gradient(135deg, #9D00FF, #6a00c8);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    font-family: 'Montserrat', 'Inter', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 18px rgba(157, 0, 255, 0.5);
+    transition: all 0.2s ease;
+    animation: cta-glow 2s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+@keyframes cta-glow {
+    0%, 100% { box-shadow: 0 4px 18px rgba(157, 0, 255, 0.5); }
+    50%       { box-shadow: 0 4px 28px rgba(157, 0, 255, 0.85); }
+}
+
+.float-cta-btn:hover {
+    transform: scale(1.04);
+    background: linear-gradient(135deg, #b020ff, #7d00e0);
+}
+
+.float-cta-btn:active {
+    transform: scale(0.97);
+}
+
+/* ===== TOAST GUÍA ===== */
+.guide-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 9998;
+    background: rgba(157, 0, 255, 0.92);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 50px;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(157, 0, 255, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s ease;
+}
+
+.guide-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    animation: toast-bounce 0.5s ease;
+}
+
+@keyframes toast-bounce {
+    0%   { transform: translateX(-50%) translateY(20px); }
+    60%  { transform: translateX(-50%) translateY(-6px); }
+    100% { transform: translateX(-50%) translateY(0); }
+}
+
+/* El botón estático (buy-btn) se oculta en móvil cuando el flotante está activo */
+@media (max-width: 600px) {
+    body.float-cta-active .buy-btn {
+        opacity: 0.4;
+        pointer-events: none;
+    }
+}
 
 .swal2-popup {
     background: #121217 !important;

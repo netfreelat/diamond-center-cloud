@@ -291,7 +291,7 @@
                 </div>
 
                 <button id="buy-btn" class="btn-primary buy-btn" style="margin-top: 20px;" disabled>
-                    Continuar Pedido
+                    <i class="fa-solid fa-lock" style="margin-right:6px; opacity:0.5;"></i> Selecciona un paquete
                 </button>
             </div>
 
@@ -407,6 +407,24 @@
     </div>
 
 
+
+    <!-- Botón flotante de Continuar (aparece al seleccionar paquete) -->
+    <div id="float-cta-bar" class="float-cta-bar" style="display:none;">
+        <div class="float-cta-inner">
+            <div class="float-cta-info">
+                <span class="float-cta-diamonds" id="float-cta-diamonds">💎 0 diamantes</span>
+                <span class="float-cta-price" id="float-cta-price">0.00 Bs</span>
+            </div>
+            <button class="float-cta-btn" id="float-cta-btn">
+                Pagar ahora <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast guía -->
+    <div id="guide-toast" class="guide-toast" style="display:none;">
+        <i class="fa-solid fa-hand-pointer"></i> ¡Paquete seleccionado! Toca <strong>Pagar ahora</strong> para continuar
+    </div>
 
     <!-- Custom Script -->
     <script src="script.js?v=1.3.4"></script>

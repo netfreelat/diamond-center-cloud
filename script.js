@@ -2336,6 +2336,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initPackageEvents() {
         const packageCards = document.querySelectorAll('.package-card');
+        const floatBar   = document.getElementById('float-cta-bar');
+        const floatDiams = document.getElementById('float-cta-diamonds');
+        const floatPrice = document.getElementById('float-cta-price');
+        const guideToast = document.getElementById('guide-toast');
+        let toastTimer   = null;
+
+        function showFloatCTA(card) {
+            const priceUSDT = parseFloat(card.dataset.price) * selectedQty;
+            const priceBS   = (priceUSDT * DOLAR_RATE).toFixed(2).replace('.', ',');
+            const totalAmt  = parseInt(card.dataset.amount) + parseInt(card.dataset.bonus || 0);
+
+            if (floatDiams) floatDiams.textContent = `💎 ${totalAmt.toLocaleString()} diamantes`;
+            if (floatPrice) floatPrice.textContent  = `${priceBS} Bs`;
+
+            // Mostrar barra flotante
+            if (floatBar) {
+                floatBar.style.display = 'block';
+                requestAnimationFrame(() => floatBar.classList.add('visible'));
+                document.body.classList.add('float-cta-active');
+            }
+
+            // Toast guía (solo las primeras veces)
+            if (guideToast) {
+                clearTimeout(toastTimer);
+                guideToast.style.display = 'block';
+                requestAnimationFrame(() => guideToast.classList.add('show'));
+                toastTimer = setTimeout(() => {
+                    guideToast.classList.remove('show');
+                    setTimeout(() => { guideToast.style.display = 'none'; }, 400);
+                }, 3000);
+            }
+        }
+
         packageCards.forEach(card => {
             card.addEventListener('click', () => {
                 // Quitar selección previa
@@ -2353,25 +2386,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (quantitySection) quantitySection.style.display = 'none';
                 updateTotalsPreview();
                 
-                // Habilitar botón de compra
+                // Habilitar botón de compra estático y actualizar texto
                 buyBtn.disabled = false;
+                buyBtn.innerHTML = '<i class="fa-solid fa-arrow-right" style="margin-right:6px;"></i> Continuar Pedido';
 
                 // Actualizar automáticamente el campo de monto en Pago Móvil
                 const priceUSDT = parseFloat(card.dataset.price);
                 const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2).replace('.', ',');
                 const amountInput = document.getElementById('amount-pagomovil');
                 if (amountInput) amountInput.value = `${priceBS} Bs`;
+
+                // Mostrar barra flotante con info del paquete
+                showFloatCTA(card);
             });
         });
     }
 
-    buyBtn.addEventListener('click', () => {
-        if (selectedPackage) {
-            // Ocultar paquetes y mostrar pagos
-            document.getElementById('packages-section').style.display = 'none';
-            document.getElementById('payment-section').style.display = 'block';
+    function goToPayment() {
+        if (!selectedPackage) return;
+        // Ocultar barra flotante
+        const floatBar = document.getElementById('float-cta-bar');
+        if (floatBar) {
+            floatBar.classList.remove('visible');
+            setTimeout(() => { floatBar.style.display = 'none'; }, 400);
+            document.body.classList.remove('float-cta-active');
         }
-    });
+        document.getElementById('packages-section').style.display = 'none';
+        document.getElementById('payment-section').style.display = 'block';
+        // Scroll suave al inicio de la sección de pago
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    buyBtn.addEventListener('click', goToPayment);
+
+    // Botón flotante hace lo mismo
+    const floatCtaBtn = document.getElementById('float-cta-btn');
+    if (floatCtaBtn) floatCtaBtn.addEventListener('click', goToPayment);
 
     // Lógica de Métodos de Pago
     const paymentCards = document.querySelectorAll('.payment-method-card');
@@ -2432,6 +2482,16 @@ document.addEventListener('DOMContentLoaded', () => {
     backBtn.addEventListener('click', () => {
         document.getElementById('payment-section').style.display = 'none';
         document.getElementById('packages-section').style.display = 'block';
+        // Re-mostrar barra flotante si hay paquete seleccionado
+        if (selectedPackage) {
+            const floatBar = document.getElementById('float-cta-bar');
+            if (floatBar) {
+                floatBar.style.display = 'block';
+                requestAnimationFrame(() => floatBar.classList.add('visible'));
+                document.body.classList.add('float-cta-active');
+            }
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     finishBtn.addEventListener('click', async () => {
