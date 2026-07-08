@@ -2518,8 +2518,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const refPM = refPagoMovil.value.trim();
         const refB = refBinance.value.trim();
 
-        if (selectedMethod === 'pagomovil' && refPM.length < 4) {
-            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 4 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
+        if (selectedMethod === 'pagomovil' && refPM.length < 6) {
+            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 6 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
         }
         if (selectedMethod === 'binance' && refB.length < 1) {
             return Swal.fire({ icon: 'warning', title: 'Falta ID Binance', text: 'Por favor, ingresa tu ID de transacción de Binance Pay.', confirmButtonColor: '#9D00FF' });
