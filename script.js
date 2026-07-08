@@ -2403,10 +2403,10 @@ document.addEventListener('DOMContentLoaded', () => {
             pmCard.click();
         }
 
-        // Scroll suave al inicio de la tarjeta contenedora principal para evitar saltos y espacios vacíos
+        // Scroll suave al final de la tarjeta contenedora para posicionar los métodos de pago sin dejar espacios vacíos
         const card = document.querySelector('.card');
         if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            card.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }
 
