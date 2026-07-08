@@ -773,9 +773,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             Object.entries(APP_CONFIG.precios).forEach(([amount, data]) => {
                 const priceBs = (data.usdt * DOLAR_RATE).toFixed(2).replace('.', ',');
+                const amountNum = parseInt(amount);
+                const isSpecial = isNaN(amountNum);
+                const bonusHtml = !isSpecial ? `<span style="color:var(--secondary); font-size:0.8em;">+ ${(amountNum * 0.1).toFixed(0)}</span>` : '';
+                const displayTitle = data.label || amount;
+
                 htmlContent += `
                     <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
-                        <div style="font-weight: bold; color: #fff;">💎 ${amount} <span style="color:var(--secondary); font-size:0.8em;">+ ${(parseInt(amount)*0.1).toFixed(0)}</span></div>
+                        <div style="font-weight: bold; color: #fff;">💎 ${displayTitle} ${bonusHtml}</div>
                         <div style="text-align: right;">
                             <div style="color: #25D366; font-weight: bold;">${priceBs} Bs</div>
                             <div style="color: #aaa; font-size: 0.8em;">${data.usdt.toFixed(2)} USDT</div>
