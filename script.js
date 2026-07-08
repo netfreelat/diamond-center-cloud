@@ -2396,6 +2396,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const paymentSection = document.getElementById('payment-section');
         document.getElementById('packages-section').style.display = 'none';
         paymentSection.style.display = 'block';
+
+        // Auto-seleccionar Pago Móvil por defecto
+        const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
+        if (pmCard) {
+            pmCard.click();
+        }
+
         // Scroll suave al inicio de la sección de pago
         if (paymentSection) {
             paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2443,6 +2450,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const whatsappNumber = document.getElementById('whatsapp-number');
     const countryCode = document.getElementById('country-code');
 
+    // Cargar número de WhatsApp guardado anteriormente de forma persistente
+    const savedWaNum = localStorage.getItem('ff_last_wa_num');
+    const savedWaCode = localStorage.getItem('ff_last_wa_code');
+    if (savedWaNum && whatsappNumber) {
+        whatsappNumber.value = savedWaNum;
+    }
+    if (savedWaCode && countryCode) {
+        countryCode.value = savedWaCode;
+    }
+
     refPagoMovil.addEventListener('input', (e) => {
         let val = e.target.value.replace(/\D/g, ''); // Solo números
         e.target.value = val;
@@ -2456,8 +2473,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     whatsappNumber.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, ''); // Solo números
+        localStorage.setItem('ff_last_wa_num', e.target.value);
         checkFinishButton();
     });
+
+    if (countryCode) {
+        countryCode.addEventListener('change', (e) => {
+            localStorage.setItem('ff_last_wa_code', e.target.value);
+        });
+    }
 
     function checkFinishButton() {
         // El botón ya no se desactiva para poder mostrar los mensajes de error al hacer clic
