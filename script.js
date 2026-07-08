@@ -2393,10 +2393,13 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { floatBar.style.display = 'none'; }, 400);
             document.body.classList.remove('float-cta-active');
         }
+        const paymentSection = document.getElementById('payment-section');
         document.getElementById('packages-section').style.display = 'none';
-        document.getElementById('payment-section').style.display = 'block';
+        paymentSection.style.display = 'block';
         // Scroll suave al inicio de la sección de pago
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (paymentSection) {
+            paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     buyBtn.addEventListener('click', goToPayment);
@@ -2462,8 +2465,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     backBtn.addEventListener('click', () => {
+        const packagesSection = document.getElementById('packages-section');
         document.getElementById('payment-section').style.display = 'none';
-        document.getElementById('packages-section').style.display = 'block';
+        packagesSection.style.display = 'block';
         // Re-mostrar barra flotante si hay paquete seleccionado
         if (selectedPackage) {
             const floatBar = document.getElementById('float-cta-bar');
@@ -2473,7 +2477,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.classList.add('float-cta-active');
             }
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (packagesSection) {
+            packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     });
 
     finishBtn.addEventListener('click', async () => {
