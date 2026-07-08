@@ -992,13 +992,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Botón Copiar Link de Referido (en la tarjeta de bienvenida)
     const copyRefBtn = document.getElementById('copy-ref-link-btn');
     if (copyRefBtn) {
-        copyRefBtn.addEventListener('click', async () => {
+        copyRefBtn.addEventListener('click', () => {
             const uid = localStorage.getItem('ff_user_id');
-            if (!uid) return;
-            const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
-            await navigator.clipboard.writeText(refLink);
-            copyRefBtn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Copiado!';
-            setTimeout(() => { copyRefBtn.innerHTML = '<i class="fa-solid fa-link"></i> Copiar mi Link'; }, 2500);
+            if (uid) window.shareReferralLink(uid);
         });
     }
 
@@ -1467,23 +1463,9 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#fff',
             didOpen: () => {
                 // Compartir Link de Referido
-                document.getElementById('btn-share-ref').addEventListener('click', async () => {
-                    Swal.close();
-                    await navigator.clipboard.writeText(refLink);
-
-                    // Confetti sutil
-                    confetti({ particleCount: 30, spread: 40, origin: { y: 0.8 } });
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Link Copiado! 🔗',
-                        html: `<p style="font-size:0.85rem;color:#aaa;word-break:break-all;margin-bottom:10px;">${refLink}</p>
-                               <p style="font-size:0.85rem;">Compártelo y gana <strong>+$0.05 USDT</strong> de cashback cuando hagan su primera compra.</p>`,
-                        timer: 4000,
-                        showConfirmButton: false,
-                        background: 'rgba(20, 10, 35, 0.98)',
-                        color: '#fff'
-                    });
+                document.getElementById('btn-share-ref').addEventListener('click', () => {
+                    const uid = localStorage.getItem('ff_user_id');
+                    if (uid) window.shareReferralLink(uid);
                 });
 
                 // Cerrar Sesión
@@ -2917,6 +2899,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 background: 'rgba(20, 10, 35, 0.95)',
                 color: '#fff'
             });
+        });
+    };
+
+    window.shareReferralLink = function(uid) {
+        if (!uid) return;
+        const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
+        
+        // Mensaje persuasivo con emojis
+        const promoMessage = `🔥 ¡Recarga tus DIAMANTES de Free Fire al instante, 100% automático y seguro! 💎✨ En RecargasNey.com recargas las 24 horas y al mejor precio del mercado. 🚀 Regístrate y compra con mi link de referido para empezar a acumular cashback y diamantes gratis: ${refLink} ¡Nos vemos en el juego! 🎮⚔️`;
+        const encodedMessage = encodeURIComponent(promoMessage);
+        
+        const canNativeShare = typeof navigator.share === 'function';
+
+        Swal.fire({
+            title: '<span style="font-size:1.15rem; font-family:Montserrat,sans-serif;">🎁 Compartir Link de Referido</span>',
+            html: `
+                <div style="text-align:left; font-size:0.85rem; color:#ccc; line-height:1.6; font-family:'Montserrat',sans-serif;">
+                    <p style="margin-bottom:12px; font-size:0.8rem; color:#aaa; text-align:center;">Gana <strong style="color:#25D366;">+$0.05 USDT</strong> de saldo acumulable por cada amigo que haga su primera recarga.</p>
+                    
+                    <div style="background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.15); border-radius:12px; padding:12px; margin-bottom:18px; font-size:0.78rem; font-style:italic; max-height:90px; overflow-y:auto; color:#00f0ff; line-height:1.4; word-break:break-word;">
+                        "${promoMessage}"
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <a href="https://api.whatsapp.com/send?text=${encodedMessage}" target="_blank" class="swal-share-btn wa-share">
+                            <i class="fa-brands fa-whatsapp"></i> Compartir por WhatsApp
+                        </a>
+                        <button id="swal-share-copy-msg" class="swal-share-btn msg-share">
+                            <i class="fa-solid fa-message"></i> Copiar Mensaje + Link
+                        </button>
+                        <button id="swal-share-copy-link" class="swal-share-btn link-share">
+                            <i class="fa-solid fa-link"></i> Copiar Solo Link
+                        </button>
+                        ${canNativeShare ? `
+                        <button id="swal-share-native" class="swal-share-btn native-share">
+                            <i class="fa-solid fa-share-nodes"></i> Más opciones de envío
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true,
+            background: 'rgba(20, 10, 35, 0.98)',
+            color: '#fff',
+            didOpen: () => {
+                document.getElementById('swal-share-copy-msg').addEventListener('click', () => {
+                    navigator.clipboard.writeText(promoMessage).then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Mensaje Copiado! 📝',
+                            text: 'El mensaje promocional con tu link se copió al portapapeles. ¡Listo para pegar!',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            background: 'rgba(20, 10, 35, 0.95)',
+                            color: '#fff'
+                        });
+                        confetti({ particleCount: 25, spread: 35, origin: { y: 0.8 } });
+                    });
+                });
+
+                document.getElementById('swal-share-copy-link').addEventListener('click', () => {
+                    navigator.clipboard.writeText(refLink).then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Enlace Copiado! 🔗',
+                            text: 'El link de referido directo se copió al portapapeles.',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            background: 'rgba(20, 10, 35, 0.95)',
+                            color: '#fff'
+                        });
+                        confetti({ particleCount: 25, spread: 35, origin: { y: 0.8 } });
+                    });
+                });
+
+                if (canNativeShare) {
+                    document.getElementById('swal-share-native').addEventListener('click', async () => {
+                        try {
+                            await navigator.share({
+                                title: 'RecargasNey.com',
+                                text: promoMessage,
+                                url: refLink
+                            });
+                        } catch (err) {
+                            console.error('Error al compartir nativamente:', err);
+                        }
+                    });
+                }
+            }
         });
     };
     async function loadUserPoints(uid) {
