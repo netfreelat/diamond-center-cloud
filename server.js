@@ -141,11 +141,11 @@ async function verifyBDVPayment(montoReportado, referencia4) {
     }
 }
 
-const { checkBinanceEmails, markEmailAsRead: originalMarkEmailAsRead } = require('./binance-service.js');
+const { checkBinanceEmails, verifyBinancePaymentById, markEmailAsRead: originalMarkEmailAsRead } = require('./binance-service.js');
 let simulatedBinanceEmails = [];
 const markEmailAsRead = async (uid) => {
     if (typeof uid === 'string' && uid.startsWith('mock-')) {
-        console.log(`[BINANCE] Correo simulado ${uid} marcado como leído.`);
+        console.log(`[BINANCE] Pago simulado ${uid} procesado.`);
         simulatedBinanceEmails = simulatedBinanceEmails.filter(e => e.uid !== uid);
         return;
     }
@@ -1624,7 +1624,7 @@ async function runAutoApprovalCycle() {
     // o usando el panel admin, independientemente de si BDV-AUTO está ON o OFF.
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── BINANCE AUTO-APROBACIÓN (solo si el toggle está ON) ──────────────────
+    // ── BINANCE AUTO-APROBACIÓN vía API Key (solo si el toggle está ON) ──────
     if (binanceAutoApproveEnabled && !binanceAutoApproveRunning) {
         const pendingBinance = Object.entries(orders).filter(
             ([, o]) => o.status === 'pending' && o.method === 'binance'
@@ -1632,123 +1632,119 @@ async function runAutoApprovalCycle() {
 
         if (pendingBinance.length > 0) {
             binanceAutoApproveRunning = true;
-            console.log(`[BINANCE-AUTO] 💛 Verificando ${pendingBinance.length} pedido(s) Binance pendiente(s)...`);
+            console.log(`[BINANCE-AUTO] 💛 Verificando ${pendingBinance.length} pedido(s) Binance pendiente(s) vía API...`);
 
             try {
-                // Leer correos de Binance Pay (reales + simulados)
-                let emailPayments = [];
-                if (simulatedBinanceEmails.length > 0) {
-                    emailPayments = [...simulatedBinanceEmails];
-                    console.log(`[BINANCE-AUTO] 🧪 Usando ${emailPayments.length} pago(s) simulado(s).`);
-                } else {
-                    emailPayments = await checkBinanceEmails();
-                    console.log(`[BINANCE-AUTO] 📧 Correos Binance encontrados: ${emailPayments.length}`);
-                }
+                for (const [ref, order] of pendingBinance) {
+                    if (order.status !== 'pending') continue;
 
-                if (emailPayments.length === 0) {
-                    // Si no hay correos, revisar si algún pedido lleva más de 20 min → notificar admin
-                    for (const [ref, order] of pendingBinance) {
+                    // El campo 'ref' ES el Transaction ID / Order ID que el cliente ingresó
+                    const clientTxId = ref;
+
+                    // Extraer el precio esperado en USDT del campo price
+                    // Formato: "3.85USDT/2520.35Bs" o "3.85 USDT"
+                    let expectedUsdt = 0;
+                    try {
+                        const usdtMatch = (order.price || '').match(/([\d.]+)\s*USDT/i);
+                        if (usdtMatch) expectedUsdt = parseFloat(usdtMatch[1]);
+                    } catch (e) {}
+
+                    if (expectedUsdt <= 0) {
+                        console.warn(`[BINANCE-AUTO] ⚠️ Pedido ${ref}: no se pudo extraer monto USDT de price='${order.price}'`);
+                        continue;
+                    }
+
+                    // ── Modo simulado ────────────────────────────────────────────
+                    if (simulatedBinanceEmails.length > 0) {
+                        const simPago = simulatedBinanceEmails.find(e =>
+                            Math.abs(e.amount - expectedUsdt) <= 0.05
+                        );
+                        if (!simPago) continue;
+
+                        console.log(`[BINANCE-AUTO] 🧪 Pago simulado de ${simPago.amount} USDT coincide con pedido ${ref}`);
+                        const binanceFullRef = `BINANCE-SIM-${simPago.uid}-${ref}`;
+                        pagosValidados[binanceFullRef] = { amount: simPago.amount, date: new Date().toISOString(), used: false, binanceTxId: simPago.uid };
+                        savePagos();
+                        await processPendingOrder(binanceFullRef, ref);
+                        simulatedBinanceEmails = simulatedBinanceEmails.filter(e => e.uid !== simPago.uid);
+                        continue;
+                    }
+
+                    // ── Modo real: verificar por Transaction ID exacto ────────────
+                    console.log(`[BINANCE-AUTO] 🔍 Consultando API Binance para TxID: ${clientTxId} | Monto esperado: ${expectedUsdt} USDT`);
+
+                    const result = await verifyBinancePaymentById(clientTxId, expectedUsdt);
+
+                    if (result.found && result.amountValid) {
+                        // ✅ Pago confirmado por API con Transaction ID exacto
+                        console.log(`[BINANCE-AUTO] ✅ Pago confirmado: TxID=${clientTxId} | ${result.amount} USDT`);
+
+                        // Anti-duplicado: verificar en Supabase
+                        const { data: dbCheck } = await supabase.from('ff_orders').select('status').eq('ref', ref).single();
+                        if (dbCheck && dbCheck.status !== 'pending') {
+                            console.log(`[BINANCE-AUTO] 🛑 Pedido ${ref} ya fue procesado en Supabase (${dbCheck.status}). Saltando.`);
+                            continue;
+                        }
+
+                        // Verificar que el TxID no haya sido usado antes
+                        const txAlreadyUsed = Object.values(pagosValidados).some(
+                            p => p.binanceTxId === clientTxId && p.used
+                        );
+                        if (txAlreadyUsed) {
+                            console.log(`[BINANCE-AUTO] 🛑 TxID ${clientTxId} ya fue usado anteriormente. Rechazando duplicado.`);
+                            orders[ref].status = 'rejected';
+                            orders[ref].reason = 'Transaction ID de Binance ya utilizado en otro pedido';
+                            updateOrderStatus(ref, 'rejected', null, 'Transaction ID de Binance ya utilizado en otro pedido');
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Binance Duplicado');
+                            sendPushToUser(orders[ref].login_uid || orders[ref].uid, 'Pago Rechazado ❌', `El ID de transacción Binance ya fue utilizado en otro pedido.`, '/icon-192.png', '/historial');
+                            continue;
+                        }
+
+                        // Registrar pago y disparar recarga
+                        const binanceFullRef = `BINANCE-${clientTxId}`;
+                        pagosValidados[binanceFullRef] = {
+                            amount: result.amount,
+                            date: new Date().toISOString(),
+                            used: false,
+                            binanceTxId: clientTxId
+                        };
+                        savePagos();
+
+                        console.log(`[BINANCE-AUTO] 🚀 Iniciando auto-aprobación para pedido ${ref}...`);
+                        await processPendingOrder(binanceFullRef, ref);
+
+                    } else if (result.found && !result.amountValid) {
+                        // Pago encontrado pero monto diferente → notificar admin, no rechazar aún
+                        console.warn(`[BINANCE-AUTO] ⚠️ TxID ${clientTxId} encontrado pero monto incorrecto: recibido ${result.amount} USDT, esperado ${expectedUsdt} USDT`);
+                        if (!order._binance_amount_alerted) {
+                            orders[ref]._binance_amount_alerted = true;
+                            notifyAdminsJadhError(
+                                { ...order, ref },
+                                `Pago Binance con TxID ${clientTxId} tiene monto INCORRECTO.\nRecibido: ${result.amount} USDT\nEsperado: ${expectedUsdt} USDT\nVerificar y aprobar manualmente si corresponde.`,
+                                'Binance API'
+                            );
+                        }
+
+                    } else {
+                        // No encontrado — si lleva +20 min notificar admin una sola vez
                         const orderTime = new Date(order.time);
                         const diffMin = (NOW - orderTime) / (1000 * 60);
                         if (diffMin > 20 && !order._binance_alerted) {
                             orders[ref]._binance_alerted = true;
-                            console.warn(`[BINANCE-AUTO] ⚠️ Pedido Binance ${ref} lleva ${diffMin.toFixed(0)} min sin correo. Notificando admin...`);
+                            console.warn(`[BINANCE-AUTO] ⚠️ Pedido ${ref} lleva ${diffMin.toFixed(0)} min sin confirmación API. Notificando admin...`);
                             notifyAdminsJadhError(
                                 { ...order, ref },
-                                `Pedido Binance de ${order.pack} (${order.price}) lleva ${diffMin.toFixed(0)} minutos sin que llegue el correo de confirmación de pago. Ref cliente: ${ref}`,
-                                'Binance Auto-Aprobación'
+                                `Pedido Binance de ${order.pack} (${order.price}) lleva ${diffMin.toFixed(0)} min sin confirmarse.\nTxID reportado por cliente: ${clientTxId}\nVerificar manualmente en la app Binance.`,
+                                'Binance API'
                             );
-                        }
-                    }
-                } else {
-                    // Hay correos de pago — intentar matchear con pedidos pendientes por MONTO USDT
-                    for (const emailPago of emailPayments) {
-                        const emailAmount = emailPago.amount;
-                        console.log(`[BINANCE-AUTO] 💰 Procesando pago de ${emailAmount} USDT (correo ID: ${emailPago.uid})`);
-
-                        // Verificar si este correo ya fue procesado (registrado en pagosValidados)
-                        const alreadyUsed = Object.values(pagosValidados).some(
-                            p => p.binanceEmailUid === emailPago.uid && p.used
-                        );
-                        if (alreadyUsed) {
-                            console.log(`[BINANCE-AUTO] ⏩ Correo ${emailPago.uid} ya fue procesado. Saltando.`);
-                            continue;
-                        }
-
-                        // Buscar el pedido Binance pendiente cuyo monto coincida
-                        let matchedRef = null;
-                        let matchedOrder = null;
-
-                        for (const [ref, order] of pendingBinance) {
-                            if (order.status !== 'pending') continue;
-
-                            // Extraer el precio esperado en USDT del campo price
-                            // Formato: "3.85USDT/2520.35Bs" o "3.85 USDT"
-                            let expectedUsdt = 0;
-                            try {
-                                const usdtMatch = (order.price || '').match(/([\d.]+)\s*USDT/i);
-                                if (usdtMatch) expectedUsdt = parseFloat(usdtMatch[1]);
-                            } catch (e) {}
-
-                            if (expectedUsdt <= 0) continue;
-
-                            // Tolerancia: ±0.05 USDT (por diferencias de centavos)
-                            const diff = Math.abs(emailAmount - expectedUsdt);
-                            if (diff <= 0.05) {
-                                matchedRef = ref;
-                                matchedOrder = order;
-                                console.log(`[BINANCE-AUTO] ✅ Match encontrado: correo ${emailAmount} USDT ↔ pedido ${ref} (${expectedUsdt} USDT). Diferencia: ${diff.toFixed(4)} USDT`);
-                                break;
-                            }
-                        }
-
-                        if (matchedRef && matchedOrder) {
-                            // Verificar que el pedido aún esté pendiente en Supabase (anti-duplicado)
-                            const { data: dbCheck } = await supabase.from('ff_orders').select('status').eq('ref', matchedRef).single();
-                            if (dbCheck && dbCheck.status !== 'pending') {
-                                console.log(`[BINANCE-AUTO] 🛑 Pedido ${matchedRef} ya fue procesado en Supabase (${dbCheck.status}). Saltando.`);
-                                await markEmailAsRead(emailPago.uid);
-                                continue;
-                            }
-
-                            // Registrar el pago en pagosValidados con el Order ID de Binance como ref completa
-                            const binanceFullRef = `BINANCE-${emailPago.uid}-${matchedRef}`;
-                            pagosValidados[binanceFullRef] = {
-                                amount: emailAmount,
-                                date: new Date().toISOString(),
-                                used: false,
-                                binanceEmailUid: emailPago.uid
-                            };
-                            savePagos();
-
-                            // Disparar la auto-aprobación via processPendingOrder
-                            console.log(`[BINANCE-AUTO] 🚀 Iniciando auto-aprobación para pedido ${matchedRef}...`);
-                            const approved = await processPendingOrder(binanceFullRef, matchedRef);
-
-                            if (approved) {
-                                console.log(`[BINANCE-AUTO] ✅ Pedido ${matchedRef} auto-aprobado vía Binance Pay.`);
-                                // Marcar el correo como leído para no procesarlo de nuevo
-                                await markEmailAsRead(emailPago.uid);
-                            } else {
-                                console.warn(`[BINANCE-AUTO] ⚠️ processPendingOrder retornó false para ${matchedRef}. Puede que ya fue procesado o falló Jadh.`);
-                                // Marcar igual como leído para no reintentar infinitamente
-                                await markEmailAsRead(emailPago.uid);
-                            }
                         } else {
-                            console.warn(`[BINANCE-AUTO] ⚠️ Pago de ${emailAmount} USDT no encontró pedido pendiente que coincida. ¿Pago extra o pedido ya aprobado?`);
-                            // Notificar al admin de un pago sin pedido asignable
-                            notifyAdminsJadhError(
-                                { name: 'Sistema', uid: '—', pack: `${emailAmount} USDT`, price: `${emailAmount} USDT`, ref: emailPago.uid, wa: 'N/A' },
-                                `Se recibió un pago Binance de ${emailAmount} USDT pero no hay ningún pedido Binance pendiente que coincida con ese monto. Verifica manualmente.`,
-                                'Binance Auto-Aprobación'
-                            );
-                            // Marcar como leído para no crear spam de notificaciones
-                            await markEmailAsRead(emailPago.uid);
+                            console.log(`[BINANCE-AUTO] ⏳ TxID ${clientTxId} no encontrado aún (${diffMin.toFixed(0)} min). Reintentando en el próximo ciclo.`);
                         }
                     }
                 }
             } catch (binanceCycleErr) {
-                console.error('[BINANCE-AUTO] ❌ Error en ciclo Binance:', binanceCycleErr.message);
+                console.error('[BINANCE-AUTO] ❌ Error en ciclo Binance API:', binanceCycleErr.message);
             } finally {
                 binanceAutoApproveRunning = false;
             }
