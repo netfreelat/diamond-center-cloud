@@ -1,204 +1,211 @@
 /**
- * binance-service.js — Verificación de pagos Binance Pay vía API Oficial
+ * binance-service.js — Verificación de pagos Binance Pay vía correo IMAP
  *
- * Endpoint: GET /sapi/v1/pay/transactions
- * Docs: https://developers.binance.com/docs/pay/api-endpoint/Get-Pay-Trade-History
- *
- * Permisos necesarios en la API Key de Binance:
- *   ✅ Enable Reading (solo lectura — NO se necesita trading ni retiros)
+ * Lee correos de confirmación de pago de Binance Pay en Gmail.
+ * Después de procesar cada correo lo ELIMINA automáticamente para que
+ * el buzón nunca se llene.
  *
  * Variables de entorno requeridas:
- *   BINANCE_API_KEY    → API Key de tu cuenta Binance
- *   BINANCE_API_SECRET → Secret Key de tu cuenta Binance
+ *   BINANCE_EMAIL_USER     → correo Gmail que recibe notificaciones de Binance
+ *   BINANCE_EMAIL_PASSWORD → contraseña de aplicación de Google (16 caracteres)
  */
 
-const https = require('https');
-const crypto = require('crypto');
+const imaps = require('imap-simple');
 
-const BINANCE_API_KEY    = process.env.BINANCE_API_KEY;
-const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
+const BINANCE_EMAIL_USER     = process.env.BINANCE_EMAIL_USER;
+const BINANCE_EMAIL_PASSWORD = process.env.BINANCE_EMAIL_PASSWORD;
 
-// ─── Utilidades ─────────────────────────────────────────────────────────────
-
-function signQuery(queryString) {
-    return crypto
-        .createHmac('sha256', BINANCE_API_SECRET)
-        .update(queryString)
-        .digest('hex');
+function getImapConfig() {
+    return {
+        imap: {
+            user: BINANCE_EMAIL_USER,
+            password: BINANCE_EMAIL_PASSWORD,
+            host: 'imap.gmail.com',
+            port: 993,
+            tls: true,
+            authTimeout: 15000,
+            tlsOptions: { rejectUnauthorized: false }
+        }
+    };
 }
-
-function binanceRequest(path, params = {}) {
-    return new Promise((resolve, reject) => {
-        const timestamp = Date.now();
-        const queryBase = Object.entries({ ...params, timestamp, recvWindow: 10000 })
-            .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-            .join('&');
-        const signature = signQuery(queryBase);
-        const fullQuery = `${queryBase}&signature=${signature}`;
-
-        const options = {
-            hostname: 'api.binance.com',
-            path: `${path}?${fullQuery}`,
-            method: 'GET',
-            headers: {
-                'X-MBX-APIKEY': BINANCE_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            timeout: 10000
-        };
-
-        const req = https.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                try {
-                    resolve(JSON.parse(body));
-                } catch (e) {
-                    reject(new Error(`JSON parse error: ${body.substring(0, 200)}`));
-                }
-            });
-        });
-
-        req.on('error', reject);
-        req.on('timeout', () => {
-            req.destroy();
-            reject(new Error('Timeout en la petición a Binance API'));
-        });
-        req.end();
-    });
-}
-
-// ─── Función principal: obtener pagos recibidos recientes ────────────────────
 
 /**
- * Consulta las transacciones Binance Pay recibidas en las últimas `hours` horas.
- * Retorna un array de { transactionId, amount, currency, time, status }
+ * Busca correos no leídos de Binance Pay en las últimas 48h
+ * y extrae los montos USDT de pagos recibidos.
  */
-async function checkBinancePayments(hours = 24) {
-    if (!BINANCE_API_KEY || !BINANCE_API_SECRET) {
-        console.error('[BINANCE-API] ❌ Faltan BINANCE_API_KEY o BINANCE_API_SECRET en .env');
+async function checkBinanceEmails() {
+    if (!BINANCE_EMAIL_USER || !BINANCE_EMAIL_PASSWORD || BINANCE_EMAIL_USER === 'tu_correo_binance@gmail.com') {
+        console.error('[BINANCE] ❌ Credenciales de correo no configuradas en .env');
         return [];
     }
 
+    let connection;
     try {
-        const startTime = Date.now() - hours * 60 * 60 * 1000;
+        connection = await imaps.connect(getImapConfig());
+        await connection.openBox('INBOX');
 
-        const data = await binanceRequest('/sapi/v1/pay/transactions', {
-            startTime,
-            limit: 100
-        });
+        const since = new Date(Date.now() - 48 * 3600 * 1000); // Últimas 48h
 
-        if (data.code !== '000000' && data.code !== 0) {
-            console.error(`[BINANCE-API] ❌ Error de API: code=${data.code} msg=${data.message}`);
-            return [];
+        const searchCriteria = [
+            ['UNSEEN'],
+            ['SINCE', since.toISOString()],
+            ['OR', ['FROM', 'binance'], ['SUBJECT', 'Binance Pay']]
+        ];
+
+        const fetchOptions = {
+            bodies: ['HEADER', 'TEXT'],
+            markSeen: false
+        };
+
+        const results = await connection.search(searchCriteria, fetchOptions);
+        const pagosRecibidos = [];
+
+        for (const mail of results) {
+            const textPart = mail.parts.find(p => p.which === 'TEXT');
+            if (!textPart || !textPart.body) continue;
+
+            let bodyStr = textPart.body;
+            // Decodificar base64 si aplica
+            if (bodyStr.indexOf('base64') > -1 || !bodyStr.includes(' ')) {
+                try { bodyStr = Buffer.from(bodyStr, 'base64').toString('utf8'); } catch (e) {}
+            }
+
+            const plainText = bodyStr.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const lowerText = plainText.toLowerCase();
+
+            // Detectar confirmación de pago recibido
+            const esRecibido =
+                lowerText.includes('recibido un pago') ||
+                lowerText.includes('received a payment') ||
+                lowerText.includes('has recibido') ||
+                lowerText.includes('te ha enviado') ||
+                lowerText.includes('payment received') ||
+                lowerText.includes('you received') ||
+                lowerText.includes('has been credited');
+
+            if (esRecibido) {
+                const amountMatch = plainText.match(/([0-9.,]+)\s*USDT/i);
+                if (amountMatch) {
+                    const amount = parseFloat(amountMatch[1].replace(',', '.'));
+                    if (!isNaN(amount) && amount > 0) {
+                        pagosRecibidos.push({
+                            uid: mail.attributes.uid,
+                            amount,
+                            text: plainText.substring(0, 300)
+                        });
+                        console.log(`[BINANCE] 💛 Pago detectado en correo: ${amount} USDT (uid: ${mail.attributes.uid})`);
+                    }
+                }
+            }
         }
 
-        const transactions = Array.isArray(data.data) ? data.data : [];
-
-        // Filtrar solo pagos RECIBIDOS en USDT con estado SUCCESS
-        const pagosRecibidos = transactions
-            .filter(tx =>
-                (tx.orderType === 'C2C' || tx.orderType === 'PAY_IN' || !tx.orderType) &&
-                (tx.currency === 'USDT' || tx.fundsDetail?.some(f => f.currency === 'USDT')) &&
-                tx.status !== 'FAIL'
-            )
-            .map(tx => {
-                // El monto puede estar en tx.amount directamente o en fundsDetail
-                let amount = parseFloat(tx.amount || 0);
-                if (!amount && tx.fundsDetail) {
-                    const usdtFund = tx.fundsDetail.find(f => f.currency === 'USDT');
-                    if (usdtFund) amount = parseFloat(usdtFund.amount || 0);
-                }
-                return {
-                    transactionId: tx.transactionId,
-                    amount,
-                    currency: tx.currency || 'USDT',
-                    time: tx.transactionTime,
-                    status: tx.status,
-                    raw: tx
-                };
-            })
-            .filter(tx => tx.amount > 0);
-
-        console.log(`[BINANCE-API] ✅ ${pagosRecibidos.length} pago(s) USDT recibido(s) en las últimas ${hours}h`);
+        connection.end();
         return pagosRecibidos;
 
     } catch (err) {
-        console.error('[BINANCE-API] ❌ Error consultando pagos:', err.message);
+        console.error('[BINANCE] ❌ Error leyendo correos:', err.message);
+        if (connection) try { connection.end(); } catch (_) {}
         return [];
     }
 }
 
 /**
- * Verifica si existe un pago Binance Pay con un Transaction ID específico.
- * Ideal para matching exacto cuando el cliente provee su Order ID.
- *
- * @param {string} transactionId  — El Order ID que el cliente ve en su app Binance
- * @param {number} expectedAmount — Monto USDT esperado (para validar que no sea otra transacción)
- * @returns {{ found: boolean, amount: number, status: string }}
- */
-async function verifyBinancePaymentById(transactionId, expectedAmount) {
-    if (!BINANCE_API_KEY || !BINANCE_API_SECRET) {
-        console.error('[BINANCE-API] ❌ Faltan credenciales API');
-        return { found: false, amount: 0 };
-    }
-
-    try {
-        // Buscar en las últimas 48h para cubrir posibles demoras del cliente
-        const recentPayments = await checkBinancePayments(48);
-
-        const match = recentPayments.find(tx =>
-            tx.transactionId === transactionId ||
-            tx.transactionId?.includes(transactionId) ||
-            transactionId?.includes(tx.transactionId)
-        );
-
-        if (match) {
-            const diff = Math.abs(match.amount - expectedAmount);
-            const valid = diff <= 0.05; // Tolerancia de ±0.05 USDT
-            console.log(`[BINANCE-API] ${valid ? '✅' : '⚠️'} TxID ${transactionId}: ${match.amount} USDT (esperado: ${expectedAmount} USDT, diff: ${diff.toFixed(4)})`);
-            return { found: true, amount: match.amount, status: match.status, amountValid: valid };
-        }
-
-        console.log(`[BINANCE-API] 🔍 TxID ${transactionId} no encontrado en las últimas 48h`);
-        return { found: false, amount: 0 };
-
-    } catch (err) {
-        console.error('[BINANCE-API] Error verificando TxID:', err.message);
-        return { found: false, amount: 0, error: err.message };
-    }
-}
-
-/**
- * Compatibilidad hacia atrás: usado por server.js como markEmailAsRead.
- * Con la API ya no hay correos que marcar — esta función es un no-op.
+ * Marca el correo como leído Y lo mueve a la Papelera para liberar espacio.
+ * Esto evita que el Gmail se llene con correos de Binance acumulados.
  */
 async function markEmailAsRead(uid) {
-    // No-op: con la API de Binance no hay correos IMAP que gestionar
-    if (typeof uid === 'string' && uid.startsWith('mock-')) {
-        console.log(`[BINANCE-API] Pago simulado ${uid} procesado.`);
-    } else {
-        console.log(`[BINANCE-API] ℹ️ markEmailAsRead llamado con uid=${uid} — no-op en modo API.`);
+    if (!BINANCE_EMAIL_USER || !BINANCE_EMAIL_PASSWORD) return;
+
+    let connection;
+    try {
+        connection = await imaps.connect(getImapConfig());
+        await connection.openBox('INBOX');
+
+        // Marcar como leído
+        await connection.addFlags(uid, ['\\Seen']);
+
+        // Mover a Papelera de Gmail para liberar espacio
+        try {
+            await connection.moveMessage(uid, '[Gmail]/Trash');
+            console.log(`[BINANCE] 🗑️  Correo ${uid} eliminado (espacio liberado).`);
+        } catch (moveErr) {
+            // Fallback: marcar como eliminado + expunge
+            try {
+                await connection.addFlags(uid, ['\\Deleted']);
+                await new Promise((resolve, reject) => {
+                    connection.imap.expunge((err) => err ? reject(err) : resolve());
+                });
+                console.log(`[BINANCE] 🗑️  Correo ${uid} eliminado vía expunge.`);
+            } catch (deleteErr) {
+                console.warn(`[BINANCE] ⚠️  No se pudo eliminar correo ${uid}: ${deleteErr.message}`);
+            }
+        }
+
+        connection.end();
+    } catch (err) {
+        console.error(`[BINANCE] Error procesando correo ${uid}:`, err.message);
+        if (connection) try { connection.end(); } catch (_) {}
     }
 }
 
 /**
- * Compatibilidad hacia atrás con server.js que llama checkBinanceEmails().
- * Redirige a checkBinancePayments() devolviendo el mismo formato.
+ * Limpieza masiva: elimina TODOS los correos de Binance del INBOX
+ * que tengan más de `daysOld` días. Ejecutar una vez para limpiar el buzón.
  */
-async function checkBinanceEmails() {
-    const payments = await checkBinancePayments(24);
-    // Adaptar formato al que espera server.js: { uid, amount, text }
-    return payments.map(p => ({
-        uid: p.transactionId,   // usamos el transactionId como "uid" del correo
-        amount: p.amount,
-        text: `Binance Pay TxID=${p.transactionId} | ${p.amount} USDT | ${new Date(p.time).toISOString()}`
-    }));
+async function cleanupOldBinanceEmails(daysOld = 2) {
+    if (!BINANCE_EMAIL_USER || !BINANCE_EMAIL_PASSWORD) return 0;
+
+    let connection;
+    try {
+        connection = await imaps.connect(getImapConfig());
+        await connection.openBox('INBOX');
+
+        const cutoff = new Date(Date.now() - daysOld * 24 * 3600 * 1000);
+        const searchCriteria = [
+            ['BEFORE', cutoff.toISOString()],
+            ['OR', ['FROM', 'binance'], ['SUBJECT', 'Binance']]
+        ];
+
+        const mails = await connection.search(searchCriteria, { bodies: [], struct: false });
+
+        if (mails.length === 0) {
+            console.log(`[BINANCE-CLEANUP] ✅ No hay correos viejos de Binance que limpiar.`);
+            connection.end();
+            return 0;
+        }
+
+        console.log(`[BINANCE-CLEANUP] 🗑️  Eliminando ${mails.length} correo(s) de Binance viejos...`);
+
+        for (const mail of mails) {
+            try {
+                await connection.moveMessage(mail.attributes.uid, '[Gmail]/Trash');
+            } catch (e) {
+                try { await connection.addFlags(mail.attributes.uid, ['\\Deleted']); } catch (_) {}
+            }
+        }
+
+        try {
+            await new Promise((resolve, reject) => {
+                connection.imap.expunge((err) => err ? reject(err) : resolve());
+            });
+        } catch (_) {}
+
+        console.log(`[BINANCE-CLEANUP] ✅ ${mails.length} correo(s) eliminado(s). Espacio liberado.`);
+        connection.end();
+        return mails.length;
+
+    } catch (err) {
+        console.error('[BINANCE-CLEANUP] ❌ Error:', err.message);
+        if (connection) try { connection.end(); } catch (_) {}
+        return 0;
+    }
 }
 
+// Compatibilidad con server.js que espera estos exports
 module.exports = {
-    checkBinanceEmails,       // compatibilidad con server.js existente
-    checkBinancePayments,     // nueva función directa
-    verifyBinancePaymentById, // verificación exacta por Transaction ID
-    markEmailAsRead           // no-op de compatibilidad
+    checkBinanceEmails,
+    markEmailAsRead,
+    cleanupOldBinanceEmails,
+    // No-op para compatibilidad con código que importe verifyBinancePaymentById
+    verifyBinancePaymentById: async () => ({ found: false, amount: 0 })
 };
