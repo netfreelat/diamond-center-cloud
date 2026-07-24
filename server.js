@@ -737,7 +737,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                   `• Recompensa obtenida: +${earnedUsdt} crédito\n` +
                   `• Saldo disponible: ${totalUsdt} crédito\n` +
                   `Puedes consultar nuestro catálogo respondiendo la palabra PRECIO.\n` +
-                  `Gracias por tu compra en RecargasNey.`;
+                  `Gracias por tu compra.`;
         }
     } else {
         const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
@@ -3046,7 +3046,7 @@ const server = http.createServer(async (req, res) => {
                           `💎 *Paquete:* ${order.pack}\n` +
                           `━━━━━━━━━━━━━━━\n\n` +
                           `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
-                          `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
+                          `¡Gracias por tu preferencia! ✨`;
                 } else {
                     const name = (order.name && order.name !== '—' && order.name !== '-') ? order.name : 'Cliente';
                     const packRaw = (order.pack || '').trim();
@@ -3073,7 +3073,7 @@ const server = http.createServer(async (req, res) => {
                           `• Recompensa obtenida: +${earnedUsdt} crédito\n` +
                           `• Saldo disponible: ${totalUsdt} crédito\n` +
                           `Puedes consultar nuestro catálogo respondiendo la palabra PRECIO.\n` +
-                          `Gracias por tu compra en RecargasNey.`;
+                          `Gracias por tu compra.`;
                 }
             } else if (isRejected) {
                 const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
