@@ -56,6 +56,45 @@ if (vapidPublicKey && vapidPrivateKey) {
     console.warn('[PUSH] ⚠️ ADVERTENCIA: Faltan VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY en variables de entorno.');
 }
 
+function normalizeRef(ref) {
+    if (!ref) return '';
+    const clean = ref.toString().trim().replace(/[^a-zA-Z0-9]/g, '');
+    if (/^\d+$/.test(clean)) {
+        return clean.replace(/^0+/, '') || '0';
+    }
+    return clean.toLowerCase();
+}
+
+function areRefsSimilar(ref1, ref2) {
+    if (!ref1 || !ref2) return false;
+    
+    const r1 = ref1.toString().trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const r2 = ref2.toString().trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    
+    if (!r1 || !r2) return false;
+    if (r1 === r2) return true;
+
+    // Normalizar ceros a la izquierda para comparar valor numérico real (ej: "000000969" === "969")
+    const n1 = normalizeRef(r1);
+    const n2 = normalizeRef(r2);
+    if (n1 === n2) return true;
+
+    // Solo considerar fin-con-fin si la menor referencia tiene al menos 3 dígitos significativos
+    const minLen = Math.min(n1.length, n2.length);
+    if (minLen >= 3 && (n1.endsWith(n2) || n2.endsWith(n1))) {
+        return true;
+    }
+
+    // Si ambos son puramente numéricos y tienen al menos 6 dígitos significativos, comparar los últimos 6 dígitos
+    const isNum1 = /^\d+$/.test(n1);
+    const isNum2 = /^\d+$/.test(n2);
+    if (isNum1 && isNum2 && n1.length >= 6 && n2.length >= 6) {
+        return n1.slice(-6) === n2.slice(-6);
+    }
+
+    return false;
+}
+
 async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath = '/') {
     if (!vapidPublicKey || !vapidPrivateKey) {
         console.warn(`[PUSH] Intentando enviar push a ${uid} pero VAPID no está configurado.`);
@@ -324,6 +363,51 @@ let waBotStatus = 'Desconectado';
 let waBotQR = '';
 let pagosValidados = {};
 let users = {};
+let waContacts = {};
+
+function normalizePhone(num) {
+    if (!num) return null;
+    let clean = num.toString().replace(/\D/g, '');
+    if (!clean) return null;
+    if (clean.startsWith('0')) {
+        clean = '58' + clean.substring(1);
+    } else if (!clean.startsWith('58') && clean.length === 10) {
+        clean = '58' + clean;
+    }
+    if (clean.length < 8 || clean.length > 15) return null;
+    return clean;
+}
+
+async function saveWaContact(phone, name, uid = null, source = 'web') {
+    const clean = normalizePhone(phone);
+    if (!clean) return;
+
+    const existing = waContacts[clean] || {};
+    const now = new Date().toISOString();
+    
+    let finalName = existing.name || 'Cliente';
+    if (name && name !== 'Cliente' && name !== 'Jugador' && name !== '—' && name !== '-') {
+        finalName = name;
+    }
+
+    const contactObj = {
+        phone: clean,
+        name: finalName,
+        uid: uid || existing.uid || null,
+        source: existing.source || source,
+        orders_count: (existing.orders_count || 0) + (source === 'web_order' ? 1 : 0),
+        last_seen: now,
+        created_at: existing.created_at || now
+    };
+
+    waContacts[clean] = contactObj;
+
+    if (supabase) {
+        try {
+            await supabase.from('ff_wa_contacts').upsert(contactObj, { onConflict: 'phone' });
+        } catch (_) {}
+    }
+}
 const JADH_COSTS = {
     '100':  0.81,   // 110  💎
     '310':  2.59,   // 341  💎
@@ -466,6 +550,31 @@ async function loadFromSupabase() {
         if (ordersData) {
             ordersData.forEach(o => { orders[o.ref] = { ...o, time: o.time }; });
         }
+
+        // Contactos WhatsApp (ff_wa_contacts + backfill automático desde ff_orders y ff_users)
+        try {
+            const { data: contactsData } = await supabase.from('ff_wa_contacts').select('*');
+            if (contactsData) {
+                contactsData.forEach(c => { if (c.phone) waContacts[c.phone] = c; });
+            }
+        } catch (_) {}
+
+        // Sincronizar números de TODOS los pedidos históricos (ff_orders) y usuarios (ff_users)
+        try {
+            const { data: allOrdersWA } = await supabase.from('ff_orders').select('uid, name, wa, time').not('wa', 'is', null);
+            if (allOrdersWA) {
+                allOrdersWA.forEach(o => {
+                    if (o.wa && o.wa !== 'No provisto') saveWaContact(o.wa, o.name, o.uid || null, 'web_order');
+                });
+            }
+        } catch (e) {
+            console.error('[SUPABASE] Error cargando números históricos de ff_orders:', e.message);
+        }
+
+        Object.values(users).forEach(u => {
+            if (u.phone) saveWaContact(u.phone, u.name, u.uid || null, 'web_user');
+        });
+        console.log(`[SUPABASE] 📇 ${Object.keys(waContacts).length} contactos de WhatsApp sincronizados.`);
         
         // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
         const { data: settingsData, error: settingsError } = await supabase
@@ -613,63 +722,25 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
             }
 
             const isBloodStrike = order.juego === 'bloodstrike';
-
-            const headerLine = isBloodStrike
-                ? `🔫 *¡DISPARO! COMPRA EXITOSA* 🔫`
-                : `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥`;
             const idLabel = isBloodStrike ? 'ID Blood Strike' : 'ID Garena';
 
-            msg = `${headerLine}\n\n` +
-                  `¡Hola, *${order.name}*! Tu pedido de ${itemType} ha sido procesado con éxito. 🚀\n\n` +
-                  `━━━━━━━━━━━━━━━\n` +
+            msg = `✅ *¡Recarga Procesada con Éxito!*\n\n` +
                   `👤 *Jugador:* ${order.name}\n` +
                   `🆔 *${idLabel}:* ${order.uid}\n` +
-                  `💎 *Paquete:* ${order.pack}\n` +
-                  `━━━━━━━━━━━━━━━\n\n` +
-                  `✅ *Estado:* ${itemStatus}`;
+                  `💎 *Paquete:* ${order.pack}`;
 
             const userObj = users[order.login_uid || order.uid];
             if (userObj) {
-                const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                const usdtPrice = parseFloat((order.price || '').split('USDT')[0]);
                 if (!isNaN(usdtPrice) && usdtPrice > 0) {
                     const pointsEarned = Math.floor(usdtPrice * (10 / 3));
                     const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
                     const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
-                    msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
+                    msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Saldo total:* $${totalUsdt} USDT`;
                 }
             }
+            msg += `\n\n¡Gracias por tu compra!`;
         }
-
-        if (pin && order.juego === 'roblox') {
-            msg = `🔥 *¡COMPRA EXITOSA DE ROBLOX!* 🔥\n\n` +
-                  `¡Hola, *${order.name}*! Tu código de Roblox ha sido procesado con éxito. 🚀\n\n` +
-                  `━━━━━━━━━━━━━━━\n` +
-                  `👤 *Usuario:* ${order.name}\n` +
-                  `🎮 *Juego:* Roblox\n` +
-                  `💎 *Paquete:* ${order.pack}\n` +
-                  `━━━━━━━━━━━━━━━\n\n` +
-                  `✅ *Estado:* ¡Código Generado! ✨\n\n` +
-                  `⚡ *CANGE SU CÓDIGO AQUÍ:* \n` +
-                  `Presiona el link para ir directo a canjear tu código de Roblox:\n` +
-                  `🔗 https://www.roblox.com/redeem\n\n` +
-                  `*Tu código (PIN) está abajo, cópialo y ve a canjearlo* 👇👇`;
-            
-            // Mensaje 1: Ticket con instrucciones (ID único por ref)
-            const waTicket = { id: ticketId, number: order.wa, message: msg };
-            whatsappQueue.push(waTicket);
-            supabase.from('ff_wa_queue').insert(waTicket)
-                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error ticket:', error.message); });
-
-            // Mensaje 2: El PIN solo (ID único por ref) - 100% copiable
-            const waPin = { id: pinId, number: order.wa, message: pin };
-            whatsappQueue.push(waPin);
-            supabase.from('ff_wa_queue').insert(waPin)
-                .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error pin:', error.message); });
-
-            console.log(`[WA-QUEUE] ✅ 2 mensajes encolados para ${order.wa} (ref: ${orderRef})`);
-            return;
-        }
-        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-349-1068*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
     } else {
         const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
         const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
@@ -686,7 +757,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                   `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
                   `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
                   `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
-                  `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
+                  `¡Estamos aquí para ayudarte! 🤝`;
         }
     }
 
@@ -697,9 +768,44 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
     console.log(`[WA-QUEUE] ✅ 1 mensaje encolado para ${order.wa} (ref: ${orderRef})`);
 }
 
-// --- NOTIFICACIÓN A ADMINS: Nuevo pedido recibido ---
+function sendInsufficientPaymentMessage(order, totalPaid, expectedBs) {
+    if (!order.wa || order.wa === 'No provisto') return;
+    
+    const waModo = (settings.whatsapp && settings.whatsapp.modo) ? settings.whatsapp.modo : 'activo';
+    if (waModo === 'seguro') {
+        console.log(`[WA-QUEUE] 🔒 Modo Seguro activo. Evitando envío de pago incompleto al cliente ${order.wa}`);
+        return;
+    }
+    
+    const orderRef = order.ref || Date.now().toString();
+    const singleId = `wa_${orderRef}_insufficient`;
+    
+    const isBinance = order.method === 'binance';
+    const currency = isBinance ? 'USDT' : 'Bs';
+    
+    const diff = expectedBs - totalPaid;
+    
+    const msg = `⚠️ *PAGO INCOMPLETO DETECTADO* ⚠️\n\n` +
+          `Hola *${order.name}*, hemos recibido y verificado tu pago por un total de *${totalPaid.toFixed(2)} ${currency}*.\n\n` +
+          `Sin embargo, el costo del paquete de *${order.pack}* es de *${expectedBs.toFixed(2)} ${currency}*.\n\n` +
+          `💡 *Falta una diferencia de:* *${diff.toFixed(2)} ${currency}* para completar tu pedido.\n\n` +
+          `Por favor, realiza el pago restante de *${diff.toFixed(2)} ${currency}* y reporta la nueva referencia en la web para activar tus diamantes. 🎯🛡️`;
+          
+    const waItem = { id: singleId, number: order.wa, message: msg };
+    whatsappQueue.push(waItem);
+    supabase.from('ff_wa_queue').insert(waItem)
+        .then(({ error }) => { if (error && error.code !== '23505') console.error('[WA-QUEUE] Error msg insuficiente:', error.message); });
+    console.log(`[WA-QUEUE] ✅ Mensaje de pago incompleto encolado para ${order.wa} (ref: ${orderRef})`);
+}
+
 // Números de WhatsApp de los administradores que recibirán alertas de nuevos pedidos
 const ADMIN_WA_NUMBERS = ['04243790757', '04125313735'];
+
+function isExcludedAdmin(num) {
+    if (!num) return true;
+    const clean = num.toString().replace(/\D/g, '');
+    return clean.includes('4243445879') || clean.includes('4125322412') || clean.includes('4125313735');
+}
 
 // ─────────────────────────────────────────────────────────
 // 🚨 ALERTA DE ERROR JADH.SHOP → Admin (WhatsApp + acción requerida)
@@ -724,6 +830,7 @@ function notifyAdminsJadhError(order, errorMsg, source = 'Automático') {
         `⚠️ _El pedido quedó en estado PENDIENTE. Recarga manualmente o usa "Reintentar" en el panel._`;
 
     for (const adminNumber of ADMIN_WA_NUMBERS) {
+        if (isExcludedAdmin(adminNumber)) continue;
         const msgId = `wa_admin_jadh_err_${order.ref}_${adminNumber.slice(-4)}`;
         if (whatsappQueue.some(i => i.id === msgId)) continue;
         const waItem = { id: msgId, number: adminNumber, message: msg };
@@ -755,6 +862,7 @@ function notifyAdminsNewOrder(order) {
         `👉 *Rechazar* (para cancelar y notificar al cliente)`;
 
     for (const adminNumber of ADMIN_WA_NUMBERS) {
+        if (isExcludedAdmin(adminNumber)) continue;
         const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
         // Evitar duplicado si ya está en cola
         if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
@@ -797,6 +905,7 @@ function notifyAdminsNewCanje(order) {
         `👉 *Rechazar* (para cancelar y devolver puntos)`;
 
     for (const adminNumber of ADMIN_WA_NUMBERS) {
+        if (isExcludedAdmin(adminNumber)) continue;
         const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
         if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
 
@@ -836,6 +945,7 @@ function notifyAdminsOrderStatus(order, isApproved, source = 'sistema') {
         `⏰ *Hora:* ${now}`;
 
     for (const adminNumber of ADMIN_WA_NUMBERS) {
+        if (isExcludedAdmin(adminNumber)) continue;
         const adminMsgId = `wa_admin_status_${order.ref}_${isApproved ? 'ok' : 'ko'}_${adminNumber.slice(-4)}`;
         if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
 
@@ -853,6 +963,7 @@ function notifyAdminsOrderStatus(order, isApproved, source = 'sistema') {
 
 // Programa un mensaje con el link de referidos 15 min después de una recarga aprobada
 function scheduleReviewRequest(order) {
+    return; // Desactivado para evitar bloqueos de WhatsApp por spam de links de referidos
     if (!order.wa || order.wa === 'No provisto') return;
     
     // 🔒 MODO SEGURO: Evitar mensajes automáticos
@@ -1051,13 +1162,15 @@ function saveRecent(name, pack, type = 'recarga') {
 }
 
 function updateOrderStatus(ref, status, pin = null, reason = null) {
-    if (orders[ref]) {
-        orders[ref].status = status;
-        if (pin) orders[ref].pin = pin;
-        if (reason) orders[ref].reason = reason;
-        const update = { status };
-        if (pin) update.pin = pin;
-        if (reason) update.reason = reason;
+    if (!orders[ref]) {
+        orders[ref] = { ref, status };
+    }
+    orders[ref].status = status;
+    if (pin) orders[ref].pin = pin;
+    orders[ref].reason = reason;
+    
+    const update = { status, reason };
+    if (pin) update.pin = pin;
         
         supabase.from('ff_orders').update(update).eq('ref', ref)
             .then(({ error }) => {
@@ -1087,7 +1200,6 @@ function updateOrderStatus(ref, status, pin = null, reason = null) {
                     }
                 }
             });
-    }
 }
 
 function markPaymentAsUsed(method, ref) {
@@ -1263,85 +1375,118 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
     // Caso A: Viene del Banco (tenemos FullRef, buscamos ShortRef en pedidos)
     if (targetFullRef && !targetShortRef) {
         for (let sRef in orders) {
-            if (orders[sRef].status === 'pending' && targetFullRef.endsWith(sRef)) {
-                targetShortRef = sRef;
-                break;
+            if (orders[sRef].status === 'pending') {
+                const parts = sRef.split(',').map(r => r.trim());
+                if (parts.some(part => areRefsSimilar(targetFullRef, part))) {
+                    targetShortRef = sRef;
+                    break;
+                }
             }
         }
     }
 
-    // Caso B: Viene del Usuario (tenemos ShortRef, buscamos FullRef en pagos recibidos)
-    if (targetShortRef && !targetFullRef) {
-        for (let fRef in pagosValidados) {
-            if (!pagosValidados[fRef].used && fRef.endsWith(targetShortRef)) {
-                targetFullRef = fRef;
-                break;
+    let matchedFullRefs = [];
+    let totalPaid = 0;
+    let allPaymentsFound = true;
+
+    if (targetShortRef) {
+        const refs = targetShortRef.split(',').map(r => r.trim());
+        for (const sRef of refs) {
+            let foundFullRef = null;
+            if (targetFullRef && pagosValidados[targetFullRef] && !pagosValidados[targetFullRef].used && areRefsSimilar(targetFullRef, sRef)) {
+                foundFullRef = targetFullRef;
+            } else {
+                for (let fRef in pagosValidados) {
+                    if (!pagosValidados[fRef].used && areRefsSimilar(fRef, sRef)) {
+                        if (!matchedFullRefs.includes(fRef)) {
+                            foundFullRef = fRef;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (foundFullRef) {
+                matchedFullRefs.push(foundFullRef);
+                totalPaid += parseFloat(pagosValidados[foundFullRef].amount) || 0;
+            } else {
+                allPaymentsFound = false;
             }
         }
     }
 
-    // Si encontramos ambos, procedemos a validar el monto y aprobar
-    if (targetFullRef && targetShortRef && orders[targetShortRef] && orders[targetShortRef].status === 'pending') {
+    // Si encontramos todos los pagos y el pedido está pendiente
+    if (allPaymentsFound && matchedFullRefs.length > 0 && targetShortRef && orders[targetShortRef] && orders[targetShortRef].status === 'pending') {
         const order = orders[targetShortRef];
-        const pago = pagosValidados[targetFullRef];
-        
-        if (pago && !pago.used) {
-            let isValid = false;
+        let isValid = false;
 
-            if (order.method === 'binance') {
-                let expectedUsdt = 0;
-                try {
-                    expectedUsdt = parseFloat(order.price.split('USDT')[0].trim());
-                } catch (e) {}
+        if (order.method === 'binance') {
+            let expectedUsdt = 0;
+            try {
+                expectedUsdt = parseFloat(order.price.split('USDT')[0].trim());
+            } catch (e) {}
 
-                console.log(`[AUTO-APPROVE-BINANCE] Validando monto -> Recibido: ${pago.amount} USDT | Esperado: ${expectedUsdt} USDT`);
-                if (expectedUsdt > 0 && pago.amount >= expectedUsdt) {
-                    isValid = true;
-                } else {
-                    console.log(`[AUTO-APPROVE-BINANCE] ❌ MONTO INSUFICIENTE. Recibido: ${pago.amount} USDT, Esperado: ${expectedUsdt} USDT.`);
+            console.log(`[AUTO-APPROVE-BINANCE] Validando monto total -> Recibido: ${totalPaid} USDT | Esperado: ${expectedUsdt} USDT`);
+            if (expectedUsdt > 0 && totalPaid >= expectedUsdt) {
+                isValid = true;
+            } else {
+                console.log(`[AUTO-APPROVE-BINANCE] ❌ MONTO INSUFICIENTE. Recibido: ${totalPaid} USDT, Esperado: ${expectedUsdt} USDT.`);
+                if (order.status === 'pending') {
+                    order.status = 'incomplete_payment';
+                    order.reason = `Pago incompleto. Recibido: ${totalPaid} USDT, Esperado: ${expectedUsdt} USDT`;
+                    updateOrderStatus(targetShortRef, 'incomplete_payment', null, order.reason);
+                    sendInsufficientPaymentMessage(order, totalPaid, expectedUsdt);
+                }
+            }
+        } else {
+            // Extraer precio esperado en Bs: "1.00USDT/635.00Bs" -> 635.00
+            let expectedBs = 0;
+            try {
+                const parts = order.price.split('/');
+                if (parts[1]) {
+                    expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
+                }
+            } catch (e) {
+                console.error('[AUTO-APPROVE] Error extrayendo precio esperado:', e.message);
+            }
+
+            console.log(`[AUTO-APPROVE-BDV] Validando monto total -> Recibido: ${totalPaid} Bs | Esperado: ${expectedBs} Bs`);
+
+            // Tolerancia: aceptar si pagó entre (precio - 5 Bs) y (precio + 200 Bs)
+            const MIN_BS = expectedBs - 5;
+            const MAX_BS = expectedBs + 200;
+            if (totalPaid >= MIN_BS && totalPaid <= MAX_BS) {
+                isValid = true;
+                if (totalPaid < expectedBs) {
+                    console.log(`[AUTO-APPROVE-BDV] ⚠️ PAGO MENOR aceptado: ${totalPaid} Bs (esperado: ${expectedBs} Bs, diferencia: -${(expectedBs - totalPaid).toFixed(2)} Bs)`);
+                } else if (totalPaid > expectedBs) {
+                    console.log(`[AUTO-APPROVE-BDV] ℹ️ PAGO MAYOR aceptado: ${totalPaid} Bs (esperado: ${expectedBs} Bs, diferencia: +${(totalPaid - expectedBs).toFixed(2)} Bs)`);
+                }
+            } else if (totalPaid < MIN_BS) {
+                console.log(`[AUTO-APPROVE-BDV] ❌ MONTO INSUFICIENTE. El pago total de ${totalPaid} Bs es menor al mínimo aceptado (${MIN_BS.toFixed(2)} Bs).`);
+                if (order.status === 'pending') {
+                    order.status = 'incomplete_payment';
+                    order.reason = `Pago incompleto. Recibido: ${totalPaid} Bs, Esperado: ${expectedBs} Bs`;
+                    updateOrderStatus(targetShortRef, 'incomplete_payment', null, order.reason);
+                    sendInsufficientPaymentMessage(order, totalPaid, expectedBs);
                 }
             } else {
-                // Extraer precio esperado en Bs: "1.00USDT/635.00Bs" -> 635.00
-                let expectedBs = 0;
-                try {
-                    const parts = order.price.split('/');
-                    if (parts[1]) {
-                        expectedBs = parseFloat(parts[1].replace('Bs', '').trim());
-                    }
-                } catch (e) {
-                    console.error('[AUTO-APPROVE] Error extrayendo precio esperado:', e.message);
-                }
-
-                console.log(`[AUTO-APPROVE-BDV] Validando monto -> Recibido: ${pago.amount} Bs | Esperado: ${expectedBs} Bs`);
-
-                // Tolerancia: aceptar si pagó entre (precio - 5 Bs) y (precio + 200 Bs)
-                const MIN_BS = expectedBs - 5;
-                const MAX_BS = expectedBs + 200;
-                if (pago.amount >= MIN_BS && pago.amount <= MAX_BS) {
-                    isValid = true;
-                    if (pago.amount < expectedBs) {
-                        console.log(`[AUTO-APPROVE-BDV] ⚠️ PAGO MENOR aceptado: ${pago.amount} Bs (esperado: ${expectedBs} Bs, diferencia: -${(expectedBs - pago.amount).toFixed(2)} Bs)`);
-                    } else if (pago.amount > expectedBs) {
-                        console.log(`[AUTO-APPROVE-BDV] ℹ️ PAGO MAYOR aceptado: ${pago.amount} Bs (esperado: ${expectedBs} Bs, diferencia: +${(pago.amount - expectedBs).toFixed(2)} Bs)`);
-                    }
-                } else if (pago.amount < MIN_BS) {
-                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO INSUFICIENTE. El pago de ${pago.amount} Bs es menor al mínimo aceptado (${MIN_BS.toFixed(2)} Bs).`);
-                } else {
-                    console.log(`[AUTO-APPROVE-BDV] ❌ MONTO EXCESIVO. El pago de ${pago.amount} Bs supera el máximo aceptado (${MAX_BS.toFixed(2)} Bs).`);
-                }
+                console.log(`[AUTO-APPROVE-BDV] ❌ MONTO EXCESIVO. El pago total de ${totalPaid} Bs supera el máximo aceptado (${MAX_BS.toFixed(2)} Bs).`);
             }
+        }
 
-            if (isValid) {
-                console.log(`[AUTO-APPROVE] ✅ MONTO CORRECTO. Procediendo...`);
-                console.log(`[AUTO-APPROVE] Ref Banco/Correo: ${targetFullRef} <--> Ref Formulario: ${targetShortRef}`);
-                
-                pagosValidados[targetFullRef].used = true;
-                savePagos();
-                
-                const { qty, amountKey } = extractPackInfo(order.pack);
-                
-                // Cambiar estado a processing para bloquear aprobaciones manuales simultáneas
-                orders[targetShortRef].status = 'processing';
+        if (isValid) {
+            console.log(`[AUTO-APPROVE] ✅ MONTO CORRECTO. Procediendo...`);
+            console.log(`[AUTO-APPROVE] Refs Banco/Correo: [${matchedFullRefs.join(', ')}] <--> Ref Formulario: ${targetShortRef}`);
+            
+            matchedFullRefs.forEach(fRef => {
+                pagosValidados[fRef].used = true;
+            });
+            savePagos();
+            
+            const { qty, amountKey } = extractPackInfo(order.pack);
+            
+            // Cambiar estado a processing para bloquear aprobaciones manuales simultáneas
+            orders[targetShortRef].status = 'processing';
                 
                 console.log(`[AUTO-APPROVE] Iniciando recarga automática via Jadh.shop para ${order.uid} | Qty: ${qty}`);
                 
@@ -1426,9 +1571,8 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                 return false;
             }
         }
+        return false;
     }
-    return false;
-}
 
 // =====================================================
 // 🔄 CICLO DE AUTO-APROBACIÓN
@@ -1453,12 +1597,20 @@ async function runAutoApprovalCycle() {
                     // No reprocesar lo que ya está en camino
                     if (order.status !== 'pending') continue;
 
+                    // Si es una referencia combinada, no podemos consultar el banco directamente por un único monto.
+                    // En su lugar, dejamos que processPendingOrder valide los pagos ya recibidos en pagosValidados.
+                    if (ref.includes(',')) {
+                        console.log(`[BDV-AUTO] Pedido con múltiples referencias '${ref}'. Validando consolidado...`);
+                        await processPendingOrder(null, ref);
+                        continue;
+                    }
+
                     // --- SEGURIDAD: RECHAZAR SI LA REFERENCIA YA FUE USADA ANTERIORMENTE ---
-                    // Condiciones: (1) ref exacta, (2) mismo monto, (3) dentro de los últimos 30 días
+                    // Condiciones: (1) ref similar/exacta, (2) mismo monto, (3) dentro de los últimos 7 días
                     let isUsedRef = false;
                     let matchedUsedRef = '';
                     const cleanRef = ref.trim();
-                    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+                    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
                     const now = Date.now();
 
                     // Extraer monto del pedido actual para comparar
@@ -1472,16 +1624,16 @@ async function runAutoApprovalCycle() {
                         const pago = pagosValidados[fRef];
                         if (!pago.used) continue;
 
-                        // Condición 1: referencia exacta
-                        if (fRef.trim() !== cleanRef) continue;
+                        // Condición 1: referencia similar (respetando ceros a la izquierda)
+                        if (!areRefsSimilar(fRef, cleanRef)) continue;
 
                         // Condición 2: mismo monto (tolerancia ±1 Bs por redondeo)
                         const pagoAmount = parseFloat(pago.amount) || 0;
                         if (orderAmountBs > 0 && pagoAmount > 0 && Math.abs(pagoAmount - orderAmountBs) > 1) continue;
 
-                        // Condición 3: dentro de los últimos 30 días
+                        // Condición 3: dentro de los últimos 7 días
                         const pagoDate = pago.date ? new Date(pago.date).getTime() : 0;
-                        if (pagoDate > 0 && (now - pagoDate) > THIRTY_DAYS_MS) continue;
+                        if (pagoDate > 0 && (now - pagoDate) > SEVEN_DAYS_MS) continue;
 
                         // Pasa las 3 condiciones → es duplicado
                         isUsedRef = true;
@@ -1538,7 +1690,10 @@ async function runAutoApprovalCycle() {
 
                         // Registrar como pago válido para que processPendingOrder lo use
                         const fullRef = bdvResult.movimiento?.referencia || ref;
-                        if (!pagosValidados[fullRef]) {
+                        const existingPago = pagosValidados[fullRef];
+                        const isOldPago = existingPago && existingPago.date && (now - new Date(existingPago.date).getTime()) > SEVEN_DAYS_MS;
+
+                        if (!existingPago || isOldPago) {
                             pagosValidados[fullRef] = {
                                 amount: expectedBs,
                                 date: new Date().toISOString(),
@@ -1637,29 +1792,55 @@ async function runAutoApprovalCycle() {
             try {
                 // Obtener pagos: simulados o correos reales de Gmail
                 let emailPayments = [];
+                let binanceCheckSuccess = true;
                 if (simulatedBinanceEmails.length > 0) {
                     emailPayments = [...simulatedBinanceEmails];
                     console.log(`[BINANCE-AUTO] 🧪 Usando ${emailPayments.length} pago(s) simulado(s).`);
                 } else {
-                    emailPayments = await checkBinanceEmails();
-                    console.log(`[BINANCE-AUTO] 📧 Correos Binance encontrados: ${emailPayments.length}`);
+                    const res = await checkBinanceEmails();
+                    if (res === null) {
+                        binanceCheckSuccess = false;
+                        emailPayments = [];
+                        console.error(`[BINANCE-AUTO] ❌ Falló la verificación de correos Binance. Se cancela ciclo.`);
+                    } else {
+                        emailPayments = res;
+                        console.log(`[BINANCE-AUTO] 📧 Correos Binance encontrados: ${emailPayments.length}`);
+                    }
                 }
 
-                if (emailPayments.length === 0) {
-                    // Sin correos: avisar admin si el pedido lleva +20 min esperando
+                // Verificar timeouts (10 min) para auto-rechazo de pedidos pendientes
+                if (binanceCheckSuccess) {
                     for (const [ref, order] of pendingBinance) {
                         const diffMin = (NOW - new Date(order.time)) / (1000 * 60);
-                        if (diffMin > 20 && !order._binance_alerted) {
-                            orders[ref]._binance_alerted = true;
-                            console.warn(`[BINANCE-AUTO] ⚠️ Pedido ${ref} lleva ${diffMin.toFixed(0)} min sin correo de pago.`);
-                            notifyAdminsJadhError(
-                                { ...order, ref },
-                                `Pedido Binance de ${order.pack} (${order.price}) lleva ${diffMin.toFixed(0)} minutos sin correo de confirmación.\nRef cliente: ${ref}\nVerificar manualmente en Binance.`,
-                                'Binance Auto-Aprobación'
+                        if (diffMin > 10) {
+                            console.log(`[BINANCE-AUTO] ❌ Pedido ${ref} sin pago Binance tras 10 min. Auto-rechazando...`);
+                            
+                            orders[ref].status = 'rejected';
+                            orders[ref].reason = 'Pago no encontrado en Binance tras 10 minutos';
+                            updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en Binance tras 10 minutos');
+
+                            // Notificar cliente por WhatsApp (Rechazo)
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            
+                            // Notificar admins
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Binance Auto-Rechazo');
+                            
+                            // Enviar notificación Push
+                            sendPushToUser(
+                                orders[ref].login_uid || orders[ref].uid, 
+                                'Pago Rechazado ❌', 
+                                `No pudimos verificar tu pago para el pedido de ${orders[ref].pack}. Contáctanos por WhatsApp si es un error.`, 
+                                '/icon-192.png', 
+                                '/historial'
                             );
+                            
+                            // Actualizar Telegram
+                            updateTelegramStatus(ref);
                         }
                     }
-                } else {
+                }
+
+                if (emailPayments.length > 0) {
                     // Hay correos — matchear con pedidos pendientes por monto USDT
                     for (const emailPago of emailPayments) {
                         const emailAmount = emailPago.amount;
@@ -1924,6 +2105,41 @@ const server = http.createServer(async (req, res) => {
     }
 
     // parsedUrl ya está definida al inicio del handler
+    // ============================================================
+    // RULETA DE LA SUERTE: Acreditar bono al usuario
+    // ============================================================
+    if (parsedUrl.pathname === '/api/add-roulette-bonus' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const { uid, prize_usdt, order_ref } = JSON.parse(body);
+                if (!uid || !prize_usdt || prize_usdt <= 0) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Parámetros inválidos.' }));
+                }
+                // Convertir USDT a puntos: 1 punto = $0.003 USDT → pointsToAdd = usdt / 0.003
+                const pointsToAdd = Math.round(prize_usdt / 0.003);
+                const userObj = await ensureUserLoaded(uid);
+                userObj.points = (userObj.points || 0) + pointsToAdd;
+                await saveUser(uid);
+                // Acumular total de ruleta en memoria para las stats del dashboard
+                global.roulettePayoutTotal = (global.roulettePayoutTotal || 0) + prize_usdt;
+                const newTotalUsdt = ((userObj.points || 0) * 0.003).toFixed(2);
+                console.log(`[RULETA] 🎰 Bono acreditado: ${prize_usdt} USDT (${pointsToAdd} pts) → UID: ${uid}. Total: $${newTotalUsdt} USDT (ref: ${order_ref || 'N/A'})`);
+                // Notificación push al ganador
+                sendPushToUser(uid, '🎰 ¡Premio de Ruleta!', `¡Ganaste $${prize_usdt} USDT extra en la Ruleta de la Suerte! Saldo: $${newTotalUsdt} USDT`, '/icon-192.png', '/');
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, points_added: pointsToAdd, new_total_usdt: parseFloat(newTotalUsdt) }));
+            } catch (e) {
+                console.error('[RULETA] Error acreditando bono:', e.message);
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: 'Error interno del servidor.' }));
+            }
+        });
+        return;
+    }
+
     if (parsedUrl.pathname === '/verificar') {
         const uid = parsedUrl.searchParams.get('uid');
         const juego = parsedUrl.searchParams.get('juego') || 'freefire';
@@ -1974,39 +2190,106 @@ const server = http.createServer(async (req, res) => {
 
         console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}`);
 
+        if (wa && wa !== 'No provisto') {
+            saveWaContact(wa, name, uid, 'web_order');
+        }
+
         console.log(`\n[NOTIFICACIÓN] Recibida solicitud de pago de: ${name} (ID: ${uid})`);
         console.log(`[NOTIFICACIÓN] Referencia: ${ref} | Paquete: ${pack} | WA: ${wa}\n`);
 
-        // --- SEGURIDAD ADICIONAL: LONGITUD MÍNIMA DE REFERENCIA PAGO MÓVIL ---
-        if (method === 'pagomovil' && (!ref || ref.trim().length < 4)) {
+        if (method === 'pagomovil' && (!ref || ref.trim().length < 3)) {
             console.log(`[NOTIFICACIÓN] 🛑 Referencia Pago Móvil muy corta rechazada: '${ref}'`);
             res.writeHead(200);
             return res.end(JSON.stringify({ 
                 success: false, 
-                message: 'LA REFERENCIA DE PAGO MÓVIL DEBE TENER AL MENOS 4 DÍGITOS.' 
+                message: 'LA REFERENCIA DE PAGO MÓVIL DEBE TENER AL MENOS 3 DÍGITOS.' 
             }));
         }
 
+        // --- EVITAR DUPLICADOS DIRECTOS DESDE PAGOS VALIDADOS (BLOQUEO DIRECTO) ---
+        if (ref) {
+            const cleanRef = ref.trim();
+            const normRef = normalizeRef(cleanRef);
+            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            if (pagosValidados[cleanRef] && pagosValidados[cleanRef].used) {
+                const pDate = pagosValidados[cleanRef].date ? new Date(pagosValidados[cleanRef].date).getTime() : 0;
+                if (pDate > 0 && (now - pDate) < SEVEN_DAYS_MS) {
+                    console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado por pagosValidados (usado recientemente): Ref ${ref}`);
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({ 
+                        success: false, 
+                        message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
+                    }));
+                }
+            }
+            if (method === 'pagomovil') {
+                for (let fRef in pagosValidados) {
+                    const pago = pagosValidados[fRef];
+                    if (!pago.used) continue;
+                    const pDate = pago.date ? new Date(pago.date).getTime() : 0;
+                    if (pDate > 0 && (now - pDate) > SEVEN_DAYS_MS) continue;
+
+                    if (areRefsSimilar(fRef, cleanRef)) {
+                        console.log(`[NOTIFICACIÓN] 🛑 Duplicado parcial bloqueado por pagosValidados (usado recientemente): Ref ${ref} coincide con ${fRef}`);
+                        res.writeHead(200);
+                        return res.end(JSON.stringify({ 
+                            success: false, 
+                            message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
+                        }));
+                    }
+                }
+            }
+        }
+
         // --- SEGURIDAD DOBLE: EVITAR DUPLICADOS (memoria + Supabase) ---
-        if (orders[ref]) {
-            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en memoria: Ref ${ref} (status: ${orders[ref].status})`);
+        const normRef = normalizeRef(ref);
+        const isDuplicateInMem = Object.keys(orders).some(key => {
+            const o = orders[key];
+            if (!o || o.status === 'rejected' || o.status === 'cancelled') return false;
+            const parts = key.split(',').map(r => normalizeRef(r));
+            return parts.includes(normRef);
+        });
+        if (isDuplicateInMem) {
+            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en memoria: Ref ${ref}`);
             res.writeHead(200);
             return res.end(JSON.stringify({ 
                 success: false, 
                 message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
             }));
         }
-        // Verificación secundaria en Supabase (cubre reinicios de Render)
-        const { data: existingOrder } = await supabase.from('ff_orders').select('*').eq('ref', ref).single();
+
+        // Verificación secundaria en Supabase (solo órdenes recientes activas/aprobadas de los últimos 7 días)
+        const SEVEN_DAYS_AGO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: existingDbOrders } = await supabase
+            .from('ff_orders')
+            .select('*')
+            .in('status', ['pending', 'processing', 'approved'])
+            .gte('time', SEVEN_DAYS_AGO)
+            .ilike('ref', `%${normRef}%`);
+        
+        let existingOrder = null;
+        if (existingDbOrders && existingDbOrders.length > 0) {
+            for (const dbO of existingDbOrders) {
+                const parts = dbO.ref.split(',').map(r => normalizeRef(r));
+                if (parts.includes(normRef)) {
+                    existingOrder = dbO;
+                    break;
+                }
+            }
+        }
+
         if (existingOrder) {
-            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en Supabase: Ref ${ref} (status: ${existingOrder.status})`);
-            // NO guardamos en orders para que NO aparezca en el panel de administración
+            console.log(`[NOTIFICACIÓN] 🛑 Duplicado bloqueado en Supabase (dentro de ${existingOrder.ref}): Ref ${ref}`);
             res.writeHead(200);
             return res.end(JSON.stringify({ 
                 success: false, 
                 message: 'YA ESTE PAGO FUE REPORTADO O APROBADO ANTERIORMENTE' 
             }));
         }
+
+
 
         // Generar número de control único
         const control_num = `${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
@@ -2298,7 +2581,7 @@ const server = http.createServer(async (req, res) => {
                             }
                             if (order.method === 'pagomovil') {
                                 for (let fRef in pagosValidados) {
-                                    if (pagosValidados[fRef].used && (fRef.endsWith(cleanRef) || cleanRef.endsWith(fRef))) {
+                                    if (pagosValidados[fRef].used && areRefsSimilar(fRef, cleanRef)) {
                                         console.log(`[WEBHOOK-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${ref}' coincide con el pago usado '${fRef}'.`);
                                         const errPayload = JSON.stringify({
                                             chat_id: chatId,
@@ -2721,10 +3004,28 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
-            const { data: dbOrders, error } = await supabase
+            let dbOrders = [];
+            let { data: directOrders, error } = await supabase
                 .from('ff_orders')
                 .select('*')
                 .eq('ref', ref);
+            
+            if (directOrders && directOrders.length > 0) {
+                dbOrders = directOrders;
+            } else {
+                // Si no hay coincidencia directa, buscar por coincidencia parcial en Supabase
+                const { data: partialOrders } = await supabase
+                    .from('ff_orders')
+                    .select('*')
+                    .ilike('ref', `%${ref}%`);
+                
+                if (partialOrders && partialOrders.length > 0) {
+                    dbOrders = partialOrders.filter(o => {
+                        const parts = o.ref.split(',').map(r => r.trim());
+                        return parts.includes(ref);
+                    });
+                }
+            }
             
             if (error || !dbOrders || dbOrders.length === 0) {
                 res.writeHead(200);
@@ -2812,7 +3113,7 @@ const server = http.createServer(async (req, res) => {
                                 msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
                             }
                         }
-                        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-349-1068*\n\n📢 *Únete a nuestro canal de WhatsApp para promos:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+                        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-349-1068*\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
                     }
                 }
             } else if (isRejected) {
@@ -2830,7 +3131,7 @@ const server = http.createServer(async (req, res) => {
                           `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
                           `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
                           `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
-                          `📢 *Únete a nuestro canal de WhatsApp para novedades:* \n🔗 https://whatsapp.com/channel/0029Vb7Wf8M35fLnOvFiY01K\n\n¡Estamos aquí para ayudarte! 🤝`;
+                          `¡Estamos aquí para ayudarte! 🤝`;
                 }
             } else {
                 msg = `⏳ *TU RECARGA ESTÁ EN PROCESO* ⏳\n\n` +
@@ -2847,7 +3148,14 @@ const server = http.createServer(async (req, res) => {
         }
     } else if (parsedUrl.pathname === '/status') {
         const ref = parsedUrl.searchParams.get('ref');
-        const order = orders[ref];
+        let order = orders[ref];
+        if (!order && ref) {
+            const key = Object.keys(orders).find(k => {
+                const parts = k.split(',').map(r => r.trim());
+                return parts.includes(ref);
+            });
+            if (key) order = orders[key];
+        }
         if (order) {
             res.writeHead(200);
             res.end(JSON.stringify({ 
@@ -2884,15 +3192,64 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ success: false, error: 'Error al obtener historial' }));
         }
     } else if (parsedUrl.pathname === '/admin/stats' && req.method === 'GET') {
-        const stats = {
-            pending: Object.values(orders).filter(o => o.status === 'pending').length,
-            approved: Object.values(orders).filter(o => o.status === 'approved').length,
-            rejected: Object.values(orders).filter(o => o.status === 'rejected').length,
-            total_users: Object.values(users).filter(u => u.password || u.points > 0 || u.cedula || u.phone).length,
-            total_pines: Object.values(pines).reduce((acc, curr) => acc + curr.length, 0)
-        };
-        res.writeHead(200);
-        res.end(JSON.stringify(stats));
+        try {
+            const now = new Date();
+            const partsVE = getCaracasDateParts(now);
+            // Venezuela es UTC-4 (00:00:00 VET = 04:00:00 UTC)
+            const startOfToday = new Date(Date.UTC(partsVE.year, partsVE.month, partsVE.day, 4, 0, 0, 0));
+
+            // Consultar conteos reales en Supabase
+            // - pending: histórico total de pendientes
+            // - approved: aprobados hoy (diario)
+            // - rejected: rechazados hoy (diario)
+            const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
+                supabase.from('ff_orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+                supabase.from('ff_orders').select('*', { count: 'exact', head: true }).eq('status', 'approved').gte('time', startOfToday.toISOString()),
+                supabase.from('ff_orders').select('*', { count: 'exact', head: true }).eq('status', 'rejected').gte('time', startOfToday.toISOString())
+            ]);
+
+            if (pendingRes.error) throw pendingRes.error;
+            if (approvedRes.error) throw approvedRes.error;
+            if (rejectedRes.error) throw rejectedRes.error;
+
+            // USDT entregados por referidos: cada referral_claimed = 17 pts = $0.051 USDT
+            const referralClaimedCount = Object.values(users).filter(u => u.referral_claimed).length;
+            const referral_usdt = +(referralClaimedCount * 17 * 0.003).toFixed(2);
+
+            // USDT entregados por ruleta: acumulado en memoria desde el inicio del proceso
+            const roulette_usdt = +(global.roulettePayoutTotal || 0).toFixed(2);
+
+            const stats = {
+                pending: pendingRes.count || 0,
+                approved: approvedRes.count || 0,
+                rejected: rejectedRes.count || 0,
+                total_users: Object.values(users).filter(u => u.password || u.points > 0 || u.cedula || u.phone).length,
+                total_pines: Object.values(pines).reduce((acc, curr) => acc + curr.length, 0),
+                referral_usdt,
+                roulette_usdt
+            };
+            res.writeHead(200);
+            res.end(JSON.stringify(stats));
+
+        } catch (e) {
+            console.error('[STATS] Error consultando estadísticas en Supabase:', e.message);
+            // Fallback en memoria si falla la base de datos (con filtro de hoy)
+            const now = new Date();
+            const partsVE = getCaracasDateParts(now);
+            const startOfToday = new Date(Date.UTC(partsVE.year, partsVE.month, partsVE.day, 4, 0, 0, 0));
+
+            const stats = {
+                pending: Object.values(orders).filter(o => o.status === 'pending').length,
+                approved: Object.values(orders).filter(o => o.status === 'approved' && new Date(o.time) >= startOfToday).length,
+                rejected: Object.values(orders).filter(o => o.status === 'rejected' && new Date(o.time) >= startOfToday).length,
+                total_users: Object.values(users).filter(u => u.password || u.points > 0 || u.cedula || u.phone).length,
+                total_pines: Object.values(pines).reduce((acc, curr) => acc + curr.length, 0),
+                referral_usdt: +(Object.values(users).filter(u => u.referral_claimed).length * 17 * 0.003).toFixed(2),
+                roulette_usdt: +(global.roulettePayoutTotal || 0).toFixed(2)
+            };
+            res.writeHead(200);
+            res.end(JSON.stringify(stats));
+        }
 
     } else if (parsedUrl.pathname === '/admin/financial-summary' && req.method === 'GET') {
         try {
@@ -3074,11 +3431,13 @@ const server = http.createServer(async (req, res) => {
                 let order = orders[targetRef];
                 
                 // Si la referencia recibida es corta (ej: 4 dígitos) y no coincide directamente,
-                // buscar entre los pedidos pendientes uno que termine con esos dígitos.
+                // buscar entre los pedidos pendientes uno que coincida con esos dígitos en su lista.
                 if (!order && ref && ref.length >= 4) {
-                    const matches = Object.keys(orders).filter(k => 
-                        orders[k].status === 'pending' && k.endsWith(ref)
-                    );
+                    const matches = Object.keys(orders).filter(k => {
+                        if (orders[k].status !== 'pending') return false;
+                        const parts = k.split(',').map(p => p.trim());
+                        return parts.some(p => areRefsSimilar(p, ref));
+                    });
                     if (matches.length === 1) {
                         targetRef = matches[0];
                         order = orders[targetRef];
@@ -3094,15 +3453,28 @@ const server = http.createServer(async (req, res) => {
                 
                 // 🔒 RECUPERACIÓN SUPABASE: Si el pedido no está en memoria, buscarlo en la BD
                 if (!order) {
-                    const { data: dbOrder } = await supabase.from('ff_orders').select('*').eq('ref', targetRef).single();
-                    if (dbOrder) {
-                        if (dbOrder.status !== 'pending') {
-                            console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO: pedido ${targetRef} ya está '${dbOrder.status}' en Supabase (no estaba en memoria).`);
-                            res.writeHead(200);
-                            return res.end(JSON.stringify({ success: false, message: `🚫 Este pedido ya fue ${dbOrder.status === 'approved' ? 'APROBADO' : 'PROCESADO/RECHAZADO'}. No se puede aprobar de nuevo.` }));
+                    // Primero buscar por coincidencia parcial en la base de datos
+                    const { data: dbOrders } = await supabase
+                        .from('ff_orders')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .ilike('ref', `%${targetRef}%`);
+
+                    let matchedDbOrder = null;
+                    if (dbOrders && dbOrders.length > 0) {
+                        for (const dbO of dbOrders) {
+                            const parts = dbO.ref.split(',').map(r => r.trim());
+                            if (parts.includes(targetRef) || dbO.ref === targetRef) {
+                                matchedDbOrder = dbO;
+                                break;
+                            }
                         }
+                    }
+
+                    if (matchedDbOrder) {
+                        targetRef = matchedDbOrder.ref;
                         // Restaurar pedido pending en memoria
-                        orders[targetRef] = { ...dbOrder };
+                        orders[targetRef] = { ...matchedDbOrder };
                         order = orders[targetRef];
                         console.log(`[ADMIN-APPROVE] Pedido ${targetRef} restaurado desde Supabase.`);
                     }
@@ -3129,7 +3501,7 @@ const server = http.createServer(async (req, res) => {
                         }
                         if (order.method === 'pagomovil') {
                             for (let fRef in pagosValidados) {
-                                if (pagosValidados[fRef].used && (fRef.endsWith(cleanRef) || cleanRef.endsWith(fRef))) {
+                                if (pagosValidados[fRef].used && areRefsSimilar(fRef, cleanRef)) {
                                     console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${targetRef}' coincide con el pago usado '${fRef}'.`);
                                     res.writeHead(200);
                                     return res.end(JSON.stringify({ 
@@ -3318,12 +3690,14 @@ const server = http.createServer(async (req, res) => {
                     const pinVal = pins.length > 0 ? pins.join(' / ') : null;
                     const jadhOrdersStr = orderIds.length > 0 ? orderIds.join(', ') : 'Exitoso';
                     
-                    // Actualizar estado del pedido
-                    if (orders[ref]) {
-                        orders[ref].status = 'approved';
-                        orders[ref].name = nick;
+                    // Actualizar estado del pedido de rejected/failed a approved
+                    if (!orders[ref]) {
+                        orders[ref] = { ...order };
                     }
-                    updateOrderStatus(ref, 'approved', pinVal || jadhOrdersStr);
+                    orders[ref].status = 'approved';
+                    orders[ref].name = nick;
+                    orders[ref].reason = null;
+                    updateOrderStatus(ref, 'approved', pinVal || jadhOrdersStr, null);
                     saveRecent(nick, order.pack);
 
                     // 💰 CASHBACK: Acreditar puntos al usuario (igual que en aprobación normal)
@@ -3376,11 +3750,13 @@ const server = http.createServer(async (req, res) => {
                 let order = orders[targetRef];
                 
                 // Si la referencia recibida es corta (ej: 4 dígitos) y no coincide directamente,
-                // buscar entre los pedidos pendientes uno que termine con esos dígitos.
+                // buscar entre los pedidos pendientes uno que coincida con esos dígitos en su lista.
                 if (!order && ref && ref.length >= 4) {
-                    const matches = Object.keys(orders).filter(k => 
-                        orders[k].status === 'pending' && k.endsWith(ref)
-                    );
+                    const matches = Object.keys(orders).filter(k => {
+                        if (orders[k].status !== 'pending') return false;
+                        const parts = k.split(',').map(p => p.trim());
+                        return parts.some(p => areRefsSimilar(p, ref));
+                    });
                     if (matches.length === 1) {
                         targetRef = matches[0];
                         order = orders[targetRef];
@@ -3394,20 +3770,41 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
 
+                // 🔒 RECUPERACIÓN SUPABASE: Si el pedido no está en memoria, buscarlo en la BD
+                if (!order) {
+                    const { data: dbOrders } = await supabase
+                        .from('ff_orders')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .ilike('ref', `%${targetRef}%`);
+
+                    let matchedDbOrder = null;
+                    if (dbOrders && dbOrders.length > 0) {
+                        for (const dbO of dbOrders) {
+                            const parts = dbO.ref.split(',').map(r => r.trim());
+                            if (parts.includes(targetRef) || dbO.ref === targetRef) {
+                                matchedDbOrder = dbO;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matchedDbOrder) {
+                        targetRef = matchedDbOrder.ref;
+                        orders[targetRef] = { ...matchedDbOrder };
+                        order = orders[targetRef];
+                        console.log(`[ADMIN-REJECT] Pedido ${targetRef} restaurado desde Supabase.`);
+                    }
+                }
+
                 // 🔒 DOBLE CANDADO SUPABASE: verificar estado real antes de rechazar
-                // Previene rechazar lo que ya fue aprobado por otro canal
-                if (order || !order) {
+                if (order) {
                     const { data: dbCheck } = await supabase.from('ff_orders').select('status').eq('ref', targetRef).single();
                     if (dbCheck && dbCheck.status !== 'pending') {
                         console.log(`[ADMIN-REJECT] 🛑 BLOQUEADO: ref ${targetRef} ya está '${dbCheck.status}' en Supabase.`);
-                        if (order) order.status = dbCheck.status;
+                        order.status = dbCheck.status;
                         res.writeHead(200);
                         return res.end(JSON.stringify({ success: false, message: `🚫 Pedido ya procesado (${dbCheck.status}). No se puede rechazar un pedido ya ${dbCheck.status === 'approved' ? 'APROBADO' : 'procesado'}.` }));
-                    }
-                    if (dbCheck && !order) {
-                        // Restaurar en memoria para el rechazo
-                        const { data: fullOrder } = await supabase.from('ff_orders').select('*').eq('ref', targetRef).single();
-                        if (fullOrder) { orders[targetRef] = { ...fullOrder }; order = orders[targetRef]; }
                     }
                 }
 
@@ -3530,6 +3927,52 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: false, message: e.message }));
             }
         });
+    } else if (parsedUrl.pathname === '/admin/block-payment' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { ref, amount } = JSON.parse(body);
+                
+                if (!ref) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'La referencia es obligatoria.' }));
+                }
+
+                const cleanRef = ref.trim();
+                const cleanAmount = parseFloat(amount) || 0;
+
+                // Registrar en memoria
+                pagosValidados[cleanRef] = {
+                    amount: cleanAmount,
+                    date: new Date().toISOString(),
+                    used: true
+                };
+
+                // Guardar/Upsert en Supabase
+                const { error } = await supabase
+                    .from('ff_pagos_recibidos')
+                    .upsert({
+                        ref: cleanRef,
+                        amount: cleanAmount,
+                        used: true,
+                        date: new Date().toISOString()
+                    }, { onConflict: 'ref' });
+
+                if (error) {
+                    console.error('[ADMIN-BLOCK-PAYMENT] Error guardando en Supabase:', error.message);
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ success: false, message: 'Error de base de datos: ' + error.message }));
+                }
+
+                console.log(`[ADMIN-BLOCK-PAYMENT] Pago bloqueado manualmente: Ref ${cleanRef} | Monto: ${cleanAmount}`);
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, message: `Referencia '${cleanRef}' bloqueada correctamente.` }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/usuarios' && req.method === 'GET') {
         try {
             // Filtrar y devolver únicamente los usuarios reales (con contraseña, puntos o datos de contacto)
@@ -3584,6 +4027,54 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(500);
             res.end(JSON.stringify({ success: false, error: 'Error al obtener usuarios' }));
         }
+    } else if (parsedUrl.pathname === '/admin/wa_contacts' && req.method === 'GET') {
+        try {
+            const list = Object.values(waContacts).sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, count: list.length, contacts: list }));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+    } else if (parsedUrl.pathname === '/admin/wa_contacts/export' && req.method === 'GET') {
+        try {
+            const list = Object.values(waContacts).sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen));
+            let csv = 'Numero,Nombre,ID_Jugador,Origen,Total_Ordenes,Ultima_Actividad,Link_WhatsApp\n';
+            list.forEach(c => {
+                const phone = c.phone || '';
+                const name = `"${(c.name || 'Cliente').replace(/"/g, '""')}"`;
+                const uid = c.uid || '';
+                const source = c.source || 'web';
+                const orders = c.orders_count || 1;
+                const lastSeen = c.last_seen ? new Date(c.last_seen).toLocaleString('es-VE') : '';
+                const link = `https://wa.me/${phone}`;
+                csv += `${phone},${name},${uid},${source},${orders},"${lastSeen}",${link}\n`;
+            });
+            res.writeHead(200, {
+                'Content-Type': 'text/csv; charset=utf-8',
+                'Content-Disposition': 'attachment; filename="contactos_whatsapp_recargasney.csv"'
+            });
+            res.end('\uFEFF' + csv);
+        } catch (e) {
+            res.writeHead(500);
+            res.end('Error al exportar contactos');
+        }
+    } else if (parsedUrl.pathname === '/api/save_wa_contact' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const data = JSON.parse(body || '{}');
+                if (data.phone) {
+                    await saveWaContact(data.phone, data.name, data.uid, data.source || 'wa_bot');
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
     } else if (parsedUrl.pathname === '/admin/referidos' && req.method === 'GET') {
         try {
             // Consultar Supabase directamente para obtener TODOS los usuarios referidos (incluso históricos)
@@ -3673,7 +4164,7 @@ const server = http.createServer(async (req, res) => {
                     referrerData.name = referrerName;
                 }
                 const totalClaimed = referidos.filter(r => r.claimed).length;
-                const usdtEarned   = (totalClaimed * 10 * 0.003).toFixed(2);
+                const usdtEarned   = (totalClaimed * 17 * 0.003).toFixed(2);
                 result.push({
                     referrer_uid:    referrerUid,
                     referrer_name:   referrerName,
@@ -3993,7 +4484,6 @@ const server = http.createServer(async (req, res) => {
                         `🆔 *ID Garena:* ${uid}\n` +
                         `━━━━━━━━━━━━━━━\n\n` +
                         `✅ Ya puedes *acumular $* en cada recarga y canjearlos por diamantes gratis. 💎\n\n` +
-                        `🌐 *Tu tienda:* https://recargasney.com\n\n` +
                         `¡Gracias por unirte a *RECARGASNEY.COM*! 🚀`;
 
                     const waWelcome = { id: waWelcomeId, number: phoneClean, message: waWelcomeMsg };

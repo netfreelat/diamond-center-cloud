@@ -43,7 +43,7 @@
         }
 
         .admin-container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -72,10 +72,6 @@
             padding: 5px;
             justify-content: flex-start;
             -webkit-overflow-scrolling: touch;
-        }
-        
-        @media (min-width: 769px) {
-            .tabs-nav { justify-content: center; }
         }
 
         .tab-btn {
@@ -235,22 +231,28 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+        }
+
+        .table-container table {
+            min-width: 1050px;
         }
 
         th {
             text-align: left;
-            padding: 12px;
+            padding: 6px 4px;
             color: var(--secondary);
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
             border-bottom: 2px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
         }
 
         td {
-            padding: 12px;
+            padding: 6px 4px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             color: var(--text-gray);
+            vertical-align: middle;
         }
 
         tr:hover td {
@@ -349,7 +351,6 @@
             
             /* Ajustes para evitar scroll horizontal excesivo */
             .admin-container { overflow-x: hidden; width: 100%; display: none; } /* Ocultar por defecto hasta autenticar */
-            table { min-width: 600px; } /* Forzar scroll dentro del contenedor de tabla solamente */
         }
         
         @keyframes overlayFadeIn {
@@ -407,15 +408,17 @@
 
         <nav class="tabs-nav">
             <button class="tab-btn active" onclick="showTab('dashboard', this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
-            <button class="tab-btn" onclick="showTab('pedidos', this)" style="position: relative;">
-                <i class="fa-solid fa-shopping-cart"></i> Pedidos
+            <button class="tab-btn" onclick="showTab('historial-ventas', this)" style="position: relative;">
+                <i class="fa-solid fa-receipt"></i> Ventas
                 <span id="pending-badge" class="badge">0</span>
             </button>
-            <button class="tab-btn" onclick="showTab('historial-ventas', this)"><i class="fa-solid fa-receipt"></i> Ventas</button>
             <button class="tab-btn" onclick="showTab('usuarios', this)"><i class="fa-solid fa-users"></i> Usuarios</button>
+            <button class="tab-btn" onclick="showTab('referidos-tab', this)"><i class="fa-solid fa-share-nodes"></i> Referidos</button>
             <button class="tab-btn" onclick="showTab('juegos-tab', this)"><i class="fa-solid fa-gamepad"></i> Juegos</button>
             <button class="tab-btn" onclick="showTab('wa-bot-tab', this)"><i class="fa-brands fa-whatsapp"></i> Bot WA</button>
-            <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Notificaciones Push</button>
+            <button class="tab-btn" onclick="showTab('wa-contacts-tab', this)"><i class="fa-solid fa-address-book"></i> Contactos WA (<span id="wa-contacts-count">0</span>)</button>
+            <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Push</button>
+            <button class="tab-btn" onclick="showTab('block-payment-tab', this)"><i class="fa-solid fa-ban"></i> Bloquear Pagos</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
         </nav>
 
@@ -429,48 +432,44 @@
                 <h2><i class="fa-solid fa-chart-area" style="color: var(--secondary);"></i> Ingresos de los Últimos 7 Días</h2>
                 <canvas id="salesChart" height="80"></canvas>
             </div>
-            
-            <div class="action-card">
-                <h2><i class="fa-solid fa-bolt" style="color: var(--secondary);"></i> Automatización BDV</h2>
-                <p style="color: var(--text-gray); margin-bottom: 20px;">El sistema consulta automáticamente los movimientos del banco para validar los pedidos.</p>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="loadDashboardStats()" class="btn-main" style="width: auto; padding: 10px 20px;">
-                        <i class="fa-solid fa-sync"></i> Sincronizar Datos
-                    </button>
-                </div>
-            </div>
-        </div>
 
-        <!-- PEDIDOS TAB -->
-        <div id="pedidos" class="tab-content">
-            <div class="action-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h2 style="margin: 0;"><i class="fa-solid fa-list-check" style="color: var(--secondary);"></i> Gestión de Pedidos</h2>
-                    <div style="width: 100%; max-width: 300px;">
-                        <input type="text" id="order-search" placeholder="🔍 Buscar por Ref o ID..." onkeyup="filterOrders()" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+            <!-- 💰 RESUMEN FINANCIERO -->
+            <div class="action-card" style="margin-top: 20px; border: 1px solid rgba(0,240,255,0.2); background: linear-gradient(135deg, rgba(0,240,255,0.03), rgba(157,0,255,0.05));">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-coins" style="color:#FFD93D;"></i> Resumen Financiero</h2>
+                    <div style="display:flex; gap:6px; background:rgba(0,0,0,0.3); border-radius:10px; padding:4px;">
+                        <button onclick="switchFinancialPeriod('today', this)" id="fin-btn-today" class="fin-period-btn active" style="background:var(--primary); color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; transition:all 0.2s;">Hoy</button>
+                        <button onclick="switchFinancialPeriod('yesterday', this)" id="fin-btn-yesterday" class="fin-period-btn" style="background:transparent; color:var(--text-gray); border:none; padding:6px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; transition:all 0.2s;">Ayer</button>
+                        <button onclick="switchFinancialPeriod('week', this)"  id="fin-btn-week"  class="fin-period-btn" style="background:transparent; color:var(--text-gray); border:none; padding:6px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; transition:all 0.2s;">Semana</button>
+                        <button onclick="switchFinancialPeriod('month', this)" id="fin-btn-month" class="fin-period-btn" style="background:transparent; color:var(--text-gray); border:none; padding:6px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; transition:all 0.2s;">Mes</button>
                     </div>
                 </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Control</th>
-                                <th>Referencia</th>
-                                <th>Jugador</th>
-                                <th>Paquete</th>
-                                <th>Monto</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orders-table-body">
-                            <!-- Cargado por JS -->
-                        </tbody>
-                    </table>
+
+                <!-- Cards financieras -->
+                <div id="financial-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap:12px; margin-bottom:18px;">
+                    <div style="text-align:center; padding:30px; color:var(--text-gray);"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>
+                </div>
+
+                <!-- Barra de progreso de margen -->
+                <div id="financial-margin-bar" style="display:none; background:rgba(0,0,0,0.3); border-radius:12px; padding:14px 18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-size:0.78rem; color:var(--text-gray); font-weight:700;">MARGEN NETO</span>
+                        <span id="fin-margin-pct" style="font-size:1rem; font-weight:800; color:#00FF94;">0%</span>
+                    </div>
+                    <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
+                        <div id="fin-margin-fill" style="height:100%; background:linear-gradient(90deg, #00FF94, #00F0FF); border-radius:4px; transition:width 0.8s ease; width:0%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                        <div style="font-size:0.72rem; color:var(--text-gray);">📦 Pago Móvil: <span id="fin-count-pm" style="color:#fff; font-weight:700;">0</span></div>
+                        <div style="font-size:0.72rem; color:var(--text-gray);">💛 Binance: <span id="fin-count-bin" style="color:#FFD93D; font-weight:700;">0</span></div>
+                        <div style="font-size:0.72rem; color:var(--text-gray);">Tasa: <span id="fin-tasa" style="color:var(--secondary); font-weight:700;">-</span> Bs/$</div>
+                    </div>
                 </div>
             </div>
+
         </div>
+
+
 
         <!-- HISTORIAL DE VENTAS TAB -->
         <div id="historial-ventas" class="tab-content">
@@ -485,15 +484,14 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Fecha/Hora</th>
-                                <th>N° Control</th>
-                                <th>Referencia</th>
-                                <th>Jugador</th>
-                                <th>Paquete</th>
-                                <th>Monto</th>
-                                <th>Estado</th>
-                                <th>ID Orden Proveedor</th>
-                                <th>IP Comprador</th>
+                                <th style="width: 11%;">Fecha/Hora</th>
+                                <th style="width: 8%;">N° Control</th>
+                                <th style="width: 18%;">Monto y Referencia</th>
+                                <th style="width: 15%;">Jugador</th>
+                                <th style="width: 8%;">Paquete</th>
+                                <th style="width: 10%;">Estado</th>
+                                <th style="width: 15%;">ID Proveedor</th>
+                                <th style="width: 15%;">IP</th>
                             </tr>
                         </thead>
                         <tbody id="ventas-table-body">
@@ -527,6 +525,44 @@
                         </thead>
                         <tbody id="users-table-body">
                             <!-- Cargado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTACTOS WHATSAPP TAB -->
+        <div id="wa-contacts-tab" class="tab-content">
+            <div class="action-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Base de Datos de Contactos WhatsApp</h2>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">Todos los números registrados automáticamente al comprar, registrarse o escribir por WhatsApp.</p>
+                    </div>
+                    <button class="btn-primary" onclick="exportWaContactsCSV()" style="background: #25D366; color: white; border: none; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel / CSV
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="wa-contacts-search" placeholder="🔍 Buscar por teléfono, nombre o ID de jugador..." class="form-input" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--dark-bg); color: white;" onkeyup="filterWaContacts()">
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N°</th>
+                                <th>WhatsApp / Teléfono</th>
+                                <th>Nombre / Apodo</th>
+                                <th>ID Jugador</th>
+                                <th>Origen</th>
+                                <th>Última Actividad</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wa-contacts-table-body">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-gray); padding: 30px;">Cargando contactos de WhatsApp...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -616,12 +652,6 @@
                 </div>
 
                 <hr style="opacity:0.1; margin: 30px 0;">
-                <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-tags" style="color: var(--secondary);"></i> Precios de Diamantes (USDT)</h3>
-                <div id="prices-editor" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <!-- Cargado por JS -->
-                </div>
-
-                <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-credit-card" style="color: #25D366;"></i> Métodos de Pago</h3>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
@@ -669,6 +699,33 @@
                     </div>
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left; margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Modo de Notificaciones WhatsApp:</label>
+                        <select id="wa-modo" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; font-weight: bold; outline: none;">
+                            <option value="activo" style="background:#140a23;">Activo (Enviar automático - Riesgo de bloqueo)</option>
+                            <option value="seguro" style="background:#140a23;">🔒 Modo Seguro (Interactivos/Manual - Evita bloqueos)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; padding-top: 10px; font-size: 0.82rem; color: #aaa; line-height: 1.3;">
+                        <span>🔒 <strong>Modo Seguro:</strong> El bot no enviará mensajes automáticos a los clientes (previniendo que reporten spam). Los clientes podrán pedir su ticket/PIN enviando su código de referencia por chat. Las alertas de nuevos pedidos a administradores seguirán activas.</span>
+                    </div>
+                </div>
+
+                <hr style="opacity:0.1; margin: 30px 0;">
+                <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-rectangle-ad" style="color: var(--secondary);"></i> Banners Publicitarios (Inicio)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">
+                    Agrega o edita imágenes publicitarias que aparecerán rotando en la parte superior de la página web. <strong>Recomendado:</strong> Banners horizontales (ej. 800x320px).
+                </p>
+                <div id="ads-admin-list" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left;">
+                    <!-- Se cargará dinámicamente -->
+                </div>
+                <div style="text-align: left; margin-bottom: 20px;">
+                    <button type="button" onclick="addAdRow()" class="btn-main" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--secondary); color: var(--secondary); width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; cursor: pointer; border-radius: 8px;">
+                        <i class="fa-solid fa-plus"></i> Agregar Banner
+                    </button>
+                </div>
+
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-user-shield" style="color: var(--primary);"></i> Perfil de Administrador</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -711,9 +768,65 @@
                     <i class="fa-solid fa-arrows-rotate"></i> Reiniciar Conexión Bot
                 </button>
                 <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 10px;">Usa esto si el bot aparece desconectado pero el script sigue ejecutándose.</p>
+
+                <hr style="opacity:0.1; margin: 20px 0;">
+                <h3 style="margin-bottom: 8px; color: #FFC107;"><i class="fa-solid fa-mobile-screen-button"></i> Cambiar Número de WhatsApp</h3>
+                <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">
+                    Usa este botón si quieres vincular un número diferente al bot. Se borrará la sesión actual y se generará un nuevo código QR para escanear con el nuevo número.
+                </p>
+                <button onclick="changeWaNumber()" class="btn-main" style="background: rgba(255, 193, 7, 0.15); border: 1px solid #FFC107; color: #FFC107; box-shadow: none;">
+                    <i class="fa-solid fa-sim-card"></i> Cambiar Número (Nueva Sesión QR)
+                </button>
+                <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 8px;">⚠️ El bot se desconectará brevemente mientras genera el nuevo QR.</p>
             </div>
 
-            <!-- ENVIAR WHATSAPP MASIVO / ESPECÍFICO -->
+
+            <!-- 🏦 BDV AUTO-PAGO TOGGLE -->
+            <div class="action-card" style="margin-top: 20px; border: 1px solid rgba(157, 0, 255, 0.25);">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-building-columns" style="color: #9D00FF;"></i>
+                    Auto-Aprobación BDV
+                </h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">
+                    Activa para que el bot verifique automáticamente los pagos por Pago Móvil en el Banco de Venezuela cada 60 segundos.
+                    <br><strong style="color: #FFC107;">⚠️ Los pagos manuales seguirán funcionando igual, independientemente de este toggle.</strong>
+                </p>
+
+                <!-- Estado actual -->
+                <div style="display: flex; align-items: center; gap: 20px; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 4px;">Estado del bot BDV</div>
+                        <div id="bdv-toggle-status" style="font-size: 1.1rem; font-weight: 800; color: #ff4b2b;">🔴 DESACTIVADO</div>
+                        <div id="bdv-session-info" style="font-size: 0.75rem; color: var(--text-gray); margin-top: 4px;">Sesión: Inactiva</div>
+                    </div>
+
+                    <!-- Toggle Switch estilo iOS -->
+                    <label class="bdv-toggle-switch" style="position: relative; display: inline-block; width: 64px; height: 34px; cursor: pointer;">
+                        <input type="checkbox" id="bdv-auto-toggle" onchange="toggleBDVAuto(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span style="
+                            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+                            background: #333; border-radius: 34px; transition: 0.3s;
+                        " id="bdv-toggle-bg">
+                            <span style="
+                                position: absolute; content: ''; height: 26px; width: 26px;
+                                left: 4px; bottom: 4px; background: white; border-radius: 50%;
+                                transition: 0.3s; transform: translateX(0px);
+                            " id="bdv-toggle-knob"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <div id="bdv-login-status" style="display: none; padding: 12px; background: rgba(157,0,255,0.1); border: 1px solid rgba(157,0,255,0.3); border-radius: 10px; font-size: 0.85rem; margin-bottom: 15px;">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="color: #9D00FF; margin-right: 6px;"></i>
+                    <span>Iniciando sesión en BDV en línea... (puede tardar ~15 seg)</span>
+                </div>
+
+                <button onclick="loadBDVStatus(true)" class="btn-main" style="background: rgba(157,0,255,0.1); border: 1px solid var(--primary); color: var(--primary); box-shadow: none; font-size: 0.85rem; padding: 10px 20px;">
+                    <i class="fa-solid fa-rotate"></i> Actualizar Estado BDV
+                </button>
+            </div>
+
+
             <div class="action-card" style="margin-top: 20px;">
                 <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enviar Mensaje WhatsApp</h2>
                 <p style="color: var(--text-gray); margin-bottom: 20px;">Envía mensajes de WhatsApp a través del bot a tus usuarios.</p>
@@ -727,8 +840,8 @@
                 </div>
 
                 <div id="wa-broadcast-phone-group" class="form-group" style="display: none;">
-                    <label>Número de teléfono (con código de área, ej. 584121234567):</label>
-                    <input type="text" id="wa-broadcast-phone" placeholder="Ej. 584121234567">
+                    <label>Número(s) de teléfono (con código de área, separados por coma):</label>
+                    <input type="text" id="wa-broadcast-phone" placeholder="Ej. 584121234567, 584141234567">
                 </div>
 
                 <div class="form-group">
@@ -739,6 +852,87 @@
                 <button onclick="sendWaBroadcast()" class="btn-main" style="background: linear-gradient(135deg, #25D366, #128C7E); box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);">
                     <i class="fa-solid fa-paper-plane"></i> Enviar Mensaje(s)
                 </button>
+            </div>
+        </div>
+
+        <!-- REFERIDOS TAB -->
+        <div id="referidos-tab" class="tab-content">
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="ref-stats-grid" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <span class="label">Total Referidores</span>
+                    <span class="value" id="ref-total-referrers" style="color: var(--secondary);">-</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Total Referidos</span>
+                    <span class="value" id="ref-total-referred" style="color: var(--warning);">-</span>
+                </div>
+                <!-- Nuevos Hoy -->
+                <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(0, 240, 255, 0.02)); border-color: rgba(0, 240, 255, 0.15);">
+                    <span class="label" style="color: #00f0ff;">⚡ Nuevos Hoy</span>
+                    <span class="value" id="ref-registered-today" style="color: #00f0ff;">-</span>
+                </div>
+                <!-- Nuevos este Mes -->
+                <div class="stat-card" style="background: linear-gradient(135deg, rgba(162, 89, 255, 0.08), rgba(162, 89, 255, 0.02)); border-color: rgba(162, 89, 255, 0.15);">
+                    <span class="label" style="color: #a259ff;">📅 Nuevos este Mes</span>
+                    <span class="value" id="ref-registered-month" style="color: #a259ff;">-</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="label">Comisiones Pagadas</span>
+                    <span class="value" id="ref-total-usdt" style="font-size: 1.8rem;">-</span>
+                    <div style="font-size: 0.7rem; color: #00FF94; margin-top: 4px;">USDT total</div>
+                </div>
+                <div class="stat-card alert">
+                    <span class="label">Ref. Pendientes</span>
+                    <span class="value" id="ref-total-pending">-</span>
+                </div>
+            </div>
+
+            <!-- Podio de Influencers / Leaderboard -->
+            <div id="ref-leaderboard-section" style="display: none; margin-bottom: 25px; animation: fadeIn 0.5s ease;">
+                <div class="stat-card" style="padding: 20px; background: linear-gradient(135deg, rgba(20, 10, 35, 0.6), rgba(40, 20, 70, 0.4)); border: 1px solid rgba(255, 255, 255, 0.08);">
+                    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 700;">
+                        <i class="fa-solid fa-crown" style="color: #ffd700;"></i> 
+                        Top 3 Referidores (Podio de Influencers)
+                    </h3>
+                    <div id="ref-leaderboard-podium" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <!-- Renderizado dinámico desde JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-share-nodes" style="color:var(--secondary);"></i> Programa de Referidos</h2>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="ref-search" placeholder="🔍 Buscar por ID o nombre..." oninput="filterReferidos()" style="padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); width:220px; font-size:0.85rem;">
+                        <button onclick="loadReferidos()" class="btn-main" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                            <i class="fa-solid fa-rotate"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla principal de referidores -->
+                <div class="table-container">
+                    <table id="ref-main-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Referidor (ID)</th>
+                                <th>Nombre</th>
+                                <th>Total Referidos</th>
+                                <th>✅ Comisión Cobrada</th>
+                                <th>⏳ Pendientes</th>
+                                <th>USDT Ganado</th>
+                                <th>Saldo Total</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ref-table-body">
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-gray); padding:40px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando datos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -779,6 +973,28 @@
 
                 <button onclick="sendPushNotification()" class="btn-main">
                     <i class="fa-solid fa-paper-plane"></i> Enviar Notificación
+                </button>
+            </div>
+        </div>
+
+        <!-- BLOCK PAYMENT TAB -->
+        <div id="block-payment-tab" class="tab-content">
+            <div class="action-card">
+                <h2><i class="fa-solid fa-ban" style="color: #ff4b2b;"></i> Bloquear Referencias de Pago</h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Registra y bloquea referencias de pago manualmente para evitar que los clientes puedan reportarlas de manera duplicada. El sistema rechazará inmediatamente cualquier intento de notificar estas referencias.</p>
+                
+                <div class="form-group">
+                    <label>Referencia de Pago a Bloquear:</label>
+                    <input type="text" id="block-pay-ref" placeholder="Ej: 123456789012 o 0677238446699">
+                </div>
+
+                <div class="form-group">
+                    <label>Monto del Pago (Opcional):</label>
+                    <input type="number" id="block-pay-amount" placeholder="Ej: 2422.00 o 10.00" step="0.01">
+                </div>
+
+                <button onclick="submitBlockPayment()" class="btn-main" style="background: #ff4b2b !important; border-color: #ff4b2b !important; color: #fff !important; font-weight: 700; cursor: pointer; padding: 12px 20px; border-radius: 8px;">
+                    <i class="fa-solid fa-ban"></i> Bloquear Referencia
                 </button>
             </div>
         </div>
@@ -936,7 +1152,48 @@
             }
         }
 
-        // Ejecutar al cargar la página
+        async function submitBlockPayment() {
+            const ref = document.getElementById('block-pay-ref').value.trim();
+            const amount = document.getElementById('block-pay-amount').value.trim();
+
+            if (!ref) {
+                return Swal.fire('Error', 'La referencia de pago es obligatoria.', 'error');
+            }
+
+            Swal.fire({
+                title: 'Bloqueando referencia...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/block-payment`, {
+                    method: 'POST',
+                    body: JSON.stringify({ ref, amount })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Bloqueada!',
+                        text: data.message,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                    document.getElementById('block-pay-ref').value = '';
+                    document.getElementById('block-pay-amount').value = '';
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo bloquear la referencia.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
+            }
+        }
+
+        // --- Ejecutar al cargar la página ---
         document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('admin_token');
             if (!token) {
@@ -956,14 +1213,295 @@
             if (btn) btn.classList.add('active');
 
             if (tabId === 'dashboard') loadDashboardStats();
-            if (tabId === 'pedidos') loadOrders();
             if (tabId === 'historial-ventas') loadAllTransactions();
             if (tabId === 'pines') loadPinStats();
             if (tabId === 'usuarios') loadUsers();
-            if (tabId === 'wa-bot-tab') checkWaStatus();
+            if (tabId === 'wa-bot-tab') { checkWaStatus(); loadBDVStatus(); }
             if (tabId === 'settings') loadSettings();
             if (tabId === 'juegos-tab') loadJuegos();
+            if (tabId === 'referidos-tab') loadReferidos();
+            if (tabId === 'wa-contacts-tab') loadWaContacts();
         }
+
+        // ─── REFERIDOS ─────────────────────────────────────────────────────
+        let _refData = [];
+
+        async function loadReferidos() {
+            const tbody = document.getElementById('ref-table-body');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-gray);padding:40px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/referidos`);
+                const json = await res.json();
+                if (!json.success) throw new Error(json.error || 'Error desconocido');
+                _refData = json.data || [];
+
+                // Calcular totales para las stat cards
+                const totalReferrers = _refData.length;
+                const totalReferred  = _refData.reduce((s, r) => s + r.total_referidos, 0);
+                const totalClaimed   = _refData.reduce((s, r) => s + r.total_claimed, 0);
+                const totalPending   = _refData.reduce((s, r) => s + r.total_pending, 0);
+                const totalUsdt      = (totalClaimed * 17 * 0.003).toFixed(2);
+                document.getElementById('ref-total-referrers').textContent = totalReferrers;
+                document.getElementById('ref-total-referred').textContent  = totalReferred;
+                document.getElementById('ref-total-usdt').textContent      = '$' + totalUsdt;
+                document.getElementById('ref-total-pending').textContent   = totalPending;
+
+                // --- Calcular Nuevos Registros (Hoy & Este Mes) en horario Caracas (UTC-4) ---
+                const nowCaracas = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }));
+                const caracasYear = nowCaracas.getFullYear();
+                const caracasMonth = nowCaracas.getMonth();
+                const caracasDate = nowCaracas.getDate();
+
+                let registeredToday = 0;
+                let registeredMonth = 0;
+
+                _refData.forEach(referrer => {
+                    if (referrer.referidos) {
+                        referrer.referidos.forEach(refUser => {
+                            if (refUser.registered) {
+                                const refDate = new Date(new Date(refUser.registered).toLocaleString("en-US", { timeZone: "America/Caracas" }));
+                                if (
+                                    refDate.getFullYear() === caracasYear &&
+                                    refDate.getMonth() === caracasMonth &&
+                                    refDate.getDate() === caracasDate
+                                ) {
+                                    registeredToday++;
+                                }
+                                if (
+                                    refDate.getFullYear() === caracasYear &&
+                                    refDate.getMonth() === caracasMonth
+                                ) {
+                                    registeredMonth++;
+                                }
+                            }
+                        });
+                    }
+                });
+
+                document.getElementById('ref-registered-today').textContent = registeredToday;
+                document.getElementById('ref-registered-month').textContent = registeredMonth;
+
+                // --- Renderizar Leaderboard de Top 3 Referidores ---
+                const top3 = _refData.slice(0, 3);
+                const leaderboardSection = document.getElementById('ref-leaderboard-section');
+                const podiumContainer = document.getElementById('ref-leaderboard-podium');
+
+                if (top3.length > 0) {
+                    leaderboardSection.style.display = 'block';
+                    let podiumHtml = '';
+
+                    top3.forEach((row, index) => {
+                        const name = row.referrer_name || `ID: ${row.referrer_uid}`;
+                        const uid = row.referrer_uid;
+                        const total_referidos = row.total_referidos;
+                        const usdt_earned = row.usdt_earned;
+
+                        let badge = '🥇';
+                        let label = '1er Lugar';
+                        let bg = 'rgba(255, 215, 0, 0.06)';
+                        let border = 'rgba(255, 215, 0, 0.35)';
+                        let color = '#ffd700';
+                        let shadow = 'box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);';
+
+                        if (index === 1) {
+                            badge = '🥈';
+                            label = '2do Lugar';
+                            bg = 'rgba(192, 192, 192, 0.06)';
+                            border = 'rgba(192, 192, 192, 0.25)';
+                            color = '#d0d0d0';
+                            shadow = '';
+                        } else if (index === 2) {
+                            badge = '🥉';
+                            label = '3er Lugar';
+                            bg = 'rgba(205, 127, 50, 0.06)';
+                            border = 'rgba(205, 127, 50, 0.2)';
+                            color = '#cd7f32';
+                            shadow = '';
+                        }
+
+                        podiumHtml += `
+                            <div style="background: ${bg}; border: 1px solid ${border}; border-radius: 15px; padding: 15px; text-align: center; position: relative; ${shadow} transition: transform 0.2s;" class="podium-card">
+                                <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${badge}</span>
+                                <div style="margin-top: 10px; font-weight: 800; font-size: 1rem; color: ${color}; font-family: 'Montserrat', sans-serif;">${label}</div>
+                                <div style="font-weight: 700; margin: 5px 0; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</div>
+                                <div style="font-size: 0.72rem; color: var(--text-gray); font-family: monospace;">${uid}</div>
+                                <div style="margin-top: 8px; display: flex; justify-content: space-around; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                                    <div>👥 <strong>${total_referidos}</strong> ref.</div>
+                                    <div style="color: #00FF94;">💰 <strong>$${usdt_earned}</strong></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    podiumContainer.innerHTML = podiumHtml;
+                } else {
+                    leaderboardSection.style.display = 'none';
+                }
+
+                renderReferidosTable(_refData);
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:30px;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderReferidosTable(data) {
+            const tbody = document.getElementById('ref-table-body');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-gray);padding:40px;">No hay datos de referidos aún.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map((row, i) => {
+                const detailId = `ref-detail-${i}`;
+                const referidosHtml = row.referidos.map(r => {
+                    const badge = r.claimed
+                        ? `<span class="status-badge status-approved">✅ Cobrado</span>`
+                        : `<span class="status-badge status-pending">⏳ Pendiente</span>`;
+                    const fecha = r.registered ? new Date(r.registered).toLocaleDateString('es-VE') : 'N/D';
+                    return `<tr style="background:rgba(0,240,255,0.03);">
+                        <td style="padding-left:30px; font-size:0.8rem;"><i class="fa-solid fa-arrow-right" style="color:var(--secondary);margin-right:6px;"></i>${r.uid}</td>
+                        <td style="font-size:0.8rem;">${r.name}</td>
+                        <td style="font-size:0.8rem;">${fecha}</td>
+                        <td colspan="5">${badge}</td>
+                    </tr>`;
+                }).join('');
+
+                const totalUsdt = (row.referrer_points * 0.003).toFixed(2);
+                return `
+                <tr style="cursor:pointer;" onclick="toggleRefDetail('${detailId}', this)">
+                    <td style="font-weight:800; color:var(--secondary);">${i+1}</td>
+                    <td><code style="color:var(--secondary); font-size:0.85rem;">${row.referrer_uid}</code></td>
+                    <td style="font-weight:600;">${row.referrer_name}</td>
+                    <td style="text-align:center; font-weight:700;">${row.total_referidos}</td>
+                    <td style="text-align:center;">
+                        <span style="background:rgba(0,255,148,0.15); color:#00FF94; padding:3px 10px; border-radius:20px; font-weight:800; font-size:0.9rem;">${row.total_claimed}</span>
+                    </td>
+                    <td style="text-align:center;">
+                        <span style="background:rgba(255,193,7,0.15); color:#FFC107; padding:3px 10px; border-radius:20px; font-weight:800; font-size:0.9rem;">${row.total_pending}</span>
+                    </td>
+                    <td style="font-weight:800; color:#FFD93D;">$${row.usdt_earned} USDT</td>
+                    <td style="font-weight:700; color:var(--secondary);">$${totalUsdt} USDT</td>
+                    <td><i class="fa-solid fa-chevron-down" style="color:var(--text-gray); font-size:0.8rem;"></i></td>
+                </tr>
+                <tr id="${detailId}" style="display:none;">
+                    <td colspan="9" style="padding:0;">
+                        <table style="width:100%; background:rgba(0,0,0,0.2);">
+                            <thead>
+                                <tr style="background:rgba(0,240,255,0.05);">
+                                    <th style="padding-left:30px;">ID Referido</th>
+                                    <th>Nombre</th>
+                                    <th>Fecha Registro</th>
+                                    <th colspan="5">Estado Comisión</th>
+                                </tr>
+                            </thead>
+                            <tbody>${referidosHtml}</tbody>
+                        </table>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function toggleRefDetail(id, row) {
+            const detail = document.getElementById(id);
+            if (!detail) return;
+            const icon = row.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+            if (detail.style.display === 'none') {
+                detail.style.display = 'table-row';
+                if (icon) { icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
+            } else {
+                detail.style.display = 'none';
+                if (icon) { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            }
+        }
+
+        function filterReferidos() {
+            const q = document.getElementById('ref-search').value.trim().toLowerCase();
+            if (!q) { renderReferidosTable(_refData); return; }
+            const filtered = _refData.filter(r =>
+                r.referrer_uid.toLowerCase().includes(q) ||
+                (r.referrer_name || '').toLowerCase().includes(q)
+            );
+            renderReferidosTable(filtered);
+        }
+
+        // ─── CONTACTOS WHATSAPP ──────────────────────────────────────────────
+        let _waContactsData = [];
+
+        async function loadWaContacts() {
+            const tbody = document.getElementById('wa-contacts-table-body');
+            const badge = document.getElementById('wa-contacts-count');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-gray);padding:40px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando contactos de WhatsApp...</td></tr>';
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/wa_contacts`);
+                const json = await res.json();
+                if (!json.success) throw new Error(json.error || 'Error al obtener contactos');
+                _waContactsData = json.contacts || [];
+                if (badge) badge.innerText = _waContactsData.length;
+                renderWaContacts(_waContactsData);
+            } catch (e) {
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:30px;"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar contactos: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderWaContacts(data) {
+            const tbody = document.getElementById('wa-contacts-table-body');
+            if (!tbody) return;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-gray);padding:30px;">No hay contactos de WhatsApp registrados aún.</td></tr>';
+                return;
+            }
+            let html = '';
+            data.forEach((c, idx) => {
+                const phone = c.phone || '—';
+                const name = c.name || 'Cliente';
+                const uid = c.uid || '—';
+                const sourceMap = {
+                    'web_order': '<span class="status-badge status-approved" style="font-size:0.65rem;">Compra Web</span>',
+                    'web_user': '<span class="status-badge" style="background:rgba(0,123,255,0.2);color:#007bff;border:1px solid #007bff;font-size:0.65rem;">Registro Web</span>',
+                    'wa_bot': '<span class="status-badge" style="background:rgba(37,211,102,0.2);color:#25D366;border:1px solid #25D366;font-size:0.65rem;">Chat WhatsApp</span>'
+                };
+                const srcBadge = sourceMap[c.source] || `<span class="status-badge">${c.source || 'Web'}</span>`;
+                const lastSeen = c.last_seen ? new Date(c.last_seen).toLocaleString('es-VE') : '—';
+                const waLink = `https://wa.me/${phone}`;
+
+                html += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>
+                            <strong style="color:white;">+${phone}</strong>
+                        </td>
+                        <td>${name}</td>
+                        <td><code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;">${uid}</code></td>
+                        <td>${srcBadge}</td>
+                        <td><small style="color:var(--text-gray);">${lastSeen}</small></td>
+                        <td>
+                            <a href="${waLink}" target="_blank" class="btn-wa" title="Abrir Chat WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i> Chat
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function filterWaContacts() {
+            const query = (document.getElementById('wa-contacts-search')?.value || '').toLowerCase().trim();
+            if (!query) {
+                renderWaContacts(_waContactsData);
+                return;
+            }
+            const filtered = _waContactsData.filter(c => 
+                (c.phone || '').toLowerCase().includes(query) ||
+                (c.name || '').toLowerCase().includes(query) ||
+                (c.uid || '').toLowerCase().includes(query)
+            );
+            renderWaContacts(filtered);
+        }
+
+        function exportWaContactsCSV() {
+            window.open(`${SERVER_URL}/admin/wa_contacts/export`, '_blank');
+        }
+        // ───────────────────────────────────────────────────────────────────
 
         async function loadDashboardStats() {
             try {
@@ -985,69 +1523,219 @@
                         <span class="label"><i class="fa-solid fa-user-friends"></i> USUARIOS</span>
                         <span class="value" style="color:var(--primary)">${stats.total_users}</span>
                     </div>
-                    <div class="stat-card success">
-                        <span class="label"><i class="fa-solid fa-bolt"></i> RECARGA AUTO</span>
-                        <span class="value" style="color:#00FF94">∞</span>
+                    <div class="stat-card" style="cursor: pointer;" onclick="showPricesModal()">
+                        <span class="label"><i class="fa-solid fa-tags"></i> PRECIOS EN BS</span>
+                        <span class="value" style="color:#00FF94; font-size:1.6rem;">VER LISTA</span>
+                    </div>
+                    <div class="stat-card" style="border-color:rgba(255,215,0,0.35); background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,165,0,0.03));">
+                        <span class="label" style="color:#FFD700;"><i class="fa-solid fa-share-nodes"></i> REFERIDOS PAGADOS</span>
+                        <span class="value" style="color:#FFD700; font-size:1.8rem;">$${(stats.referral_usdt || 0).toFixed(2)}</span>
+                        <div style="font-size:0.62rem; color:rgba(255,215,0,0.6); margin-top:4px; font-weight:700;">USDT en comisiones</div>
+                    </div>
+                    <div class="stat-card" style="border-color:rgba(157,0,255,0.4); background:linear-gradient(135deg,rgba(157,0,255,0.1),rgba(0,240,255,0.05));">
+                        <span class="label" style="color:#00F0FF;"><i class="fa-solid fa-dice"></i> RULETA PAGADA</span>
+                        <span class="value" style="background:linear-gradient(135deg,#9D00FF,#00F0FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:1.8rem;">$${(stats.roulette_usdt || 0).toFixed(2)}</span>
+                        <div style="font-size:0.62rem; color:rgba(0,240,255,0.6); margin-top:4px; font-weight:700;">USDT en premios</div>
                     </div>
                 `;
                 updateSalesChart();
+                loadFinancialSummary();
+                loadWaContacts();
             } catch (e) { console.error(e); }
         }
 
-        let allOrders = [];
-        async function loadOrders() {
+        async function showPricesModal() {
             try {
-                const res = await adminFetch(`${SERVER_URL}/admin/pedidos`);
-                allOrders = await res.json();
-                allOrders.sort((a, b) => new Date(b.time) - new Date(a.time));
-                renderOrders(allOrders);
-            } catch (e) { console.error(e); }
-        }
+                Swal.fire({
+                    title: 'Cargando precios...',
+                    html: '<div style="margin:20px 0;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 2.5rem; color: var(--secondary);"></i></div>',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff'
+                });
 
-        function renderOrders(ordersList) {
-            const tbody = document.getElementById('orders-table-body');
-            tbody.innerHTML = '';
-            ordersList.forEach(order => {
-                const tr = document.createElement('tr');
-                const dateObj = new Date(order.time);
-                const dateStr = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', timeZone: 'America/Caracas' });
-                const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' });
-                
-                tr.innerHTML = `
-                    <td><small>${dateStr}</small><br><strong>${timeStr}</strong></td>
-                    <td><span style="color:var(--secondary); font-weight:700;">${order.control_num || '-'}</span></td>
-                    <td><code>${order.ref}</code><br><small style="color:var(--text-gray)">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small></td>
-                    <td>
-                        ${order.name}<br>
-                        <small>ID: ${order.uid}</small>
-                        ${order.wa ? `<br><a href="https://wa.me/${order.wa}" target="_blank" class="btn-wa"><i class="fa-brands fa-whatsapp"></i> Chat</a>` : ''}
-                    </td>
-                    <td>${order.pack}</td>
-                    <td><span style="color:#25D366; font-weight:700;">${order.price || 'N/A'}</span></td>
-                    <td><span class="status-badge status-${order.status}">${order.status}</span></td>
-                    <td>
-                        ${order.status === 'pending' ? `
-                            <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar"><i class="fa-solid fa-check"></i></button>
-                            <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar"><i class="fa-solid fa-times"></i></button>
-                        ` : (order.status === 'approved' || order.status === 'failed') ? `
-                            <button onclick="retryRecharge('${order.ref}', '${order.uid}', '${order.pack}')" class="btn-action" title="Reintentar Recarga" style="background:rgba(255,150,0,0.15);border-color:rgba(255,150,0,0.4);color:#FF9600;" ><i class="fa-solid fa-rotate-right"></i></button>
-                        ` : '-'}
-                    </td>
+                const [configRes, settingsRes] = await Promise.all([
+                    adminFetch(`${SERVER_URL}/api/config`),
+                    adminFetch(`${SERVER_URL}/admin/settings`)
+                ]);
+
+                const configData = await configRes.json();
+                const settingsData = await settingsRes.json();
+
+                const juegos = configData.juegos || {};
+                const tasa = parseFloat(settingsData.tasa_del_dia) || 1;
+
+                if (Object.keys(juegos).length === 0) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin juegos',
+                        text: 'No hay juegos configurados en la tienda.',
+                        background: 'rgba(20,10,35,0.98)',
+                        color: '#fff'
+                    });
+                    return;
+                }
+
+                let html = `
+                    <div style="text-align: left; max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                        <p style="margin-bottom: 15px; font-size: 0.9rem; color: #b0a8c0;">
+                            Precios calculados con la tasa actual de <strong style="color:var(--secondary);">${tasa.toFixed(2)} Bs/$</strong>
+                        </p>
                 `;
-                tbody.appendChild(tr);
-            });
+
+                for (const [gameKey, game] of Object.entries(juegos)) {
+                    html += `
+                        <div style="margin-bottom: 22px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius:12px; padding:15px;">
+                            <h3 style="color: #00f0ff; margin-bottom: 12px; font-family:'Montserrat',sans-serif; display:flex; align-items:center; gap:8px; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                                <i class="fa-solid ${game.icono || 'fa-gamepad'}"></i> ${game.nombre}
+                            </h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: #b0a8c0; text-align: left;">
+                                        <th style="padding: 6px 0; font-weight:600;">Paquete</th>
+                                        <th style="padding: 6px 0; text-align: right; font-weight:600;">Costo USD</th>
+                                        <th style="padding: 6px 0; text-align: right; color: #00ff94; font-weight:600;">Precio Bs</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    const packages = Object.entries(game.paquetes || {}).sort((a, b) => parseFloat(a[1].usdt) - parseFloat(b[1].usdt));
+                    if (packages.length === 0) {
+                        html += `
+                            <tr>
+                                <td colspan="3" style="padding: 10px 0; text-align: center; color: #777;">No hay paquetes disponibles.</td>
+                            </tr>
+                        `;
+                    } else {
+                        for (const [pkId, pk] of packages) {
+                            const priceBs = (parseFloat(pk.usdt) * tasa).toFixed(2);
+                            html += `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 8px 0; font-weight: 700; color:#fff;">${pk.label}</td>
+                                    <td style="padding: 8px 0; text-align: right; color: #FFC107; font-family: monospace;">${parseFloat(pk.usdt).toFixed(2)} USDT</td>
+                                    <td style="padding: 8px 0; text-align: right; color: #00ff94; font-weight: bold; font-family: monospace;">${priceBs} Bs</td>
+                                </tr>
+                            `;
+                        }
+                    }
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+
+                Swal.fire({
+                    title: '<span style="font-family:\'Montserrat\',sans-serif; font-weight:800; font-size:1.3rem;">📋 Lista de Precios actuales</span>',
+                    html: html,
+                    confirmButtonText: 'Cerrar',
+                    confirmButtonColor: 'var(--primary)',
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff',
+                    width: '480px'
+                });
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudieron cargar los precios actuales.',
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff'
+                });
+            }
         }
 
-        function filterOrders() {
-            const query = document.getElementById('order-search').value.toLowerCase();
-            const filtered = allOrders.filter(o => 
-                o.ref.toLowerCase().includes(query) || 
-                (o.control_num && o.control_num.toLowerCase().includes(query)) ||
-                o.uid.toLowerCase().includes(query) || 
-                (o.name && o.name.toLowerCase().includes(query))
-            );
-            renderOrders(filtered);
+
+        // ─── RESUMEN FINANCIERO ──────────────────────────────────────────────
+        let _financialData = null;
+        let _currentFinancialPeriod = 'today';
+
+        async function loadFinancialSummary() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/financial-summary`);
+                const json = await res.json();
+                if (!json.success) throw new Error(json.error);
+                _financialData = json.summary;
+                renderFinancialCards(_financialData[_currentFinancialPeriod], _financialData.tasa);
+            } catch (e) {
+                document.getElementById('financial-cards').innerHTML =
+                    `<div style="color:var(--danger); text-align:center; padding:20px;"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar resumen financiero.</div>`;
+                console.error('[FINANCIAL]', e);
+            }
         }
+
+        function switchFinancialPeriod(period, btn) {
+            _currentFinancialPeriod = period;
+            document.querySelectorAll('.fin-period-btn').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = 'var(--text-gray)';
+            });
+            btn.style.background = 'var(--primary)';
+            btn.style.color = '#fff';
+            if (_financialData) renderFinancialCards(_financialData[period], _financialData.tasa);
+        }
+
+        function renderFinancialCards(d, tasa) {
+            if (!d) return;
+
+            const profitColor  = d.profitUsdt >= 0 ? '#00FF94' : '#FF3D71';
+            const profitIcon   = d.profitUsdt >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down';
+            const marginColor  = d.margin >= 20 ? '#00FF94' : d.margin >= 10 ? '#FFD93D' : '#FF9600';
+
+            document.getElementById('financial-cards').innerHTML = `
+                <!-- Ingresos USDT -->
+                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(253,203,110,0.08),rgba(253,203,110,0.02)); border-color:rgba(253,203,110,0.2);">
+                    <span class="label" style="font-size:0.58rem; color:#FFD93D;">💵 INGRESOS USDT</span>
+                    <span class="value" style="font-size:1.6rem; color:#FFD93D;">$${d.revenueUsdt.toFixed(2)}</span>
+                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.totalOrders} venta${d.totalOrders !== 1 ? 's' : ''} aprobada${d.totalOrders !== 1 ? 's' : ''}</div>
+                </div>
+
+                <!-- Ingresos Bs -->
+                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,240,255,0.02)); border-color:rgba(0,240,255,0.2);">
+                    <span class="label" style="font-size:0.58rem; color:var(--secondary);">🇻🇪 INGRESOS Bs</span>
+                    <span class="value" style="font-size:1.6rem; color:var(--secondary);">${d.revenueBs.toLocaleString('es-VE', {minimumFractionDigits:0, maximumFractionDigits:0})}</span>
+                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">Tasa: ${tasa} Bs/$</div>
+                </div>
+
+                <!-- Costo Jadh -->
+                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(255,61,113,0.08),rgba(255,61,113,0.02)); border-color:rgba(255,61,113,0.2);">
+                    <span class="label" style="font-size:0.58rem; color:#FF3D71;">🏪 COSTO JADH</span>
+                    <span class="value" style="font-size:1.6rem; color:#FF3D71;">$${d.costUsdt.toFixed(2)}</span>
+                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.costBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
+                </div>
+
+                <!-- Ganancia Neta -->
+                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.1),rgba(0,255,148,0.02)); border-color:rgba(0,255,148,0.25);">
+                    <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
+                    <span class="value" style="font-size:1.6rem; color:${profitColor};">$${d.profitUsdt.toFixed(2)}</span>
+                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.profitBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
+                </div>
+            `;
+
+            // Barra de margen
+            const bar = document.getElementById('financial-margin-bar');
+            bar.style.display = 'block';
+            const pct = Math.max(0, Math.min(100, parseFloat(d.margin)));
+            document.getElementById('fin-margin-pct').textContent = d.margin + '%';
+            document.getElementById('fin-margin-pct').style.color = marginColor;
+            document.getElementById('fin-margin-fill').style.background = `linear-gradient(90deg, ${marginColor}, #00F0FF)`;
+            setTimeout(() => {
+                document.getElementById('fin-margin-fill').style.width = pct + '%';
+            }, 100);
+            document.getElementById('fin-count-pm').textContent  = d.countPM;
+            document.getElementById('fin-count-bin').textContent = d.countBin;
+            document.getElementById('fin-tasa').textContent      = tasa;
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+
 
         async function retryRecharge(ref, uid, pack) {
             const result = await Swal.fire({
@@ -1087,7 +1775,7 @@
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
                     });
-                    loadOrders();
+                    loadAllTransactions();
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -1110,7 +1798,14 @@
                 const result = await res.json();
                 if (result.success) {
                     allTransactions = result.orders;
-                    renderAllTransactions(allTransactions);
+                    
+                    // Conservar el filtro de búsqueda si el administrador ha escrito una consulta
+                    const queryInput = document.getElementById('ventas-search');
+                    if (queryInput && queryInput.value.trim() !== '') {
+                        filterVentas();
+                    } else {
+                        renderAllTransactions(allTransactions);
+                    }
                 } else {
                     console.error('Error al obtener transacciones:', result.error);
                 }
@@ -1122,7 +1817,7 @@
             tbody.innerHTML = '';
             
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; opacity:0.5;">No hay ventas registradas aún.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; opacity:0.5;">No hay ventas registradas aún.</td></tr>';
                 return;
             }
 
@@ -1142,16 +1837,39 @@
                 tr.innerHTML = `
                     <td><small>${dateStr}</small><br><strong>${timeStr}</strong></td>
                     <td><span style="color:var(--secondary); font-weight:700;">${order.control_num || '-'}</span></td>
-                    <td><code>${order.ref}</code><br><small style="color:var(--text-gray)">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small></td>
                     <td>
-                        ${order.name}<br>
-                        <small>ID: ${order.uid}</small>
+                        <span style="color:#25D366; font-weight:700; font-size:0.78rem;">${order.price || 'N/A'}</span><br>
+                        <code style="font-size:0.75rem;">${order.ref}</code><br>
+                        <small style="color:var(--text-gray); font-size:0.72rem;">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small>
                     </td>
-                    <td>${order.pack}</td>
-                    <td><span style="color:#25D366; font-weight:700;">${order.price || 'N/A'}</span></td>
-                    <td><span class="status-badge status-${order.status}">${order.status}</span></td>
-                    <td><code style="color:var(--secondary); font-size:0.8rem;">${order.pin || '-'}</code></td>
-                    <td><span style="font-family:monospace; font-size:0.8rem; ${order.ip_address ? 'background:rgba(0,240,255,0.08); color:#00F0FF; border:1px solid rgba(0,240,255,0.2);' : 'color:rgba(255,255,255,0.25);'} padding:2px 6px; border-radius:4px;">${order.ip_address || '—'}</span></td>
+                    <td>
+                        <div style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.name || ''}">${order.name || '-'}</div>
+                        <small style="color:var(--text-gray); font-size:0.75rem;">ID: ${order.uid}</small>
+                    </td>
+                    <td>
+                        <span>${order.pack}</span><br>
+                        <small style="font-size:0.65rem; color:var(--text-gray); display:block; text-transform:uppercase; margin-top:2px; font-weight:700; letter-spacing:0.5px;">${order.juego || 'freefire'}</small>
+                    </td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <span class="status-badge status-${order.status}" style="font-size: 0.7rem; padding: 2px 6px;" title="${order.reason || ''}">${order.status}</span>
+                        ${order.status === 'rejected' && order.reason ? `<br><small style="color:#ff4b2b; font-size:0.6rem; display:block; margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${order.reason}">${order.reason}</small>` : ''}
+                        ${order.status === 'pending' ? `
+                            <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center;">
+                                <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-check"></i></button>
+                                <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-times"></i></button>
+                            </div>
+                        ` : (order.status === 'approved' || order.status === 'failed' || order.status === 'rejected') ? `
+                            <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center;">
+                                <button onclick="retryRecharge('${order.ref}', '${order.uid}', '${order.pack}')" class="btn-action" title="Reintentar Recarga" style="background:rgba(255,150,0,0.15); border:1px solid rgba(255,150,0,0.4); color:#FF9600; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-rotate-right"></i></button>
+                            </div>
+                        ` : ''}
+                    </td>
+                    <td>
+                        <div style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.pin || ''}">
+                            <code style="color:var(--secondary); font-size:0.75rem;">${order.pin || '-'}</code>
+                        </div>
+                    </td>
+                    <td><span style="font-family:monospace; font-size:0.75rem; ${order.ip_address ? 'background:rgba(0,240,255,0.08); color:#00F0FF; border:1px solid rgba(0,240,255,0.2);' : 'color:rgba(255,255,255,0.25);'} padding:2px 4px; border-radius:4px;">${order.ip_address || '—'}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1165,7 +1883,8 @@
                 o.uid.toLowerCase().includes(query) || 
                 (o.name && o.name.toLowerCase().includes(query)) ||
                 (o.pin && o.pin.toLowerCase().includes(query)) ||
-                (o.ip_address && o.ip_address.toLowerCase().includes(query))
+                (o.ip_address && o.ip_address.toLowerCase().includes(query)) ||
+                (o.juego && o.juego.toLowerCase().includes(query))
             );
             renderAllTransactions(filtered);
         }
@@ -1182,7 +1901,7 @@
                 if (result.success) {
                     new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(e => {});
                     Swal.fire('¡Éxito!', result.message || 'Pedido aprobado.', 'success');
-                    loadOrders();
+                    loadAllTransactions();
                 } else {
                     Swal.fire('Error', result.message, 'error');
                 }
@@ -1190,16 +1909,31 @@
         }
 
         async function rejectOrder(ref) {
-            const { isConfirmed } = await Swal.fire({ title: '¿Rechazar?', text: "El usuario recibirá notificación.", icon: 'warning', showCancelButton: true });
-            if (!isConfirmed) return;
+            const { value: reason, isConfirmed } = await Swal.fire({
+                title: '¿Rechazar pedido?',
+                input: 'text',
+                inputLabel: 'Escribe el motivo del rechazo:',
+                inputPlaceholder: 'Ej: Referencia incorrecta, Pago no recibido, Captura falsa...',
+                showCancelButton: true,
+                confirmButtonText: 'Rechazar',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return '¡Debes ingresar un motivo para el rechazo!'
+                    }
+                }
+            });
+            if (!isConfirmed || !reason) return;
             try {
                 await adminFetch(`${SERVER_URL}/admin/rechazar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ref })
+                    body: JSON.stringify({ ref, reason: reason.trim() })
                 });
                 new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
-                loadOrders();
+                loadAllTransactions();
             } catch (e) { console.error(e); }
         }
 
@@ -1413,7 +2147,14 @@
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/usuarios`);
                 allUsers = await res.json();
-                renderUsers(allUsers);
+                
+                // Conservar el filtro de búsqueda si el administrador ha escrito una consulta
+                const queryInput = document.getElementById('user-search');
+                if (queryInput && queryInput.value.trim() !== '') {
+                    filterUsers();
+                } else {
+                    renderUsers(allUsers);
+                }
             } catch (e) { console.error(e); }
         }
 
@@ -1453,7 +2194,10 @@
 
                 tr.innerHTML = `
                     <td><code>${uid}</code></td>
-                    <td>${data.name}</td>
+                    <td>
+                        ${data.name}
+                        ${data.phone ? `<br><a href="https://wa.me/${data.phone.replace(/\D/g, '')}" target="_blank" style="font-size:0.75rem; color:#aaa; font-weight:normal; text-decoration:none; display:inline-flex; align-items:center; margin-top:3px;"><i class="fa-brands fa-whatsapp" style="color:#25D366; margin-right:3px; font-size:0.85rem;"></i>+${data.phone}</a>` : ''}
+                    </td>
                     <td>${dateStr}</td>
                     <td style="color:#00e676; font-weight:800">$${(data.points * 0.003).toFixed(2)} <span style="font-size:0.7rem; color:#aaa; font-weight:400">(${data.points} pts)</span></td>
                     <td style="color:${data.password ? '#25D366' : '#FF3D71'}; font-size:0.8rem; font-weight:600;">
@@ -1578,23 +2322,82 @@
                 if (allSettings.whatsapp) {
                     document.getElementById('wa-soporte').value = allSettings.whatsapp.soporte;
                     document.getElementById('wa-canal').value = allSettings.whatsapp.canal;
+                    document.getElementById('wa-modo').value = allSettings.whatsapp.modo || 'activo';
                 }
 
-                const pricesEditor = document.getElementById('prices-editor');
-                pricesEditor.innerHTML = '';
-                
-                Object.entries(allSettings.precios).forEach(([amount, data]) => {
-                    pricesEditor.innerHTML += `
-                        <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                            <label style="color: var(--text-gray); font-weight: 700; margin-bottom: 10px; display: block;">${data.label}</label>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="number" step="0.01" class="price-input" data-amount="${amount}" value="${data.usdt}" style="font-size: 1.1rem; color: white;">
-                                <span style="font-weight: 800; color: var(--secondary);">USDT</span>
-                            </div>
-                        </div>
-                    `;
-                });
+                // Cargar publicidades
+                renderAdsAdmin(allSettings.publicidades || []);
+
             } catch (e) { console.error(e); }
+        }
+
+        // --- Gestión dinámica de Banners Publicitarios ---
+        function renderAdsAdmin(ads) {
+            const listEl = document.getElementById('ads-admin-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            
+            if (ads.length === 0) {
+                listEl.innerHTML = '<p style="font-size: 0.9rem; color: var(--text-gray); font-style: italic; margin-left: 5px;">No hay banners publicitarios configurados.</p>';
+                return;
+            }
+            
+            ads.forEach((ad, index) => {
+                const row = document.createElement('div');
+                row.className = 'ad-admin-row';
+                row.style = 'background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px; position: relative; margin-bottom: 5px;';
+                
+                row.innerHTML = `
+                    <div style="position: absolute; top: 15px; right: 15px;">
+                        <button type="button" onclick="removeAdRow(${index})" class="btn-logout-header" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div style="font-weight: bold; color: var(--secondary); font-size: 0.9rem; text-align: left; padding-left: 5px;"><i class="fa-solid fa-image"></i> Banner #${index + 1}</div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 10px; padding-right: 40px; text-align: left;">
+                        <div class="form-group" style="margin: 0; padding: 0;">
+                            <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">URL de la Imagen:</label>
+                            <input type="text" class="ad-image-input" value="${ad.imagen || ''}" placeholder="Ej: https://imgur.com/anuncio.png o img/tarjeta_semanal.png" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
+                        </div>
+                        <div class="form-group" style="margin: 0; padding: 0;">
+                            <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">Enlace de Redirección (Opcional):</label>
+                            <input type="text" class="ad-link-input" value="${ad.link || ''}" placeholder="Ej: https://whatsapp.com/channel/... o dejar vacío" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+
+        window.addAdRow = function() {
+            const ads = getAdsDataFromInputs();
+            ads.push({ imagen: '', link: '' });
+            renderAdsAdmin(ads);
+        };
+
+        window.removeAdRow = function(index) {
+            const ads = getAdsDataFromInputs();
+            ads.splice(index, 1);
+            renderAdsAdmin(ads);
+        };
+
+        function getAdsDataFromInputs() {
+            const rows = document.querySelectorAll('.ad-admin-row');
+            const ads = [];
+            rows.forEach(row => {
+                const imgEl = row.querySelector('.ad-image-input');
+                const linkEl = row.querySelector('.ad-link-input');
+                if (imgEl) {
+                    let imagen = imgEl.value.trim();
+                    let link = linkEl ? linkEl.value.trim() : '';
+                    if (imagen.startsWith('"') && imagen.endsWith('"')) {
+                        imagen = imagen.slice(1, -1);
+                    }
+                    if (link.startsWith('"') && link.endsWith('"')) {
+                        link = link.slice(1, -1);
+                    }
+                    ads.push({ imagen, link });
+                }
+            });
+            return ads;
         }
 
         async function saveSettings() {
@@ -1603,19 +2406,11 @@
 
             Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
-            const precios = {};
-            document.querySelectorAll('.price-input').forEach(input => {
-                const amount = input.dataset.amount;
-                precios[amount] = { 
-                    usdt: parseFloat(input.value),
-                    label: allSettings.precios[amount].label
-                };
-            });
-
             const newSettings = {
                 ...allSettings,
                 tasa_del_dia: parseFloat(document.getElementById('setting-tasa').value),
                 barra_informativa: document.getElementById('setting-marquee').value,
+                publicidades: getAdsDataFromInputs().filter(ad => ad.imagen),
                 admin: {
                     ...allSettings.admin,
                     username: document.getElementById('admin-user').value
@@ -1633,9 +2428,10 @@
                 },
                 whatsapp: {
                     soporte: document.getElementById('wa-soporte').value,
-                    canal: document.getElementById('wa-canal').value
-                },
-                precios
+                    canal: document.getElementById('wa-canal').value,
+                    modo: document.getElementById('wa-modo').value,
+                    publicidades: getAdsDataFromInputs().filter(ad => ad.imagen)
+                }
             };
 
             const newPass = document.getElementById('admin-pass').value;
@@ -1707,7 +2503,7 @@
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire('¡Éxito!', `${data.enqueued} mensaje(s) añadido(s) a la cola de envío.`, 'success');
-                    document.getElementById('wa-broadcast-message').value = '';
+                    // No vaciar el textarea automáticamente para que el mensaje no se borre
                 } else {
                     Swal.fire('Error', data.message || 'Error al enviar.', 'error');
                 }
@@ -1753,7 +2549,154 @@
             } catch (e) { Swal.fire('Error', 'No se pudo enviar la orden.', 'error'); }
         }
 
+        async function changeWaNumber() {
+            const { isConfirmed } = await Swal.fire({
+                title: '¿Cambiar número de WhatsApp?',
+                html: `<p>Esto <strong>borrará la sesión actual</strong> del bot y generará un nuevo código QR.</p>
+                       <p style="margin-top:10px; color:#FFC107;">⚠️ Deberás escanear el QR con el <strong>nuevo número</strong> desde la pestaña de WhatsApp del panel.</p>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, cambiar número',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#FFC107'
+            });
+            if (!isConfirmed) return;
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/reset-wa-session`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        title: '✅ Sesión borrada',
+                        html: `<p>La sesión anterior fue eliminada. El bot está generando un nuevo código QR.</p>
+                               <p style="margin-top:10px; color:#25D366;">Espera unos segundos y refresca el estado de WhatsApp para ver el nuevo QR.</p>`,
+                        icon: 'success'
+                    });
+                    setTimeout(() => checkWaStatus(), 5000);
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo resetear la sesión.', 'error');
+                }
+            } catch (e) { Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error'); }
+        }
+
+
+        // =====================================================
+        // 🏦 BDV AUTO-PAGO — Funciones del Toggle
+        // =====================================================
+        async function loadBDVStatus(showToast = false) {
+            const btn = document.querySelector('button[onclick^="loadBDVStatus"]');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Actualizando...';
+                btn.disabled = true;
+            }
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/bdv-config`);
+                const data = await res.json();
+
+                const statusEl = document.getElementById('bdv-toggle-status');
+                const sessionEl = document.getElementById('bdv-session-info');
+                const toggle = document.getElementById('bdv-auto-toggle');
+                const toggleBg = document.getElementById('bdv-toggle-bg');
+                const toggleKnob = document.getElementById('bdv-toggle-knob');
+
+                toggle.checked = data.enabled;
+
+                // Actualizar apariencia del toggle
+                if (data.enabled) {
+                    statusEl.innerHTML = '🟢 <span style="color:#25D366;">ACTIVADO</span>';
+                    toggleBg.style.background = '#9D00FF';
+                    toggleKnob.style.transform = 'translateX(30px)';
+                } else {
+                    statusEl.innerHTML = '🔴 <span style="color:#ff4b2b;">DESACTIVADO</span>';
+                    toggleBg.style.background = '#333';
+                    toggleKnob.style.transform = 'translateX(0px)';
+                }
+
+                // Info de sesión BDV
+                if (data.bdvStatus) {
+                    const s = data.bdvStatus;
+                    if (s.sessionActive && s.lastLogin) {
+                        const loginDate = new Date(s.lastLogin).toLocaleTimeString('es-VE');
+                        sessionEl.textContent = `Sesión: ✅ Activa · Último login: ${loginDate}`;
+                    } else if (s.browserActive) {
+                        sessionEl.textContent = 'Sesión: ⚠️ Navegador activo, sin login';
+                    } else {
+                        sessionEl.textContent = 'Sesión: Inactiva';
+                    }
+                }
+
+                if (showToast) {
+                    Swal.fire({
+                        toast: true, position: 'top-end',
+                        icon: 'success',
+                        title: 'Estado del BDV actualizado',
+                        showConfirmButton: false, timer: 1500
+                    });
+                }
+            } catch (e) {
+                console.error('[BDV-ADMIN] Error cargando estado:', e);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        async function toggleBDVAuto(checked) {
+            const loginStatusEl = document.getElementById('bdv-login-status');
+            const toggleBg = document.getElementById('bdv-toggle-bg');
+            const toggleKnob = document.getElementById('bdv-toggle-knob');
+            const statusEl = document.getElementById('bdv-toggle-status');
+            const toggle = document.getElementById('bdv-auto-toggle');
+
+            // Actualizar UI inmediatamente
+            if (checked) {
+                toggleBg.style.background = '#9D00FF';
+                toggleKnob.style.transform = 'translateX(30px)';
+                statusEl.innerHTML = '⏳ <span style="color:#FFC107;">ACTIVANDO...</span>';
+                loginStatusEl.style.display = 'block';
+            } else {
+                toggleBg.style.background = '#333';
+                toggleKnob.style.transform = 'translateX(0px)';
+                statusEl.innerHTML = '⏳ <span style="color:#aaa;">DESACTIVANDO...</span>';
+                loginStatusEl.style.display = 'none';
+            }
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/bdv-config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: checked })
+                });
+                const data = await res.json();
+
+                loginStatusEl.style.display = 'none';
+
+                if (data.success) {
+                    Swal.fire({
+                        toast: true, position: 'top-end',
+                        icon: checked ? 'success' : 'info',
+                        title: data.message,
+                        showConfirmButton: false, timer: 3000,
+                        background: 'rgba(20,10,35,0.95)', color: '#fff'
+                    });
+                    // Recargar estado real del servidor
+                    setTimeout(loadBDVStatus, 500);
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cambiar el estado', 'error');
+                    toggle.checked = !checked; // Revertir toggle
+                }
+            } catch (e) {
+                loginStatusEl.style.display = 'none';
+                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                toggle.checked = !checked; // Revertir
+            }
+        }
+        // =====================================================
+
         // --- NOTIFICACIONES ---
+
         let lastPendingCount = -1;
         let titleFlashInterval = null;
 
@@ -1776,7 +2719,7 @@
 
         function notifyNewOrder() {
             // Sonido de notificación
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1361/1361-preview.mp3');
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3');
             audio.play().catch(e => console.log('Audio blocked'));
             
             // Flash en el título de la pestaña
@@ -1827,7 +2770,7 @@
             const activeTabText = activeTabBtn ? activeTabBtn.innerText.trim() : '';
             
             if (activeTabText.includes('Dashboard')) loadDashboardStats();
-            if (activeTabText.includes('Pedidos')) loadOrders();
+            if (activeTabText.includes('Ventas')) loadAllTransactions();
             if (activeTabText.includes('Almacén') || activeTabText.includes('Pines')) loadPinStats();
             if (activeTabText.includes('Usuarios')) loadUsers();
             
@@ -2046,6 +2989,8 @@
                 color: '#fff',
                 html: `
                     <div style="text-align:left;display:grid;gap:12px;">
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">ID del Paquete / Cantidad (ej: 100)</label>
+                        <input id="swal-pk-id" class="swal2-input" placeholder="100" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta (ej: 100 Diamantes)</label>
                         <input id="swal-pk-label" class="swal2-input" placeholder="100 Diamantes" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Precio en USDT</label>
@@ -2056,16 +3001,17 @@
                 showCancelButton: true,
                 cancelButtonText: 'Cancelar',
                 preConfirm: () => {
+                    const pkIdInput = document.getElementById('swal-pk-id').value.trim();
                     const label = document.getElementById('swal-pk-label').value.trim();
                     const usdt = parseFloat(document.getElementById('swal-pk-usdt').value);
-                    if (!label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
-                    return { label, usdt };
+                    if (!pkIdInput || !label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
+                    return { pkId: pkIdInput, label, usdt };
                 }
             }).then(async result => {
                 if (!result.isConfirmed) return;
-                const pkId = Date.now().toString();
+                const { pkId, label, usdt } = result.value;
                 if (!juegosData[gameKey].paquetes) juegosData[gameKey].paquetes = {};
-                juegosData[gameKey].paquetes[pkId] = result.value;
+                juegosData[gameKey].paquetes[pkId] = { label, usdt };
                 await saveJuegos();
             });
         }
@@ -2211,7 +3157,7 @@
                             color: '#fff',
                             confirmButtonColor: '#f3ba2f'
                         });
-                        loadOrders();
+                        loadAllTransactions();
                     } else {
                         Swal.fire('Error', data.message, 'error');
                     }

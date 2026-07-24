@@ -123,6 +123,29 @@
 .crosshair-line.left { left: 5px; }
 .crosshair-line.right { right: 5px; }
 
+/* Contenedor del Logo circular en la mira */
+.crosshair-logo-img-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 62px;
+    height: 62px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--secondary);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+    background: #000;
+}
+.crosshair-logo-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;
+    transform: scale(1.19); /* Zoom in to clip out the checkered margin */
+}
+
 /* Logo con efecto glitch */
 .splash-logo {
     position: relative;
@@ -525,6 +548,32 @@ body::before {
 .logo-container p {
     color: var(--text-gray);
     font-size: 0.95rem;
+}
+
+/* Logo circular premium flotante */
+.main-logo-wrapper {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3.5px solid var(--secondary);
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.5);
+    margin: 0 auto 15px auto;
+    background: #000;
+    animation: logoFloat 4s ease-in-out infinite;
+}
+.main-logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;
+    transform: scale(1.19); /* Zoom in to clip out the checkered margin */
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
 }
 
 /* WhatsApp Button */
@@ -2662,4 +2711,335 @@ body::before {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 240, 255, 0.4);
 }
+
+/* ============================== */
+/* ADS SLIDER PREMIUM             */
+/* ============================== */
+.ads-slider-container {
+    width: 100%;
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.02);
+    aspect-ratio: 2.5 / 1;
+    background: rgba(20, 10, 35, 0.5);
+}
+
+.ads-slider-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ad-slide {
+    min-width: 100%;
+    height: 100%;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.ad-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+    transition: transform 0.6s ease, filter 0.6s ease;
+}
+
+.ad-slide:hover img {
+    transform: scale(1.04);
+    filter: brightness(1.1);
+}
+
+.ads-slider-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+}
+
+.ad-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.ad-dot.active {
+    background: var(--secondary);
+    width: 16px;
+    border-radius: 3px;
+    box-shadow: 0 0 8px var(--secondary);
+}
+
+/* ADMIN PANEL AD STYLING */
+.ad-admin-row {
+    transition: var(--transition);
+}
+.ad-admin-row:hover {
+    border-color: var(--primary) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    box-shadow: 0 5px 15px rgba(157, 0, 255, 0.05);
+}
+
+/* GAME SELECTOR LOGOS - ESTILO 2 */
+.game-btn {
+    flex: 1 !important;
+    min-width: 90px !important;
+    max-width: 130px !important;
+    height: 55px !important;
+    padding: 6px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px !important;
+    background: rgba(20, 10, 35, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.game-btn.active {
+    border-color: var(--secondary) !important;
+    background: rgba(0, 240, 255, 0.05) !important;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.25) !important;
+}
+
+.game-btn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    transform: translateY(-2px);
+}
+
+.game-logo-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.game-btn:hover .game-logo-img {
+    transform: scale(1.05);
+}
+
+/* ======================================================== */
+/* RULETA DE LA SUERTE - POST RECARGA                       */
+/* ======================================================== */
+
+.roulette-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.4s ease;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.roulette-modal {
+    background: linear-gradient(145deg, #0d0520 0%, #1a0840 50%, #0d0520 100%);
+    border: 1px solid rgba(157, 0, 255, 0.4);
+    border-radius: 24px;
+    padding: 28px 24px 24px;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(157, 0, 255, 0.3), 0 0 120px rgba(157, 0, 255, 0.1), inset 0 1px 0 rgba(255,255,255,0.1);
+    animation: rouletteModalIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.roulette-modal::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent 0%, rgba(157,0,255,0.05) 25%, transparent 50%, rgba(0,240,255,0.05) 75%, transparent 100%);
+    animation: rouletteModalGlow 8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes rouletteModalIn {
+    from { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes rouletteModalGlow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.roulette-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(157,0,255,0.3), rgba(0,240,255,0.2));
+    border: 1px solid rgba(157, 0, 255, 0.5);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #00F0FF;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+
+.roulette-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #fff;
+    margin: 0 0 4px;
+    text-shadow: 0 0 20px rgba(157, 0, 255, 0.6);
+}
+
+.roulette-subtitle {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 0 20px;
+}
+
+.roulette-wheel-wrapper {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto 18px;
+}
+
+.roulette-wheel-canvas {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(157,0,255,0.3), 0 0 40px rgba(157,0,255,0.4);
+}
+
+.roulette-pointer {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 26px solid #FFD700;
+    filter: drop-shadow(0 0 8px rgba(255,215,0,0.8));
+    z-index: 2;
+}
+
+.roulette-spin-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #9D00FF, #6600cc);
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 24px rgba(157,0,255,0.5);
+    margin-bottom: 10px;
+}
+
+.roulette-spin-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+}
+
+.roulette-spin-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.roulette-spin-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(157,0,255,0.7); }
+.roulette-spin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.roulette-spin-btn.spinning {
+    animation: rouletteSpinPulse 0.3s ease infinite alternate;
+}
+
+@keyframes rouletteSpinPulse {
+    from { box-shadow: 0 6px 24px rgba(157,0,255,0.5); }
+    to   { box-shadow: 0 6px 40px rgba(157,0,255,0.9), 0 0 60px rgba(0,240,255,0.3); }
+}
+
+.roulette-close-btn {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: transparent;
+    color: rgba(255,255,255,0.4);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.roulette-close-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+
+.roulette-prize-display {
+    margin: 0 0 18px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(0,255,148,0.1), rgba(0,240,255,0.05));
+    border: 1px solid rgba(0,255,148,0.3);
+    border-radius: 16px;
+    animation: prizePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.roulette-prize-display .prize-emoji { font-size: 2.5rem; display: block; margin-bottom: 6px; }
+.roulette-prize-display .prize-amount { font-family: 'Montserrat', sans-serif; font-size: 2rem; font-weight: 900; color: #00FF94; display: block; text-shadow: 0 0 20px rgba(0,255,148,0.6); }
+.roulette-prize-display .prize-label { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 4px; display: block; }
+
+@keyframes prizePop {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+.roulette-prizes-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.roulette-prize-pill {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 3px 9px;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.55);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.roulette-prize-pill.jackpot {
+    border-color: rgba(255,215,0,0.4);
+    color: #FFD700;
+    background: rgba(255,215,0,0.08);
+}
+
 

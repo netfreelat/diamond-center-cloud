@@ -35,9 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.borderColor = key === currentJuego ? 'var(--secondary)' : 'rgba(255,255,255,0.2)';
             btn.style.color = key === currentJuego ? 'var(--secondary)' : '#fff';
             
+            const logoImgSrc = juego.logo || `img/${key}_logo.png`;
+            btn.innerHTML = `<img src="${logoImgSrc}" alt="${juego.nombre}" class="game-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';"><span style="display: none; font-weight: 700; font-size: 0.9rem;">${juego.nombre}</span>`;
+            
             if (key === 'bloodstrike') {
                 // Blood Strike: flujo normal con ID (igual que Free Fire)
-                btn.innerHTML = `<i class="fa-solid ${juego.icono || 'fa-skull-crossbones'}"></i> ${juego.nombre}`;
                 btn.onclick = () => {
                     document.querySelectorAll('.game-btn').forEach(b => {
                         b.classList.remove('active');
@@ -61,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
                 };
             } else {
-                btn.innerHTML = `<i class="fa-solid ${juego.icono || 'fa-gamepad'}"></i> ${juego.nombre}`;
                 btn.onclick = () => {
                     document.querySelectorAll('.game-btn').forEach(b => {
                         b.classList.remove('active');
@@ -162,7 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                JSON.stringify(APP_CONFIG.precios) !== JSON.stringify(data.precios) ||
                                JSON.stringify(APP_CONFIG.juegos) !== JSON.stringify(data.juegos) ||
                                APP_CONFIG.tasa_del_dia !== data.tasa_del_dia ||
-                               JSON.stringify(APP_CONFIG.stock) !== JSON.stringify(data.stock);
+                               JSON.stringify(APP_CONFIG.stock) !== JSON.stringify(data.stock) ||
+                               JSON.stringify(APP_CONFIG.publicidades) !== JSON.stringify(data.publicidades);
 
             APP_CONFIG = data;
             DOLAR_RATE = data.tasa_del_dia;
@@ -172,9 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateMarqueeDisplay();
 
             if (shouldRender) {
-                console.log('[CONFIG] 🔄 Actualizando tienda (Precios o Stock cambiaron)');
+                console.log('[CONFIG] 🔄 Actualizando tienda (Precios, Stock o Anuncios cambiaron)');
                 if (data.juegos) renderGames(data.juegos);
                 renderPackages(getPackagesForCurrentGame(), data.tasa_del_dia);
+                if (typeof renderAds === 'function') renderAds(data.publicidades);
             }
 
             // Actualizar métodos de pago (solo si cambiaron)
@@ -344,6 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${robloxImg}" alt="Roblox" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
             } else if (esEspecial) {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`;
+            } else if (currentJuego === 'bloodstrike') {
+                iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/bloodstrike_coin.png" alt="Monedas" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
             } else {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/diamante.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
             }
@@ -775,8 +780,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const priceBs = (data.usdt * DOLAR_RATE).toFixed(2).replace('.', ',');
                 const amountNum = parseInt(amount);
                 const isSpecial = isNaN(amountNum);
-                const bonusHtml = !isSpecial ? `<span style="color:var(--secondary); font-size:0.8em;">+ ${(amountNum * 0.1).toFixed(0)}</span>` : '';
                 const displayTitle = data.label || amount;
+                const hasPlus = displayTitle.includes('+');
+                const bonusHtml = (!isSpecial && !hasPlus) ? `<span style="color:var(--secondary); font-size:0.8em;">+ ${(amountNum * 0.1).toFixed(0)}</span>` : '';
 
                 htmlContent += `
                     <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
@@ -881,6 +887,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const subData = JSON.parse(JSON.stringify(subscription));
+            // Asegurar la correcta extracción de las claves si JSON.stringify falla
+            if (!subData.keys || !subData.keys.p256dh || !subData.keys.auth) {
+                subData.keys = {
+                    p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))))
+                        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+                    auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))))
+                        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+                };
+            }
             const subResponse = await fetch(`${SERVER_URL}/api/push/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1000,6 +1015,182 @@ document.addEventListener('DOMContentLoaded', () => {
         copyRefBtn.addEventListener('click', () => {
             const uid = localStorage.getItem('ff_user_id');
             if (uid) window.shareReferralLink(uid);
+        });
+    }
+
+    // ── Botón del Dashboard de Referidos ────────────────────────────────────
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-ver-dashboard-referidos')) {
+            const uid = localStorage.getItem('ff_user_id') || document.getElementById('player-id').value.trim();
+            if (uid) showReferralDashboard(uid);
+        }
+    });
+
+    async function showReferralDashboard(uid) {
+        // Loading state
+        Swal.fire({
+            title: '<span style="font-family:Montserrat,sans-serif;font-size:1.1rem;">📊 Cargando tus stats...</span>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            background: 'rgba(10,5,25,0.98)',
+            color: '#fff',
+            didOpen: () => Swal.showLoading()
+        });
+
+        let stats = null;
+        try {
+            const res = await fetch(`${SERVER_URL}/api/mis-referidos?uid=${uid}`);
+            const data = await res.json();
+            if (data.success) stats = data.stats;
+        } catch (e) {
+            console.error('[DASHBOARD] Error cargando stats:', e);
+        }
+
+        if (!stats) {
+            return Swal.fire({
+                icon: 'error', title: 'Error',
+                text: 'No se pudieron cargar tus estadísticas. Intenta de nuevo.',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(10,5,25,0.98)', color: '#fff'
+            });
+        }
+
+        const { total_referidos, compras_completadas, pendientes, ganancia_total_usdt, ganancia_mes_usdt, referidos_este_mes, lista } = stats;
+        const mesActual = new Date().toLocaleString('es-VE', { month: 'long' }).replace(/^\w/, c => c.toUpperCase());
+
+        // Renderizar lista de referidos
+        const listaHTML = lista.length === 0
+            ? `<div style="text-align:center;padding:20px;color:#666;font-size:0.85rem;">
+                 <div style="font-size:2rem;margin-bottom:8px;">🌱</div>
+                 Aún no tienes referidos. ¡Comparte tu link!
+               </div>`
+            : lista.slice(0, 10).map((r, i) => {
+                const estado = r.claimed
+                    ? `<span style="color:#00FF94;font-size:0.7rem;font-weight:700;background:rgba(0,255,148,0.1);border:1px solid rgba(0,255,148,0.3);border-radius:20px;padding:2px 8px;">✓ Compró</span>`
+                    : `<span style="color:#FFD93D;font-size:0.7rem;font-weight:700;background:rgba(255,217,61,0.1);border:1px solid rgba(255,217,61,0.3);border-radius:20px;padding:2px 8px;">⏳ Pendiente</span>`;
+                const fecha = r.registered
+                    ? new Date(r.registered).toLocaleDateString('es-VE', { day:'2-digit', month:'short' })
+                    : '—';
+                const ganancia = r.claimed ? '+$0.05' : '';
+                return `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,rgba(157,0,255,0.4),rgba(0,240,255,0.3));display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:800;color:#fff;flex-shrink:0;">${i + 1}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:0.88rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</div>
+                        <div style="font-size:0.72rem;color:#666;margin-top:1px;">${fecha}</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+                        ${estado}
+                        ${ganancia ? `<span style="color:#00FF94;font-size:0.72rem;font-weight:700;">${ganancia}</span>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+        const masHTML = lista.length > 10
+            ? `<div style="text-align:center;font-size:0.75rem;color:#666;padding:6px 0;">+${lista.length - 10} más...</div>`
+            : '';
+
+        // Porcentaje de conversión
+        const conversionPct = total_referidos > 0 ? Math.round((compras_completadas / total_referidos) * 100) : 0;
+        const barWidth = Math.min(conversionPct, 100);
+
+        Swal.fire({
+            width: '92%',
+            background: 'rgba(8,4,20,0.99)',
+            color: '#fff',
+            showConfirmButton: false,
+            showCloseButton: true,
+            html: `
+            <div style="font-family:'Montserrat',sans-serif;text-align:left;max-height:80vh;overflow-y:auto;padding-right:4px;">
+
+                <!-- Encabezado -->
+                <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:2rem;margin-bottom:6px;">📊</div>
+                    <h2 style="margin:0;font-size:1.15rem;color:#fff;letter-spacing:0.5px;">Mi Dashboard de Referidos</h2>
+                    <p style="margin:4px 0 0;font-size:0.75rem;color:#666;">Actualizado ahora mismo</p>
+                </div>
+
+                <!-- Tarjetas de stats principales -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+
+                    <!-- Ganancias este mes -->
+                    <div style="background:linear-gradient(135deg,rgba(0,255,148,0.12),rgba(0,240,255,0.06));border:1px solid rgba(0,255,148,0.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+                        <div style="position:absolute;top:-10px;right:-10px;font-size:3rem;opacity:0.07;">💰</div>
+                        <div style="font-size:0.68rem;color:#00FF94;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:6px;">${mesActual}</div>
+                        <div style="font-size:1.45rem;font-weight:900;color:#00FF94;line-height:1;">$${ganancia_mes_usdt}</div>
+                        <div style="font-size:0.7rem;color:#aaa;margin-top:3px;">USDT ganados</div>
+                        <div style="font-size:0.72rem;color:#555;margin-top:4px;">${referidos_este_mes} compra${referidos_este_mes !== 1 ? 's' : ''} este mes</div>
+                    </div>
+
+                    <!-- Ganancias totales -->
+                    <div style="background:linear-gradient(135deg,rgba(157,0,255,0.15),rgba(0,240,255,0.06));border:1px solid rgba(157,0,255,0.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+                        <div style="position:absolute;top:-10px;right:-10px;font-size:3rem;opacity:0.07;">🏆</div>
+                        <div style="font-size:0.68rem;color:#9D00FF;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:6px;">Total histórico</div>
+                        <div style="font-size:1.45rem;font-weight:900;color:#c264fe;line-height:1;">$${ganancia_total_usdt}</div>
+                        <div style="font-size:0.7rem;color:#aaa;margin-top:3px;">USDT acumulados</div>
+                        <div style="font-size:0.72rem;color:#555;margin-top:4px;">${compras_completadas} referido${compras_completadas !== 1 ? 's' : ''} convertido${compras_completadas !== 1 ? 's' : ''}</div>
+                    </div>
+                </div>
+
+                <!-- Fila de métricas secundarias -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:900;color:#fff;">${total_referidos}</div>
+                        <div style="font-size:0.65rem;color:#888;margin-top:2px;">Total invitados</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:900;color:#00FF94;">${compras_completadas}</div>
+                        <div style="font-size:0.65rem;color:#888;margin-top:2px;">Compraron</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:900;color:#FFD93D;">${pendientes}</div>
+                        <div style="font-size:0.65rem;color:#888;margin-top:2px;">Pendientes</div>
+                    </div>
+                </div>
+
+                <!-- Barra de conversión -->
+                <div style="margin-bottom:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:0.75rem;color:#aaa;font-weight:600;">Tasa de conversión</span>
+                        <span style="font-size:0.85rem;font-weight:800;color:${conversionPct >= 50 ? '#00FF94' : conversionPct >= 20 ? '#FFD93D' : '#ff6b6b'};">${conversionPct}%</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.08);border-radius:99px;height:8px;overflow:hidden;">
+                        <div style="width:${barWidth}%;height:100%;background:linear-gradient(90deg,${conversionPct >= 50 ? '#00FF94,#00d4aa' : conversionPct >= 20 ? '#FFD93D,#f5a623' : '#ff6b6b,#ff3d71'});border-radius:99px;transition:width 1s ease;"></div>
+                    </div>
+                    <div style="font-size:0.68rem;color:#555;margin-top:6px;">${compras_completadas} de ${total_referidos} invitados completaron una compra</div>
+                </div>
+
+                <!-- Lista de referidos -->
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:0.75rem;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Tus Referidos</div>
+                    ${listaHTML}
+                    ${masHTML}
+                </div>
+
+                <!-- Motivación si hay pendientes -->
+                ${pendientes > 0 ? `
+                <div style="background:linear-gradient(135deg,rgba(255,217,61,0.08),rgba(255,107,107,0.05));border:1px solid rgba(255,217,61,0.25);border-radius:12px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
+                    <span style="font-size:1.3rem;flex-shrink:0;">💡</span>
+                    <div>
+                        <div style="font-size:0.8rem;font-weight:700;color:#FFD93D;margin-bottom:3px;">Tienes ${pendientes} amigo${pendientes !== 1 ? 's' : ''} que aún no ha recargado</div>
+                        <div style="font-size:0.72rem;color:#aaa;">Recuérdales que tienen <strong style="color:#00FF94;">-3% de descuento</strong> esperándoles en su primera compra. ¡Mándales el link de nuevo!</div>
+                    </div>
+                </div>` : (total_referidos > 0 ? `
+                <div style="background:linear-gradient(135deg,rgba(0,255,148,0.08),rgba(0,240,255,0.05));border:1px solid rgba(0,255,148,0.25);border-radius:12px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center;">
+                    <span style="font-size:1.3rem;">🏆</span>
+                    <div style="font-size:0.8rem;font-weight:700;color:#00FF94;">¡100% de conversión! Todos tus referidos han comprado.</div>
+                </div>` : '')}
+
+                <!-- Botón compartir -->
+                <button onclick="document.querySelector('.swal2-close')?.click(); setTimeout(() => { const uid = localStorage.getItem('ff_user_id'); if(uid) window.shareReferralLink(uid); }, 300);"
+                    style="width:100%;background:linear-gradient(135deg,#9D00FF,#00F0FF);border:none;color:#fff;font-weight:800;font-size:0.95rem;padding:14px;border-radius:12px;cursor:pointer;font-family:'Montserrat',sans-serif;letter-spacing:0.5px;box-shadow:0 4px 20px rgba(157,0,255,0.4);transition:transform 0.2s;"
+                    onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fa-solid fa-share-nodes" style="margin-right:8px;"></i>
+                    Compartir mi Link y ganar más
+                </button>
+            </div>
+            `,
+            customClass: { popup: 'swal2-referral-dashboard' }
         });
     }
 
@@ -2286,11 +2477,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCard = document.querySelector('.package-card.selected');
         if (!selectedCard) return;
         
-        const priceUSDT = parseFloat(selectedCard.dataset.price);
+        const rawPriceUSDT = parseFloat(selectedCard.dataset.price);
+        const discountMult = window.referralDiscountActive ? 0.97 : 1;
+        const priceUSDT = rawPriceUSDT * discountMult;
         const totalUSDT = (priceUSDT * selectedQty).toFixed(2);
         const totalBs = (priceUSDT * selectedQty * DOLAR_RATE).toFixed(2).replace('.', ',');
         
-        totalPreviewUsdt.innerText = `${totalUSDT} USDT`;
+        if (window.referralDiscountActive) {
+            const originalUSDT = (rawPriceUSDT * selectedQty).toFixed(2);
+            totalPreviewUsdt.innerHTML = `<span style="text-decoration:line-through;color:#888;font-size:0.9em;">${originalUSDT}</span> <span style="color:#00FF94;">${totalUSDT} USDT</span> <span style="background:#00FF94;color:#000;border-radius:4px;padding:1px 5px;font-size:0.7em;font-weight:700;">-3%</span>`;
+        } else {
+            totalPreviewUsdt.innerText = `${totalUSDT} USDT`;
+        }
         totalPreviewBs.innerText = `${totalBs} Bs`;
         
         qtyValueDisplay.innerText = selectedQty;
@@ -2330,12 +2528,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let toastTimer   = null;
 
         function showFloatCTA(card) {
-            const priceUSDT = parseFloat(card.dataset.price) * selectedQty;
+            const rawPriceUSDT = parseFloat(card.dataset.price) * selectedQty;
+            const discountMult = window.referralDiscountActive ? 0.97 : 1;
+            const priceUSDT = rawPriceUSDT * discountMult;
             const priceBS   = (priceUSDT * DOLAR_RATE).toFixed(2).replace('.', ',');
             const totalAmt  = parseInt(card.dataset.amount) + parseInt(card.dataset.bonus || 0);
 
             if (floatDiams) floatDiams.textContent = `💎 ${totalAmt.toLocaleString()} diamantes`;
-            if (floatPrice) floatPrice.textContent  = `${priceBS} Bs`;
+            if (floatPrice) {
+                if (window.referralDiscountActive) {
+                    const origBS = (rawPriceUSDT * DOLAR_RATE).toFixed(2).replace('.', ',');
+                    floatPrice.innerHTML = `<span style="text-decoration:line-through;opacity:0.6;font-size:0.85em;">${origBS}</span> ${priceBS} Bs <span style="background:#00FF94;color:#000;border-radius:3px;padding:1px 4px;font-size:0.7em;font-weight:700;">-3%</span>`;
+                } else {
+                    floatPrice.textContent = `${priceBS} Bs`;
+                }
+            }
 
             // Mostrar barra flotante
             if (floatBar) {
@@ -2437,8 +2644,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('details-pagomovil').style.display = selectedMethod === 'pagomovil' ? 'block' : 'none';
             document.getElementById('details-binance').style.display = selectedMethod === 'binance' ? 'block' : 'none';
             
-            // Llenar montos automáticamente
-            const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
+            // Llenar montos automáticamente (aplicar descuento del 3% si es referido en primera compra)
+            const rawPricePayment = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
+            const discountMultPayment = window.referralDiscountActive ? 0.97 : 1;
+            const priceUSDT = rawPricePayment * discountMultPayment;
             const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
             
             if(selectedMethod === 'pagomovil') {
@@ -2523,8 +2732,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const refPM = refPagoMovil.value.trim();
         const refB = refBinance.value.trim();
 
-        if (selectedMethod === 'pagomovil' && refPM.length < 6) {
-            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 6 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
+        if (selectedMethod === 'pagomovil' && refPM.length < 3) {
+            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 3 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
         }
         if (selectedMethod === 'binance' && refB.length < 1) {
             return Swal.fire({ icon: 'warning', title: 'Falta ID Binance', text: 'Por favor, ingresa tu ID de transacción de Binance Pay.', confirmButtonColor: '#9D00FF' });
@@ -2545,8 +2754,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ? selectedPackage.amount
             : (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`);
 
-        const priceUSDT = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
+        const rawPriceConfirm = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
+        const discountMultConfirm = window.referralDiscountActive ? 0.97 : 1;
+        const priceUSDT = rawPriceConfirm * discountMultConfirm;
         const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
+        if (window.referralDiscountActive) {
+            console.log(`[DESCUENTO_REFERIDO] Aplicando -3% en primera compra. Original: $${rawPriceConfirm.toFixed(2)} → Con descuento: $${priceUSDT.toFixed(2)} USDT`);
+        }
         let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
         const waFull = countryCode.value + waClean;
 
@@ -2648,9 +2862,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="btn-action btn-share" title="Compartir" style="flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
                                 <button class="btn-action btn-fav" title="Favorito" style="margin: 0;"><i class="fa-solid fa-star"></i></button>
                             </div>
-                            <button class="btn-action" onclick="window.open('https://wa.me/' + ((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '') + '?text=' + encodeURIComponent('${ref}'), '_blank')" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0;">
-                                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
+                            <button id="receipt-push-btn" class="btn-action" style="background: #9D00FF !important; border: 1px solid #7c00cc !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; margin: 0; box-sizing: border-box;">
+                                <i class="fa-solid fa-bell" style="font-size: 1.1rem;"></i> Recibir Alerta en este Navegador 🔔
                             </button>
+                            <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}" target="_blank" class="btn-action" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0; text-decoration: none; box-sizing: border-box;">
+                                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
+                            </a>
                             <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0;">Continuar</button>
                         </div>
                     </div>
@@ -2662,6 +2879,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 didOpen: () => {
                     // Si era modo regalo, limpiar el estado para el siguiente ciclo
                     clearGiftingMode();
+
+                    // Lógica para el botón de notificaciones push en el recibo
+                    const receiptPushBtn = document.getElementById('receipt-push-btn');
+                    const pushSupported = ('serviceWorker' in navigator) && ('PushManager' in window);
+                    if (receiptPushBtn) {
+                        if (!pushSupported) {
+                            receiptPushBtn.style.display = 'none';
+                        } else {
+                            navigator.serviceWorker.ready.then(reg => {
+                                reg.pushManager.getSubscription().then(sub => {
+                                    if (sub) receiptPushBtn.style.display = 'none';
+                                });
+                            });
+                            
+                            receiptPushBtn.addEventListener('click', async () => {
+                                try {
+                                    const permission = await Notification.requestPermission();
+                                    if (permission === 'granted') {
+                                        receiptPushBtn.disabled = true;
+                                        receiptPushBtn.innerText = 'Activando...';
+                                        await subscribeUser(loginUid);
+                                        receiptPushBtn.style.display = 'none';
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: 'Permiso Denegado',
+                                            text: 'Debes habilitar los permisos de notificación en tu navegador para usar esta función.',
+                                            background: 'rgba(20, 10, 35, 0.98)',
+                                            color: '#fff',
+                                            confirmButtonColor: '#9D00FF'
+                                        });
+                                    }
+                                } catch (err) {
+                                    console.error('Error al activar push desde recibo:', err);
+                                    receiptPushBtn.disabled = false;
+                                    receiptPushBtn.innerHTML = '<i class="fa-solid fa-bell"></i> Recibir Alerta en este Navegador 🔔';
+                                }
+                            });
+                        }
+                    }
 
                     const shareBtn = document.querySelector('.btn-share');
                     const favBtn = document.querySelector('.btn-fav');
@@ -2712,6 +2969,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                         titleEl.innerHTML = '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>';
                                         titleEl.style.animation = 'pulse 1s infinite alternate';
                                     }
+
+                                    // 🎰 RULETA DE LA SUERTE: mostrar después de 3.5s
+                                    setTimeout(() => {
+                                        if (typeof window.showRouletteAfterApproval === 'function') {
+                                            window.showRouletteAfterApproval(loginUid, ref, priceUSDT);
+                                        }
+                                    }, 3500);
                                 } else {
                                     // Sonido de error (Buzzer corto y limpio)
                                     new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
@@ -2925,8 +3189,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!uid) return;
         const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
         
-        // Mensaje persuasivo con emojis
-        const promoMessage = `🔥 ¡Recarga tus DIAMANTES de Free Fire al instante, 100% automático y seguro! 💎✨ recargas las 24 horas y al mejor precio del mercado. 🚀 Regístrate y compra con mi link de referido para empezar a acumular juntos cashback en $ y diamantes gratis: ${refLink} ¡Nos vemos en el juego! 🎮⚔️`;
+        // Mensaje persuasivo con emojis — menciona el bono doble
+        const promoMessage = `🔥 ¡Recarga tus DIAMANTES de Free Fire al instante, 100% automático y seguro! 💎\n\n✅ Recibe un 3% de DESCUENTO en tu primera recarga usando mi link.\n⚡ Recargas las 24 horas al mejor precio del mercado.\n\n👇 Entra aquí con mi link y activa tu descuento automáticamente:\n${refLink}\n\n¡Nos vemos en el juego! 🎮⚔️`;
         const encodedMessage = encodeURIComponent(promoMessage);
         
         const canNativeShare = typeof navigator.share === 'function';
@@ -3034,7 +3298,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Usuario ya existía, no aplica referido
                 localStorage.removeItem('ff_pending_ref');
             }
+
+            // ── DESCUENTO 3% PRIMERA COMPRA (BONO REFERIDO) ──
+            // Aplica si: el usuario fue referido Y todavía no ha hecho su primera compra
+            let hasReferralDiscount = !!(data.user && data.user.referred_by && !data.user.referral_claimed);
             
+            // Si acabamos de vincularlo en esta sesión como nuevo referido, forzar el descuento como activo
+            if (data.isNew && pendingRef && pendingRef !== uid) {
+                hasReferralDiscount = true;
+            }
+            
+            window.referralDiscountActive = hasReferralDiscount;
+
+            // Mostrar / ocultar banner de descuento en sección de paquetes
+            let discountBanner = document.getElementById('referral-discount-banner');
+            if (hasReferralDiscount) {
+                if (!discountBanner) {
+                    discountBanner = document.createElement('div');
+                    discountBanner.id = 'referral-discount-banner';
+                    discountBanner.innerHTML = `
+                        <span style="font-size:1.3rem;">🎁</span>
+                        <div>
+                            <strong style="color:#00FF94; font-size:0.95rem;">¡3% de descuento en tu primera compra!</strong><br>
+                            <span style="color:#aaa; font-size:0.78rem;">Fuiste invitado por un amigo. El descuento se aplica automáticamente.</span>
+                        </div>`;
+                    discountBanner.style.cssText = 'display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,rgba(0,255,148,0.1),rgba(0,240,255,0.05)); border:1px solid rgba(0,255,148,0.35); border-radius:12px; padding:12px 16px; margin-bottom:16px; animation:fadeIn 0.4s ease;';
+                }
+                const packagesSection = document.getElementById('packages-section');
+                if (packagesSection) {
+                    const sectionHeader = packagesSection.querySelector('.section-header');
+                    if (sectionHeader && !document.getElementById('referral-discount-banner')) {
+                        packagesSection.insertBefore(discountBanner, sectionHeader.nextSibling);
+                    }
+                }
+            } else if (discountBanner) {
+                discountBanner.remove();
+            }
+            // ── FIN DESCUENTO ──
+
             const pointsEl = document.getElementById('user-points');
             const headerPointsEl = document.getElementById('header-points-val');
             
@@ -3315,7 +3616,336 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+
+    // ===== SECCIÓN DE PUBLICIDADES / SLIDER BANNER =====
+    let currentAdSlide = 0;
+    let adSlideInterval = null;
+
+    function renderAds(ads) {
+        const container = document.getElementById('ads-slider-container');
+        const wrapper = document.getElementById('ads-slider-wrapper');
+        const dotsContainer = document.getElementById('ads-slider-dots');
+        
+        if (!container || !wrapper || !dotsContainer) return;
+        
+        // Filtrar anuncios que tengan imagen configurada
+        const activeAds = (ads || []).filter(ad => ad.imagen && ad.imagen.trim() !== '');
+        
+        if (activeAds.length === 0) {
+            container.style.display = 'none';
+            clearInterval(adSlideInterval);
+            return;
+        }
+        
+        container.style.display = 'block';
+        wrapper.innerHTML = '';
+        dotsContainer.innerHTML = '';
+        
+        activeAds.forEach((ad, index) => {
+            const slide = document.createElement('div');
+            slide.className = 'ad-slide';
+            
+            const img = document.createElement('img');
+            img.src = ad.imagen.trim();
+            img.alt = `Publicidad ${index + 1}`;
+            img.loading = 'lazy';
+            slide.appendChild(img);
+            
+            if (ad.link && ad.link.trim() !== '') {
+                slide.onclick = () => {
+                    window.open(ad.link.trim(), '_blank');
+                };
+            }
+            
+            wrapper.appendChild(slide);
+            
+            // Crear dot (indicador) si hay más de 1 anuncio
+            if (activeAds.length > 1) {
+                const dot = document.createElement('div');
+                dot.className = 'ad-dot' + (index === 0 ? ' active' : '');
+                dot.onclick = (e) => {
+                    e.stopPropagation();
+                    goToAdSlide(index);
+                };
+                dotsContainer.appendChild(dot);
+            }
+        });
+        
+        currentAdSlide = 0;
+        goToAdSlide(0);
+        
+        // Auto-play cada 5 segundos
+        clearInterval(adSlideInterval);
+        if (activeAds.length > 1) {
+            adSlideInterval = setInterval(() => {
+                const next = (currentAdSlide + 1) % activeAds.length;
+                goToAdSlide(next);
+            }, 5000);
+        }
+    }
+
+    function goToAdSlide(index) {
+        const wrapper = document.getElementById('ads-slider-wrapper');
+        const dots = document.querySelectorAll('.ad-dot');
+        if (!wrapper) return;
+        
+        currentAdSlide = index;
+        wrapper.style.transform = `translateX(-${index * 100}%)`;
+        
+        dots.forEach((dot, idx) => {
+            if (idx === index) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+
+    // Exponer renderAds a nivel global para que loadConfig pueda llamarla si lo requiere
+    window.renderAds = renderAds;
+
+    // ============================================================
+    // 🎰 RULETA DE LA SUERTE - SE ACTIVA TRAS RECARGA APROBADA
+    // ============================================================
+    window.showRouletteAfterApproval = function(loginUid, orderRef, paidUsdt) {
+        // Premios: probabilidades acumuladas (30, 55, 75, 87, 95, 99, 100)
+        const PRIZES = [
+            { label: '$0.05 USDT', emoji: '💎', amount: 0.05, color: '#4A00E0', prob: 0.30 },
+            { label: '$0.10 USDT', emoji: '💎', amount: 0.10, color: '#7928CA', prob: 0.25 },
+            { label: '$0.20 USDT', emoji: '🌟', amount: 0.20, color: '#9D00FF', prob: 0.20 },
+            { label: '$0.30 USDT', emoji: '🔥', amount: 0.30, color: '#5500CC', prob: 0.12 },
+            { label: '$0.50 USDT', emoji: '⚡', amount: 0.50, color: '#00B2FF', prob: 0.08 },
+            { label: '$1.00 USDT', emoji: '👑', amount: 1.00, color: '#FFD700', prob: 0.05 }
+        ];
+
+        // --- Determinar premio ganado (cliente puede calcular resultado localmente, server lo valida) ---
+        let rand = Math.random();
+        let cumulative = 0;
+        let winIdx = 0;
+        for (let i = 0; i < PRIZES.length; i++) {
+            cumulative += PRIZES[i].prob;
+            if (rand <= cumulative) { winIdx = i; break; }
+        }
+        const winPrize = PRIZES[winIdx];
+
+        // --- Construir modal ---
+        const overlay = document.createElement('div');
+        overlay.className = 'roulette-overlay';
+
+        // Generar pills de premios
+        const pillsHTML = PRIZES.map((p, i) =>
+            `<span class="roulette-prize-pill ${i === PRIZES.length - 1 ? 'jackpot' : ''}">${p.emoji} ${p.label}</span>`
+        ).join('');
+
+        overlay.innerHTML = `
+            <div class="roulette-modal">
+                <div class="roulette-header-badge">🎰 Premio de Recarga</div>
+                <h2 class="roulette-title">¡Gira la Ruleta!</h2>
+                <p class="roulette-subtitle">Como gracias por tu recarga, ¡tienes un premio!</p>
+                <div class="roulette-wheel-wrapper">
+                    <div class="roulette-pointer"></div>
+                    <canvas id="roulette-canvas" class="roulette-wheel-canvas" width="240" height="240"></canvas>
+                </div>
+                <div class="roulette-prizes-info">${pillsHTML}</div>
+                <button id="roulette-spin-btn" class="roulette-spin-btn">
+                    <i class="fa-solid fa-rotate-right"></i> &nbsp;¡GIRAR AHORA!
+                </button>
+                <button id="roulette-close-btn" class="roulette-close-btn">Cerrar</button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // --- Dibujar rueda en canvas ---
+        const canvas = document.getElementById('roulette-canvas');
+        const ctx = canvas.getContext('2d');
+        const cx = 120, cy = 120, radius = 118;
+        const segAngle = (Math.PI * 2) / PRIZES.length;
+        let currentAngle = 0;
+
+        function drawWheel(rotation) {
+            ctx.clearRect(0, 0, 240, 240);
+            PRIZES.forEach((p, i) => {
+                const startAngle = rotation + i * segAngle;
+                const endAngle = startAngle + segAngle;
+                // Segmento
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                // Texto
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startAngle + segAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px Montserrat, sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(p.label, radius - 8, 4);
+                ctx.font = '14px sans-serif';
+                ctx.fillText(p.emoji, radius - 60, 5);
+                ctx.restore();
+            });
+            // Centro
+            ctx.beginPath();
+            ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#07030D';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💎', cx, cy);
+        }
+
+        drawWheel(0);
+
+        // --- Lógica de giro ---
+        const spinBtn = document.getElementById('roulette-spin-btn');
+        const closeBtn = document.getElementById('roulette-close-btn');
+        let hasSpun = false;
+
+        closeBtn.addEventListener('click', () => {
+            if (!hasSpun) { document.body.removeChild(overlay); }
+        });
+
+        spinBtn.addEventListener('click', () => {
+            if (hasSpun) return;
+            hasSpun = true;
+            spinBtn.disabled = true;
+            spinBtn.classList.add('spinning');
+            spinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> &nbsp;Girando...';
+            closeBtn.style.display = 'none';
+
+            // Calcular rotación final para que caiga en el premio ganado
+            // El puntero apunta hacia arriba (ángulo -π/2). Cada segmento comienza en i*segAngle.
+            // Para que winIdx quede bajo el puntero, la rotación final debe ser:
+            // finalAngle = -π/2 - winIdx*segAngle - segAngle/2  (+ varios giros)
+            const extraSpins = 5 + Math.floor(Math.random() * 3); // 5-7 vueltas completas
+            const targetAngle = (-Math.PI / 2) - (winIdx * segAngle) - (segAngle / 2) - (Math.random() * segAngle * 0.6 - segAngle * 0.3);
+            const totalRotation = (Math.PI * 2) * extraSpins + targetAngle;
+
+            const duration = 5000; // ms
+            const startTime = performance.now();
+
+            function easeOut(t) {
+                return 1 - Math.pow(1 - t, 4);
+            }
+
+            function animate(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                currentAngle = totalRotation * easeOut(progress);
+                drawWheel(currentAngle);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Animación completada — mostrar premio
+                    onSpinComplete();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        });
+
+        async function onSpinComplete() {
+            // Acreditar puntos en el servidor
+            let credited = false;
+            if (loginUid) {
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/add-roulette-bonus`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uid: loginUid, prize_usdt: winPrize.amount, order_ref: orderRef })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        credited = true;
+                        // Actualizar el header de puntos en tiempo real
+                        const headerPts = document.getElementById('header-points-val');
+                        if (headerPts) {
+                            const newUsdt = data.new_total_usdt.toFixed(2);
+                            headerPts.textContent = newUsdt;
+                        }
+                        // Actualizar el badge de puntos en la sección de bienvenida
+                        const userPointsEl = document.getElementById('user-points');
+                        if (userPointsEl) {
+                            userPointsEl.textContent = `${data.new_total_usdt.toFixed(2)} USDT`;
+                        }
+                        console.log(`[RULETA] ✅ ${winPrize.amount} USDT acreditados a ${loginUid}`);
+                    }
+                } catch (e) {
+                    console.error('[RULETA] Error acreditando premio:', e);
+                }
+            }
+
+            // Mostrar resultado en el modal
+            const modal = overlay.querySelector('.roulette-modal');
+            const wheelWrapper = overlay.querySelector('.roulette-wheel-wrapper');
+            const prizeInfo = overlay.querySelector('.roulette-prizes-info');
+            const spinBtnEl = document.getElementById('roulette-spin-btn');
+            const closeBtnEl = document.getElementById('roulette-close-btn');
+
+            // Insertar display del premio antes del botón
+            const prizeDisplay = document.createElement('div');
+            prizeDisplay.className = 'roulette-prize-display';
+            prizeDisplay.innerHTML = `
+                <span class="prize-emoji">${winPrize.emoji}</span>
+                <span class="prize-amount">+${winPrize.label}</span>
+                <span class="prize-label">${credited ? '✅ Acreditado a tu cuenta' : '⚠️ Conectando con servidor...'}</span>
+            `;
+
+            if (prizeInfo) prizeInfo.after(prizeDisplay);
+
+            // Actualizar botón spin
+            spinBtnEl.classList.remove('spinning');
+            spinBtnEl.innerHTML = `🎉 ¡Ganaste ${winPrize.label}!`;
+            spinBtnEl.style.background = 'linear-gradient(135deg, #00c853, #00695c)';
+            spinBtnEl.style.cursor = 'default';
+
+            // Mostrar botón cerrar
+            closeBtnEl.style.display = 'block';
+            closeBtnEl.textContent = '¡Listo! Cerrar';
+            closeBtnEl.style.color = '#fff';
+            closeBtnEl.style.borderColor = 'rgba(255,255,255,0.25)';
+            closeBtnEl.addEventListener('click', () => {
+                overlay.style.animation = 'none';
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s';
+                setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 300);
+            });
+
+            // Confetti para premios grandes
+            if (winPrize.amount >= 0.50 && typeof confetti !== 'undefined') {
+                const dur = 3000;
+                const end = Date.now() + dur;
+                const def = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 99999 };
+                function rnd(min, max) { return Math.random() * (max - min) + min; }
+                const iv = setInterval(() => {
+                    const tl = end - Date.now();
+                    if (tl <= 0) return clearInterval(iv);
+                    const pc = 50 * (tl / dur);
+                    confetti(Object.assign({}, def, { particleCount: pc, origin: { x: rnd(0.1, 0.3), y: Math.random() - 0.2 }, colors: ['#ffd700', '#9D00FF', '#00F0FF'] }));
+                    confetti(Object.assign({}, def, { particleCount: pc, origin: { x: rnd(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#ffd700', '#9D00FF', '#00F0FF'] }));
+                }, 250);
+            }
+
+            // Sonido de éxito
+            try { new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(() => {}); } catch(e) {}
+        }
+    };
 });
+
 
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {

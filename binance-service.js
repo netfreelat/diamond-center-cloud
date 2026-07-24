@@ -46,9 +46,12 @@ async function checkBinanceEmails() {
 
         const since = new Date(Date.now() - 48 * 3600 * 1000); // Últimas 48h
 
+        // Formato estándar IMAP: DD-MMM-YYYY (ej: 21-Jul-2026)
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const dateStr = `${since.getDate()}-${months[since.getMonth()]}-${since.getFullYear()}`;
+
         const searchCriteria = [
-            ['UNSEEN'],
-            ['SINCE', since.toISOString()],
+            ['SINCE', dateStr],
             ['OR', ['FROM', 'binance'], ['SUBJECT', 'Binance Pay']]
         ];
 
@@ -81,7 +84,10 @@ async function checkBinanceEmails() {
                 lowerText.includes('te ha enviado') ||
                 lowerText.includes('payment received') ||
                 lowerText.includes('you received') ||
-                lowerText.includes('has been credited');
+                lowerText.includes('has been credited') ||
+                lowerText.includes('pago recibido') ||
+                lowerText.includes('recibiste una transferencia') ||
+                lowerText.includes('recibiste');
 
             if (esRecibido) {
                 const amountMatch = plainText.match(/([0-9.,]+)\s*USDT/i);
@@ -105,7 +111,7 @@ async function checkBinanceEmails() {
     } catch (err) {
         console.error('[BINANCE] ❌ Error leyendo correos:', err.message);
         if (connection) try { connection.end(); } catch (_) {}
-        return [];
+        return null;
     }
 }
 

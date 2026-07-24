@@ -45,7 +45,9 @@
             <div class="splash-crosshair">
                 <div class="crosshair-ring"></div>
                 <div class="crosshair-ring ring-2"></div>
-                <div class="crosshair-dot"></div>
+                <div class="crosshair-logo-img-wrapper">
+                    <img src="img/logo.jpg" alt="Logo">
+                </div>
                 <div class="crosshair-line top"></div>
                 <div class="crosshair-line bottom"></div>
                 <div class="crosshair-line left"></div>
@@ -98,6 +100,12 @@
     </div>
 
     <div class="main-container">
+        <!-- Slider de Banners Publicitarios -->
+        <div id="ads-slider-container" class="ads-slider-container" style="display: none;">
+            <div class="ads-slider-wrapper" id="ads-slider-wrapper"></div>
+            <div class="ads-slider-dots" id="ads-slider-dots"></div>
+        </div>
+
         <!-- Banner de Bienvenida para nuevos usuarios -->
         <div id="new-user-banner" style="display: none; background: rgba(157, 0, 255, 0.05); border: 1px dashed var(--primary); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; animation: pulse 2s infinite;">
             <h3 style="color: var(--secondary); margin-bottom: 5px; font-family: 'Montserrat', sans-serif;">¡Hola! Gana premios gratis 💎</h3>
@@ -106,12 +114,15 @@
 
         <div class="card">
             <div class="logo-container">
+                <div class="main-logo-wrapper">
+                    <img src="img/logo.jpg" alt="Logo">
+                </div>
                 <h1>CENTRO DE RECARGAS</h1>
             </div>
 
             <!-- Selector de Juegos -->
-            <div id="game-selector-container" style="display: none; margin-bottom: 20px; overflow-x: auto; white-space: nowrap; padding-top: 8px; padding-bottom: 5px; scrollbar-width: none;">
-                <div id="game-list" style="display: inline-flex; gap: 10px;">
+            <div id="game-selector-container" style="display: none; margin-bottom: 20px; overflow: hidden; padding-top: 8px; padding-bottom: 5px;">
+                <div id="game-list" style="display: flex; gap: 8px; width: 100%; justify-content: center;">
                     <!-- Botones generados por JS -->
                 </div>
             </div>
@@ -192,18 +203,34 @@
                 <div id="referral-banner" class="referral-banner-premium">
                     <div class="referral-banner-glow"></div>
                     <div class="referral-banner-top">
-                        <span class="referral-badge-pill">💎 GRATIS</span>
+                        <span class="referral-badge-pill">🎁 BONO DOBLE</span>
                     </div>
-                    <div class="referral-banner-icon">🎁</div>
-                    <h3 class="referral-banner-title">¡Gana Diamantes Gratis!</h3>
+                    <div class="referral-banner-icon">🤝</div>
+                    <h3 class="referral-banner-title">¡Ganan los Dos!</h3>
                     <p class="referral-banner-desc">
-                        Envía tu link a tus amigos y gana <strong>+$0.05 USDT</strong> de cashback<br>
-                        cuando hagan su primera compra.<br>
+                        <span style="display:flex; align-items:center; gap:8px; justify-content:center; margin-bottom:6px;">
+                            <span style="background:rgba(157,0,255,0.25); border:1px solid rgba(157,0,255,0.5); border-radius:8px; padding:4px 10px; font-size:0.85rem;">
+                                👤 <strong>Tú</strong> ganas <strong>+$0.05 USDT</strong> cashback
+                            </span>
+                        </span>
+                        <span style="display:flex; align-items:center; gap:8px; justify-content:center; margin-bottom:8px;">
+                            <span style="background:rgba(0,255,148,0.12); border:1px solid rgba(0,255,148,0.4); border-radius:8px; padding:4px 10px; font-size:0.85rem;">
+                                🎮 <strong>Tu amigo</strong> obtiene <strong>-3% en su 1ra compra</strong>
+                            </span>
+                        </span>
                         <span class="referral-no-limit">¡Sin límite de referidos!</span>
                     </p>
                     <button id="copy-ref-link-btn" class="referral-copy-btn">
                         <span class="referral-btn-shine"></span>
                         <i class="fa-solid fa-share-nodes"></i> Compartir mi Link
+                    </button>
+                    <button id="btn-ver-dashboard-referidos" style="
+                        width:100%; margin-top:10px; background:rgba(255,255,255,0.05);
+                        border:1px solid rgba(255,255,255,0.15); color:#aaa; font-size:0.82rem;
+                        font-weight:700; padding:10px 16px; border-radius:10px; cursor:pointer;
+                        font-family:'Montserrat',sans-serif; transition:all 0.2s;
+                        display:flex; align-items:center; justify-content:center; gap:7px;">
+                        <i class="fa-solid fa-chart-bar"></i> Ver mis Estadísticas
                     </button>
                 </div>
             </div>
@@ -427,7 +454,7 @@
     </div>
 
     <!-- Custom Script -->
-    <script src="script.js?v=1.4.6"></script>
+    <script src="script.js?v=1.4.7"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>

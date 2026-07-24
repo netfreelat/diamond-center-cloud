@@ -79,6 +79,25 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             console.error(`[JADH-BOT] ❌ Error: Paquete no mapeado para el monto: ${amountKey}`);
             return { success: false, message: `El paquete de ${amountKey} diamantes no está mapeado para recarga directa.` };
         }
+    } else if (game === 'bloodstrike') {
+        // Limpiar amountKey para obtener el identificador base
+        amountKey = amountKey.split(' ')[0].replace(',', '').replace('.', '').trim();
+        
+        // Mapear paquetes de monedas a IDs de jadh.shop (bloodstrike)
+        const packMap = {
+            "100":  "162",  // 100+5🪙   $0.73
+            "300":  "163",  // 300+20🪙  $2.24
+            "500":  "164",  // 500+40🪙  $3.66
+            "1000": "165",  // 1000+100🪙 $7.44
+            "2000": "166",  // 2000+260🪙 $14.59
+            "5000": "167"   // 5000+800🪙 $36.19
+        };
+
+        packageId = packMap[amountKey];
+        if (!packageId) {
+            console.error(`[JADH-BOT] ❌ Error: Paquete Blood Strike no mapeado: ${amountKey}`);
+            return { success: false, message: `El paquete de ${amountKey} monedas de Blood Strike no está mapeado para recarga directa.` };
+        }
     }
 
     let browser = null;
@@ -105,7 +124,11 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         const page = await browser.newPage();
         await page.setDefaultNavigationTimeout(60000);
 
-        const productUrl = game === 'roblox' ? 'https://jadh.shop/producto/roblox-usa' : 'https://jadh.shop/producto/freefire-auto';
+        const productUrlMap = {
+            'roblox':      'https://jadh.shop/producto/roblox-usa',
+            'bloodstrike': 'https://jadh.shop/producto/bloodstrike'
+        };
+        const productUrl = productUrlMap[game] || 'https://jadh.shop/producto/freefire-auto';
         // 1. Navegar directamente al producto (Jadh redirige a /auth si no hay sesión)
         console.log(`[JADH-BOT] 📡 Navegando al producto ${productUrl}...`);
         await page.goto(productUrl, { waitUntil: 'networkidle2' });
@@ -145,16 +168,28 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             throw selectorErr;
         }
         
-        if (game === 'freefire') {
+        if (game === 'freefire' || game === 'bloodstrike') {
             await page.select('#packageSelect', packageId);
         } else {
             const packageSelected = await page.evaluate((amountToFind) => {
                 const select = document.querySelector('#packageSelect');
                 if (!select) return false;
                 const options = Array.from(select.querySelectorAll('option'));
-                const targetOption = options.find(o => o.textContent.toLowerCase().includes(amountToFind.toString().toLowerCase()));
+                
+                // Buscar coincidencia exacta del número (ej: "10" no debe coincidir con "100")
+                const targetOption = options.find(o => {
+                    const text = o.textContent.toLowerCase();
+                    const match = text.match(/\b(\d+)\s*(usd|s)/i) || text.match(/\b(\d+)\b/);
+                    if (match) {
+                        return parseInt(match[1]) === parseInt(amountToFind);
+                    }
+                    return text.includes(amountToFind.toString().toLowerCase());
+                });
+
                 if (targetOption) {
                     select.value = targetOption.value;
+                    // IMPORTANTE: Disparar el evento 'change' para actualizar el precio y habilitar la validación
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
                     return true;
                 }
                 return false;
@@ -208,19 +243,40 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 })
         ]);
 
-        console.log('[JADH-BOT] ⏳ Procesamiento en pasarela completado. Verificando resultado...');
+        console.log('[JADH-BOT] ⏳ Esperando a que finalice el procesamiento en la página...');
+        let purchaseResultText = '';
         
-        // 5. Verificar el resultado de la compra en la página de respuesta
-        const purchaseResultText = await page.evaluate(() => document.body.innerText);
-        console.log('[JADH-BOT] 📄 Texto de la página resultado (primeros 500 chars):', purchaseResultText.substring(0, 500));
+        // Esperar hasta 40 segundos a que la página cambie de "Procesando" a "Éxito" o "Error"
+        for (let attempt = 0; attempt < 40; attempt++) {
+            purchaseResultText = await page.evaluate(() => document.body.innerText);
+            const lowerText = purchaseResultText.toLowerCase();
+            
+            // Si ya no dice "procesando" y muestra señales de haber terminado
+            if (!lowerText.includes('procesando recarga') && !lowerText.includes('siendo procesada')) {
+                break;
+            }
+            if (lowerText.includes('no se pudo completar') || lowerText.includes('no encontrado') || lowerText.includes('exito') || lowerText.includes('completada')) {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        console.log('[JADH-BOT] 📄 Texto final del resultado (primeros 500 chars):', purchaseResultText.substring(0, 500));
         
         const lowerResult = purchaseResultText.toLowerCase();
         // Detectar errores reales en la página de resultado de compra
-        const errorKeywords = ['insuficiente', 'insufficient', 'error', 'failed', 'rechazad', 'no tiene', 'invalid', 'inválid', 'no encontrado', 'not found', 'denied', 'denegado', 'cancelado', 'cancelled'];
+        const errorKeywords = ['insuficiente', 'insufficient', 'error', 'failed', 'rechazad', 'no tiene', 'invalid', 'inválid', 'no encontrado', 'not found', 'denied', 'denegado', 'cancelado', 'cancelled', 'no se pudo completar'];
         const hasError = errorKeywords.some(kw => lowerResult.includes(kw));
         if (hasError) {
             console.error('[JADH-BOT] ❌ Error detectado en la página de resultado de compra.');
-            return { success: false, message: `Error en jadh.shop: ${purchaseResultText.substring(0, 300)}` };
+            let errorMsg = 'Error en jadh.shop';
+            if (lowerResult.includes('no se pudo completar')) {
+                const startIdx = lowerResult.indexOf('no se pudo completar');
+                errorMsg = purchaseResultText.substring(startIdx, startIdx + 300).trim();
+            } else {
+                errorMsg = `Error en jadh.shop: ${purchaseResultText.substring(0, 300)}`;
+            }
+            return { success: false, message: errorMsg };
         }
         
         // 6. Si no hay error en la compra, intentar verificar en el Dashboard con reintentos
@@ -308,20 +364,38 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
                     };
                 });
 
-                // Si es roblox, buscamos la transacción más reciente que sea de Roblox
+                // Si es roblox, buscamos la transacción más reciente que sea de Roblox y que NO haya fallado
                 if (gameName === 'roblox') {
                     const match = transactions.find(t => 
-                        (t.type && t.type.toLowerCase().includes('roblox')) ||
-                        (t.packageName && t.packageName.toLowerCase().includes('roblox')) ||
-                        (t.pins && t.pins.some(p => p.label && p.label.toLowerCase().includes('roblox'))) ||
-                        (!t.uid && t.type !== 'Desconocido')
+                        !(t.status && ['fallido', 'cancelado', 'rechazado', 'error', 'failed', 'declined'].some(s => t.status.toLowerCase().includes(s))) && (
+                            (t.type && t.type.toLowerCase().includes('roblox')) ||
+                            (t.packageName && t.packageName.toLowerCase().includes('roblox')) ||
+                            (t.pins && t.pins.some(p => p.label && p.label.toLowerCase().includes('roblox'))) ||
+                            (!t.uid && t.type !== 'Desconocido' && t.type.toLowerCase().includes('roblox')) ||
+                            (!t.uid && t.packageName && t.packageName.toLowerCase().includes('roblox'))
+                        )
                     );
-                    return { match: match || transactions[0], all: transactions.slice(0, 3) };
+                    if (match) {
+                        return { match, all: transactions.slice(0, 3) };
+                    }
+                    // Si no se encuentra un match específico de Roblox, pero la primera transacción es de Roblox y no ha fallado
+                    const firstIsRoblox = transactions[0] && (
+                        !(transactions[0].status && ['fallido', 'cancelado', 'rechazado', 'error', 'failed', 'declined'].some(s => transactions[0].status.toLowerCase().includes(s))) && (
+                            (transactions[0].type && transactions[0].type.toLowerCase().includes('roblox')) ||
+                            (transactions[0].packageName && transactions[0].packageName.toLowerCase().includes('roblox')) ||
+                            (transactions[0].pins && transactions[0].pins.some(p => p.label && p.label.toLowerCase().includes('roblox'))) ||
+                            (!transactions[0].uid && transactions[0].type !== 'Desconocido')
+                        )
+                    );
+                    return { match: firstIsRoblox ? transactions[0] : null, all: transactions.slice(0, 3) };
                 }
 
-                // Si es freefire, buscamos por ID de jugador
+                // Si es freefire/bloodstrike/otros, buscamos por ID de jugador y que NO haya fallado
                 const cleanPlayerID = playerID.trim();
-                const match = transactions.find(t => t.uid === cleanPlayerID);
+                const match = transactions.find(t => 
+                    t.uid === cleanPlayerID &&
+                    !(t.status && ['fallido', 'cancelado', 'rechazado', 'error', 'failed', 'declined'].some(s => t.status.toLowerCase().includes(s)))
+                );
                 return { match, all: transactions.slice(0, 3) };
             }, uid.toString(), game);
 

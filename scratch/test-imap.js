@@ -4,7 +4,7 @@ const imaps = require('imap-simple');
 const config = {
     imap: {
         user: process.env.BINANCE_EMAIL_USER,
-        password: process.env.BINANCE_EMAIL_PASSWORD,
+        password: process.env.BINANCE_EMAIL_PASSWORD ? process.env.BINANCE_EMAIL_PASSWORD.replace(/\s+/g, '') : '',
         host: 'imap.gmail.com',
         port: 993,
         tls: true,

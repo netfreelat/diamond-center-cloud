@@ -1,0 +1,15 @@
+Medidas recomendadas para tus banners:
+
+800 x 320 píxeles (Recomendado)
+
+1000 x 400 píxeles
+
+
+
+
+Nombres y ruta para tus imágenes:
+Para que el sistema las reconozca automáticamente de inmediato sin que tengas que editar nada en base de datos, nombra tus imágenes exactamente de la siguiente manera y guárdalas dentro de la carpeta img de tu proyecto local:
+
+freefire_logo.png (para Free Fire)
+roblox_logo.png (para Roblox)
+bloodstrike_logo.png (para Blood Strike)
