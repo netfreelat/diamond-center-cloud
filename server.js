@@ -466,16 +466,27 @@ function normalizePhone(num) {
     return clean;
 }
 
-async function saveWaContact(phone, name, uid = null, source = 'web') {
+async function saveWaContact(phone, name, uid = null, source = 'web', activityTime = null) {
     const clean = normalizePhone(phone);
     if (!clean) return;
 
     const existing = waContacts[clean] || {};
     const now = new Date().toISOString();
-    
+    const targetTime = activityTime || now;
+
     let finalName = existing.name || 'Cliente';
     if (name && name !== 'Cliente' && name !== 'Jugador' && name !== '—' && name !== '-') {
         finalName = name;
+    }
+
+    // Preservar la fecha real de actividad del pedido o usuario
+    let lastSeen = existing.last_seen;
+    if (activityTime) {
+        if (!lastSeen || new Date(activityTime) > new Date(lastSeen)) {
+            lastSeen = activityTime;
+        }
+    } else {
+        lastSeen = lastSeen || now;
     }
 
     const contactObj = {
@@ -484,8 +495,8 @@ async function saveWaContact(phone, name, uid = null, source = 'web') {
         uid: uid || existing.uid || null,
         source: existing.source || source,
         orders_count: (existing.orders_count || 0) + (source === 'web_order' ? 1 : 0),
-        last_seen: now,
-        created_at: existing.created_at || now
+        last_seen: lastSeen,
+        created_at: existing.created_at || targetTime
     };
 
     waContacts[clean] = contactObj;
@@ -653,7 +664,7 @@ async function loadFromSupabase() {
             const { data: allOrdersWA } = await supabase.from('ff_orders').select('uid, name, wa, time').not('wa', 'is', null);
             if (allOrdersWA) {
                 allOrdersWA.forEach(o => {
-                    if (o.wa && o.wa !== 'No provisto') saveWaContact(o.wa, o.name, o.uid || null, 'web_order');
+                    if (o.wa && o.wa !== 'No provisto') saveWaContact(o.wa, o.name, o.uid || null, 'web_order', o.time);
                 });
             }
         } catch (e) {
