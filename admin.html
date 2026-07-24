@@ -959,6 +959,36 @@
                     </table>
                 </div>
             </div>
+
+            <!-- 🎰 HISTORIAL DE RULETA POST-RECARGA (PREMIOS ENTREGADOS) -->
+            <div class="action-card" style="margin-top: 25px; border: 1px solid rgba(0, 240, 255, 0.2); background: linear-gradient(135deg, rgba(7, 3, 13, 0.9), rgba(20, 10, 35, 0.9));">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-gift" style="color: #00FF94;"></i> 🎰 Historial de Ruleta (Premios Entregados)</h2>
+                    <button onclick="loadRuletaHistoryAdmin()" class="btn-main" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                        <i class="fa-solid fa-rotate"></i> Actualizar Historial
+                    </button>
+                </div>
+                <p style="color: var(--text-gray); margin-bottom: 15px; font-size: 0.88rem;">
+                    Registro en tiempo real de todos los usuarios que han girado la ruleta post-recarga y reclamado sus premios.
+                </p>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha / Hora</th>
+                                <th>Cliente</th>
+                                <th>UID</th>
+                                <th>Ref. Recarga</th>
+                                <th>Premio Ganado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ruleta-history-table-body">
+                            <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-gray);"><i class="fa-solid fa-spinner fa-spin"></i> Cargando historial de ruleta...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- PUSH TAB -->
@@ -1372,8 +1402,42 @@
                 }
 
                 renderReferidosTable(_refData);
+                loadRuletaHistoryAdmin();
             } catch (e) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:30px;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function loadRuletaHistoryAdmin() {
+            const tbody = document.getElementById('ruleta-history-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-gray);"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</td></tr>';
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/ruleta-history`);
+                const data = await res.json();
+                
+                if (!data.success || !data.history || data.history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-gray);">Aún no hay reclamos de ruleta registrados.</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.history.forEach(item => {
+                    const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString('es-VE') : 'Reciente';
+                    html += `
+                        <tr>
+                            <td style="font-size:0.85rem; color:#aaa;">${dateStr}</td>
+                            <td><strong>${item.name || 'Cliente'}</strong></td>
+                            <td><code style="color:var(--secondary);">${item.uid || '-'}</code></td>
+                            <td><small style="color:#aaa;">${item.order_ref || 'N/A'}</small></td>
+                            <td><span style="color:#00FF94; font-weight:800;">+$${item.prize_usdt} USDT</span> <small style="color:#aaa;">(${item.points || 0} pts)</small></td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar historial: ${e.message}</td></tr>`;
             }
         }
 

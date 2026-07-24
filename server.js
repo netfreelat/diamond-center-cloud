@@ -2236,9 +2236,36 @@ const server = http.createServer(async (req, res) => {
                 const userObj = await ensureUserLoaded(uid);
                 userObj.points = (userObj.points || 0) + pointsToAdd;
                 await saveUser(uid);
+                
                 // Acumular total de ruleta en memoria para las stats del dashboard
                 global.roulettePayoutTotal = (global.roulettePayoutTotal || 0) + prize_usdt;
                 const newTotalUsdt = ((userObj.points || 0) * 0.003).toFixed(2);
+
+                // Guardar en historial de ruleta persistente
+                if (!settings.juegos) settings.juegos = {};
+                if (!settings.juegos.ruleta_history) settings.juegos.ruleta_history = [];
+                const claimRecord = {
+                    uid,
+                    name: userObj.name || uid,
+                    prize_usdt: parseFloat(prize_usdt),
+                    points: pointsToAdd,
+                    order_ref: order_ref || 'N/A',
+                    timestamp: new Date().toISOString()
+                };
+                settings.juegos.ruleta_history.unshift(claimRecord);
+                if (settings.juegos.ruleta_history.length > 100) {
+                    settings.juegos.ruleta_history = settings.juegos.ruleta_history.slice(0, 100);
+                }
+                await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1).catch(() => {});
+
+                // Guardar en marquesina de recientes
+                await supabase.from('ff_recientes').insert({
+                    name: userObj.name || uid,
+                    pack: `🎰 Ganó $${prize_usdt} USDT en Ruleta`,
+                    type: 'ruleta',
+                    time: new Date().toLocaleTimeString('es-VE')
+                }).catch(() => {});
+
                 console.log(`[RULETA] 🎰 Bono acreditado: ${prize_usdt} USDT (${pointsToAdd} pts) → UID: ${uid}. Total: $${newTotalUsdt} USDT (ref: ${order_ref || 'N/A'})`);
                 // Notificación push al ganador
                 sendPushToUser(uid, '🎰 ¡Premio de Ruleta!', `¡Ganaste $${prize_usdt} USDT extra en la Ruleta de la Suerte! Saldo: $${newTotalUsdt} USDT`, '/icon-192.png', '/');
@@ -2250,6 +2277,30 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: false, message: 'Error interno del servidor.' }));
             }
         });
+        return;
+    }
+
+    if (parsedUrl.pathname === '/admin/ruleta-history' && req.method === 'GET') {
+        try {
+            const history = (settings.juegos && settings.juegos.ruleta_history) ? settings.juegos.ruleta_history : [];
+            const lastWinner = (settings.sorteo_semanal && settings.sorteo_semanal.lastWinner) ? settings.sorteo_semanal.lastWinner : null;
+            const premioActual = (settings.sorteo_semanal && settings.sorteo_semanal.premio) ? settings.sorteo_semanal.premio : '341 Diamantes';
+            
+            let totalPayout = 0;
+            history.forEach(h => { totalPayout += (h.prize_usdt || 0); });
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                history,
+                totalPayout: totalPayout.toFixed(2),
+                lastWinner,
+                premioActual
+            }));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, message: e.message }));
+        }
         return;
     }
 
