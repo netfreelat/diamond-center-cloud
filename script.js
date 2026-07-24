@@ -4313,72 +4313,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function openNotificationCenter() {
         const notifs = getNotifications();
         
-        // Mantener notificaciones activas sin borrar ni ocultar insignia automáticamente
         let notifHtml = '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
-        if (notifs.length === 0) {
-            notifHtml += '<p style="color:#aaa; text-align:center; padding:20px;">No tienes notificaciones pendientes por el momento.</p>';
-        } else {
-            notifs.forEach((n, idx) => {
-                let btnHtml = '';
-                if (n.action === 'roulette') {
-                    btnHtml = `<button onclick="Swal.close(); window.handleNotifRouletteClick(${idx});" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
-                } else if (n.action === 'share') {
-                    btnHtml = `<button onclick="Swal.close(); handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
-                }
+        notifs.forEach((n, idx) => {
+            let btnHtml = '';
+            if (n.action === 'roulette') {
+                btnHtml = `<button onclick="Swal.close(); window.handleNotifRouletteClick(${idx});" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
+            } else if (n.action === 'share') {
+                btnHtml = `<button onclick="Swal.close(); handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
+            }
 
-                notifHtml += `
-                    <div class="notif-item ${n.unread ? 'unread' : ''}">
-                        <div class="notif-title">${n.title}</div>
-                        <div class="notif-body">${n.body}</div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                            <span style="font-size:0.68rem; color:rgba(255,255,255,0.4);">${n.time}</span>
-                            ${btnHtml}
-                        </div>
+            notifHtml += `
+                <div class="notif-item unread">
+                    <div class="notif-title">${n.title}</div>
+                    <div class="notif-body">${n.body}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                        <span style="font-size:0.68rem; color:rgba(255,255,255,0.4);">${n.time}</span>
+                        ${btnHtml}
                     </div>
-                `;
-            });
-        }
-        notifHtml += '</div>';
-
-        let clearBtnHtml = notifs.length > 0 ? `
-            <div style="text-align:right; margin-top:8px;">
-                <button onclick="window.clearAllNotifs()" style="background:transparent; border:none; color:rgba(255,255,255,0.4); font-size:0.72rem; cursor:pointer; font-weight:600;">
-                    <i class="fa-solid fa-trash-can"></i> Limpiar Notificaciones
-                </button>
-            </div>
-        ` : '';
-
-        let pushPromptHtml = '';
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            pushPromptHtml = `
-                <div style="margin-top:10px; background:rgba(0,240,255,0.06); border:1px dashed rgba(0,240,255,0.3); border-radius:10px; padding:10px; text-align:center;">
-                    <p style="font-size:0.75rem; color:#aaa; margin:0 0 8px;">🔔 ¿Deseas recibir alertas cuando tus recargas se aprueben?</p>
-                    <button id="btn-enable-push" style="background:#00F0FF; color:#000; font-weight:800; border:none; padding:6px 14px; border-radius:8px; font-size:0.75rem; cursor:pointer;">
-                        Activar Alertas de Navegador
-                    </button>
                 </div>
             `;
-        }
+        });
+        notifHtml += '</div>';
 
         Swal.fire({
             title: '🔔 Centro de Notificaciones',
-            html: notifHtml + clearBtnHtml + pushPromptHtml,
+            html: notifHtml,
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
             showConfirmButton: false,
-            showCloseButton: true,
-            didOpen: () => {
-                const btnPush = document.getElementById('btn-enable-push');
-                if (btnPush) {
-                    btnPush.addEventListener('click', () => {
-                        Notification.requestPermission().then(perm => {
-                            if (perm === 'granted') {
-                                Swal.fire({ icon: 'success', title: '¡Notificaciones Activadas!', text: 'Recibirás avisos directos cuando tus recargas sean aprobadas.', timer: 2000, showConfirmButton: false });
-                            }
-                        });
-                    });
-                }
-            }
+            showCloseButton: true
         });
     }
 
