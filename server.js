@@ -592,12 +592,18 @@ async function loadFromSupabase() {
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades) ? settings.whatsapp.publicidades : [];
-            settings.precios = settingsData.precios;
+            // Cargar precios y juegos directamente desde Supabase (source of truth)
+            if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
+                settings.precios = settingsData.precios;
+            }
             if (settingsData.juegos) {
                 settings.juegos = settingsData.juegos;
-                if (settings.juegos.freefire && settings.juegos.freefire.paquetes) {
-                    settings.precios = settings.juegos.freefire.paquetes;
+                // Sincronizar paquetes de freefire con precios globales
+                if (settings.juegos.freefire) {
+                    settings.juegos.freefire.paquetes = settingsData.precios || settings.juegos.freefire.paquetes;
                 }
+                // Actualizar precios globales con lo que viene de Supabase
+                settings.precios = settingsData.precios || settings.precios;
             }
             console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
 
