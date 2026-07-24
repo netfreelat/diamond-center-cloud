@@ -509,7 +509,7 @@
             <div class="action-card">
                 <h2><i class="fa-solid fa-users-gear" style="color: var(--secondary);"></i> Gestión de Usuarios</h2>
                 <div class="form-group">
-                    <input type="text" id="user-search" placeholder="Buscar por ID o nombre..." onkeyup="filterUsers()">
+                    <input type="text" id="user-search" placeholder="🔍 Buscar por ID, Nombre o Teléfono (ej. 58412...)" onkeyup="filterUsers()">
                 </div>
                 <div class="table-container">
                     <table>
@@ -2348,10 +2348,24 @@
         }
 
         function filterUsers() {
-            const query = document.getElementById('user-search').value.toLowerCase();
+            const rawQuery = document.getElementById('user-search').value.toLowerCase().trim();
+            if (!rawQuery) {
+                renderUsers(allUsers);
+                return;
+            }
+            const queryClean = rawQuery.replace(/[\s\+\-\(\)]/g, '');
             const filtered = {};
             Object.entries(allUsers).forEach(([uid, data]) => {
-                if (uid.includes(query) || data.name.toLowerCase().includes(query)) filtered[uid] = data;
+                const uidMatch = uid.toLowerCase().includes(rawQuery);
+                const nameMatch = (data.name || '').toLowerCase().includes(rawQuery);
+                
+                const phoneRaw = (data.phone || '').toLowerCase();
+                const phoneClean = phoneRaw.replace(/[\s\+\-\(\)]/g, '');
+                const phoneMatch = phoneRaw.includes(rawQuery) || (queryClean && phoneClean.includes(queryClean));
+
+                if (uidMatch || nameMatch || phoneMatch) {
+                    filtered[uid] = data;
+                }
             });
             renderUsers(filtered);
         }
