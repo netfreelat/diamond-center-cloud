@@ -1587,6 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gestión al hacer clic en el header de usuario (ya logueado)
     document.getElementById('user-display').addEventListener('click', async (e) => {
         if (e.target.closest('#logout-btn')) return;
+        if (e.target.closest('#push-bell-btn')) return;
         const uid = localStorage.getItem('ff_user_id');
         if (!uid) return;
 
@@ -4403,7 +4404,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const bellBtn = document.getElementById('push-bell-btn');
-    if (bellBtn) bellBtn.addEventListener('click', openNotificationCenter);
+    if (bellBtn) {
+        bellBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openNotificationCenter();
+        });
+    }
 
     updateNotifBadge();
 });
