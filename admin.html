@@ -651,6 +651,17 @@
                     <textarea id="setting-marquee" placeholder="Escribe el mensaje que verán los usuarios..."></textarea>
                 </div>
 
+                <div class="form-group" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(157, 0, 255, 0.08)); border: 1px solid rgba(255, 215, 0, 0.3); padding: 15px; border-radius: 12px; margin-top: 15px;">
+                    <label style="color: #FFD700; font-weight: 700;"><i class="fa-solid fa-ticket"></i> Premio del Sorteo Semanal (Ruleta):</label>
+                    <p style="color: var(--text-gray); margin-bottom: 10px; font-size: 0.85rem;">Cambia la descripción del premio del sorteo que se muestra en la tienda (ej. 341 Diamantes, Pase Booyah, 500 Robux).</p>
+                    <div style="display: flex; gap: 10px; align-items: center; max-width: 500px; flex-wrap: wrap;">
+                        <input type="text" id="admin-sorteo-premio-input-settings" placeholder="Ej. 341 Diamantes" style="padding: 10px 15px; font-size: 1rem; color: #FFD700; font-weight: 700; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,215,0,0.4); border-radius: 8px;">
+                        <button onclick="saveAdminSorteoPremio('admin-sorteo-premio-input-settings')" class="btn-main" style="width: auto; padding: 10px 20px; font-size: 0.9rem; background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; font-weight: 800;">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Premio
+                        </button>
+                    </div>
+                </div>
+
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-credit-card" style="color: #25D366;"></i> Métodos de Pago</h3>
                 
@@ -1366,8 +1377,9 @@
             }
         }
 
-        async function saveAdminSorteoPremio() {
-            const input = document.getElementById('admin-sorteo-premio-input');
+        async function saveAdminSorteoPremio(targetId) {
+            const idToUse = targetId || 'admin-sorteo-premio-input';
+            const input = document.getElementById(idToUse) || document.getElementById('admin-sorteo-premio-input') || document.getElementById('admin-sorteo-premio-input-settings');
             const premio = input ? input.value.trim() : '';
             if (!premio) {
                 return Swal.fire('Error', 'Ingresa una descripción para el premio (ej. 341 Diamantes).', 'error');
@@ -1382,6 +1394,10 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    const p1 = document.getElementById('admin-sorteo-premio-input');
+                    if (p1) p1.value = data.premio;
+                    const p2 = document.getElementById('admin-sorteo-premio-input-settings');
+                    if (p2) p2.value = data.premio;
                     Swal.fire({
                         icon: 'success',
                         title: '¡Premio Actualizado!',
@@ -2381,6 +2397,16 @@
 
                 // Cargar publicidades
                 renderAdsAdmin(allSettings.publicidades || []);
+
+                // Cargar Sorteo Premio
+                adminFetch(`${SERVER_URL}/api/sorteo-semanal`).then(r => r.json()).then(sData => {
+                    if (sData.success && sData.premio) {
+                        const pInput = document.getElementById('admin-sorteo-premio-input');
+                        if (pInput) pInput.value = sData.premio;
+                        const pInput2 = document.getElementById('admin-sorteo-premio-input-settings');
+                        if (pInput2) pInput2.value = sData.premio;
+                    }
+                }).catch(() => {});
 
             } catch (e) { console.error(e); }
         }
