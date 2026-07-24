@@ -131,8 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
             combinedText = "¡BIENVENIDOS A RECARGASNEY.COM! Recargas automáticas 24/7. ¡Booyah! 💎";
         }
         
-        if (marquee.innerText !== combinedText) {
-            marquee.innerText = combinedText;
+        if (marquee.textContent.trim() !== combinedText.trim()) {
+            marquee.textContent = combinedText;
             
             if (marqueeContainer) {
                 // Detener temporalmente la animación para forzar al navegador a aplicar el nuevo valor de duración inmediatamente
@@ -3576,6 +3576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== SECCIÓN DE PUBLICIDADES / SLIDER BANNER =====
     let currentAdSlide = 0;
     let adSlideInterval = null;
+    let _lastAdsJson = '';
 
     function renderAds(ads) {
         const container = document.getElementById('ads-slider-container');
@@ -3586,6 +3587,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Filtrar anuncios que tengan imagen configurada
         const activeAds = (ads || []).filter(ad => ad.imagen && ad.imagen.trim() !== '');
+        const newAdsJson = JSON.stringify(activeAds);
+        
+        // Si los anuncios no han cambiado, no re-crear el DOM para no resetear la marquesina ni relayouts
+        if (newAdsJson === _lastAdsJson && wrapper.children.length > 0) {
+            return;
+        }
+        _lastAdsJson = newAdsJson;
         
         if (activeAds.length === 0) {
             container.style.display = 'none';
