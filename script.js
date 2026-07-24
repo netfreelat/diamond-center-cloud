@@ -3708,6 +3708,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 🎰 RULETA DE LA SUERTE - SE ACTIVA TRAS RECARGA APROBADA
     // ============================================================
     window.showRouletteAfterApproval = function(loginUid, orderRef, paidUsdt) {
+        if (window.addNotification) {
+            window.addNotification(
+                '🎰 ¡Recarga aprobada! Gira la Ruleta',
+                `Tu recarga (Ref: ${orderRef || 'Exitosa'}) ha sido entregada. ¡Gira la Ruleta de la Suerte para reclamar tu premio en saldo USDT!`,
+                'roulette',
+                'Girar Ruleta'
+            );
+        }
+
         // Premios: probabilidades acumuladas (30, 55, 75, 87, 95, 99, 100)
         const PRIZES = [
             { label: '$0.05 USDT', emoji: '💎', amount: 0.05, color: '#4A00E0', prob: 0.30 },
@@ -4228,6 +4237,151 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const copyBtn2 = document.getElementById('copy-raffle-ref-link-btn');
     if (copyBtn2) copyBtn2.addEventListener('click', handleShareReferralLink);
+
+    // ============================================================
+    // 🔔 CENTRO DE NOTIFICACIONES Y ALERTAS DE RECARGA/RULETA
+    // ============================================================
+    function getNotifications() {
+        const stored = localStorage.getItem('ff_user_notifications');
+        if (stored) {
+            try { return JSON.parse(stored); } catch(e) {}
+        }
+        return [
+            {
+                id: 'notif_roulette_promo',
+                title: '🎰 ¡Gira la Ruleta tras cada Recarga!',
+                body: 'Por cada recarga aprobada obtienes 1 giro en la Ruleta de la Suerte (premios de 0.050 a 1.00 USDT acreditados a tu saldo).',
+                action: 'roulette',
+                actionText: 'Girar Ruleta',
+                time: 'Hoy',
+                unread: true
+            },
+            {
+                id: 'notif_weekly_raffle',
+                title: '🎟️ Gran Sorteo Semanal (341 Diamantes)',
+                body: '¡Invita a tus amigos con tu link! Por cada 2 amigos que invites entras a la ruleta en vivo este Domingo a las 9:00 PM VET.',
+                action: 'share',
+                actionText: 'Compartir Link',
+                time: 'Esta semana',
+                unread: true
+            }
+        ];
+    }
+
+    function saveNotifications(notifs) {
+        localStorage.setItem('ff_user_notifications', JSON.stringify(notifs));
+        updateNotifBadge();
+    }
+
+    function updateNotifBadge() {
+        const notifs = getNotifications();
+        const unreadCount = notifs.filter(n => n.unread).length;
+        const badge = document.getElementById('notif-badge');
+        if (badge) {
+            if (unreadCount > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = unreadCount;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    window.addNotification = function(title, body, action, actionText) {
+        const notifs = getNotifications();
+        const newNotif = {
+            id: 'notif_' + Date.now(),
+            title: title,
+            body: body,
+            action: action || 'none',
+            actionText: actionText || 'Ver',
+            time: 'Ahora',
+            unread: true
+        };
+        notifs.unshift(newNotif);
+        saveNotifications(notifs);
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                new Notification(title, {
+                    body: body,
+                    icon: '/icon-192.png'
+                });
+            } catch(e) {}
+        }
+    };
+
+    function openNotificationCenter() {
+        const notifs = getNotifications();
+        
+        // Marcar todas como leídas al abrir
+        notifs.forEach(n => n.unread = false);
+        saveNotifications(notifs);
+
+        let notifHtml = '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
+        if (notifs.length === 0) {
+            notifHtml += '<p style="color:#aaa; text-align:center; padding:20px;">No tienes notificaciones por el momento.</p>';
+        } else {
+            notifs.forEach(n => {
+                let btnHtml = '';
+                if (n.action === 'roulette') {
+                    btnHtml = `<button onclick="Swal.close(); if(window.lastRouletteTrigger) window.lastRouletteTrigger(); else handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
+                } else if (n.action === 'share') {
+                    btnHtml = `<button onclick="Swal.close(); handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
+                }
+
+                notifHtml += `
+                    <div class="notif-item ${n.unread ? 'unread' : ''}">
+                        <div class="notif-title">${n.title}</div>
+                        <div class="notif-body">${n.body}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <span style="font-size:0.68rem; color:rgba(255,255,255,0.4);">${n.time}</span>
+                            ${btnHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        notifHtml += '</div>';
+
+        let pushPromptHtml = '';
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            pushPromptHtml = `
+                <div style="margin-top:14px; background:rgba(0,240,255,0.06); border:1px dashed rgba(0,240,255,0.3); border-radius:10px; padding:10px; text-align:center;">
+                    <p style="font-size:0.75rem; color:#aaa; margin:0 0 8px;">🔔 ¿Deseas recibir alertas cuando tus recargas se aprueben?</p>
+                    <button id="btn-enable-push" style="background:#00F0FF; color:#000; font-weight:800; border:none; padding:6px 14px; border-radius:8px; font-size:0.75rem; cursor:pointer;">
+                        Activar Alertas de Navegador
+                    </button>
+                </div>
+            `;
+        }
+
+        Swal.fire({
+            title: '🔔 Centro de Notificaciones',
+            html: notifHtml + pushPromptHtml,
+            background: 'rgba(20, 10, 35, 0.98)',
+            color: '#fff',
+            showConfirmButton: false,
+            showCloseButton: true,
+            didOpen: () => {
+                const btnPush = document.getElementById('btn-enable-push');
+                if (btnPush) {
+                    btnPush.addEventListener('click', () => {
+                        Notification.requestPermission().then(perm => {
+                            if (perm === 'granted') {
+                                Swal.fire({ icon: 'success', title: '¡Notificaciones Activadas!', text: 'Recibirás avisos directos cuando tus recargas sean aprobadas.', timer: 2000, showConfirmButton: false });
+                            }
+                        });
+                    });
+                }
+            }
+        });
+    }
+
+    const bellBtn = document.getElementById('push-bell-btn');
+    if (bellBtn) bellBtn.addEventListener('click', openNotificationCenter);
+
+    updateNotifBadge();
 });
 
 
