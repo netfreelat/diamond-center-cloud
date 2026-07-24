@@ -4168,7 +4168,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // 🔗 MANEJADOR PARA COMPARTIR LINK DE REFERIDO
     // ============================================================
-    function handleShareReferralLink() {
+    function copyToClipboardFallback(refLink) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(refLink).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Enlace Copiado!',
+                    html: `Tu enlace de referido es:<br><code style="color:#00FF94; font-size:0.88rem;">${refLink}</code><br><br>Pásalo a tus amigos. ¡Cada 2 amigos que invites = 1 boleto en la ruleta! 🚀`,
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            }).catch(() => {
+                prompt('Copia tu enlace de referido:', refLink);
+            });
+        } else {
+            prompt('Copia tu enlace de referido:', refLink);
+        }
+    }
+
+    window.handleShareReferralLink = function() {
         const uid = localStorage.getItem('ff_user_id') || localStorage.getItem('ff_login_uid');
         if (!uid) {
             return Swal.fire({
@@ -4190,28 +4209,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'RecargasNey - Sorteo Semanal',
                 text: shareText,
                 url: refLink
-            }).catch(() => {});
-        } else {
-            navigator.clipboard.writeText(refLink).then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Link Copiado!',
-                    html: `Tu enlace de referido es:<br><code style="color:#00FF94; font-size:0.88rem;">${refLink}</code><br><br>Pásalo a tus amigos. ¡Cada 2 amigos que invites = 1 boleto en la ruleta! 🚀`,
-                    background: 'rgba(20, 10, 35, 0.98)',
-                    color: '#fff',
-                    confirmButtonColor: '#9D00FF'
-                });
             }).catch(() => {
-                prompt('Copia tu enlace de referido:', refLink);
+                copyToClipboardFallback(refLink);
             });
+        } else {
+            copyToClipboardFallback(refLink);
         }
-    }
+    };
 
     const copyBtn1 = document.getElementById('copy-ref-link-btn');
-    if (copyBtn1) copyBtn1.addEventListener('click', handleShareReferralLink);
+    if (copyBtn1) copyBtn1.addEventListener('click', window.handleShareReferralLink);
 
     const copyBtn2 = document.getElementById('copy-raffle-ref-link-btn');
-    if (copyBtn2) copyBtn2.addEventListener('click', handleShareReferralLink);
+    if (copyBtn2) copyBtn2.addEventListener('click', window.handleShareReferralLink);
 
     // ============================================================
     // 🔔 CENTRO DE NOTIFICACIONES Y ALERTAS DE RECARGA/RULETA
@@ -4294,7 +4304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else if (item && item.action === 'share') {
-            handleShareReferralLink();
+            window.handleShareReferralLink();
         }
     };
 
