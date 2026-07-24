@@ -3681,14 +3681,14 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        // Premios: probabilidades acumuladas (30, 55, 75, 87, 95, 99, 100)
+        // Premios: probabilidades desde 50% ($0.01) hasta 2% ($1.00)
         const PRIZES = [
-            { label: '$0.05 USDT', emoji: '💎', amount: 0.05, color: '#4A00E0', prob: 0.30 },
-            { label: '$0.10 USDT', emoji: '💎', amount: 0.10, color: '#7928CA', prob: 0.25 },
-            { label: '$0.20 USDT', emoji: '🌟', amount: 0.20, color: '#9D00FF', prob: 0.20 },
-            { label: '$0.30 USDT', emoji: '🔥', amount: 0.30, color: '#5500CC', prob: 0.12 },
-            { label: '$0.50 USDT', emoji: '⚡', amount: 0.50, color: '#00B2FF', prob: 0.08 },
-            { label: '$1.00 USDT', emoji: '👑', amount: 1.00, color: '#FFD700', prob: 0.05 }
+            { label: '$0.01 USDT', emoji: '💎', amount: 0.01, color: '#4A00E0', prob: 0.50 },
+            { label: '$0.05 USDT', emoji: '💎', amount: 0.05, color: '#7928CA', prob: 0.25 },
+            { label: '$0.10 USDT', emoji: '🌟', amount: 0.10, color: '#9D00FF', prob: 0.13 },
+            { label: '$0.25 USDT', emoji: '🔥', amount: 0.25, color: '#5500CC', prob: 0.07 },
+            { label: '$0.50 USDT', emoji: '⚡', amount: 0.50, color: '#00B2FF', prob: 0.03 },
+            { label: '$1.00 USDT', emoji: '👑', amount: 1.00, color: '#FFD700', prob: 0.02 }
         ];
 
         // --- Determinar premio ganado (cliente puede calcular resultado localmente, server lo valida) ---
