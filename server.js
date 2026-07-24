@@ -2208,6 +2208,18 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(400);
                     return res.end(JSON.stringify({ success: false, message: 'Parámetros inválidos.' }));
                 }
+
+                // ⚠️ SEGURIDAD: Validar que cada referencia de recarga solo pueda girar y cobrar la ruleta 1 SOLA VEZ
+                if (order_ref) {
+                    if (!global.claimedRouletteRefs) global.claimedRouletteRefs = new Set();
+                    if (global.claimedRouletteRefs.has(String(order_ref))) {
+                        console.warn(`[RULETA-SEGURIDAD] Intento duplicado de cobro para ref: ${order_ref}`);
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        return res.end(JSON.stringify({ success: false, message: 'Esta recarga ya cobró su premio de la ruleta.' }));
+                    }
+                    global.claimedRouletteRefs.add(String(order_ref));
+                }
+
                 // Convertir USDT a puntos: 1 punto = $0.003 USDT → pointsToAdd = usdt / 0.003
                 const pointsToAdd = Math.round(prize_usdt / 0.003);
                 const userObj = await ensureUserLoaded(uid);
