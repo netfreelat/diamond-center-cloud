@@ -233,6 +233,51 @@
                         <i class="fa-solid fa-chart-bar"></i> Ver mis Estadísticas
                     </button>
                 </div>
+
+                <!-- 🎟️ GRAN SORTEO SEMANAL DE REFERIDOS -->
+                <div id="weekly-raffle-card" class="weekly-raffle-card">
+                    <div class="raffle-header-badge">🎟️ SORTEO EN VIVO</div>
+                    <h3 class="raffle-title">Gran Sorteo Semanal</h3>
+                    <div class="raffle-prize-banner">
+                        <span class="prize-tag">🎁 Premio de la Semana:</span>
+                        <strong id="raffle-prize-text" class="prize-name">341 Diamantes</strong>
+                    </div>
+
+                    <!-- Reloj en cuenta regresiva -->
+                    <div class="raffle-timer-wrapper">
+                        <span class="timer-label">⏰ Sorteo en Vivo: Domingo 9:00 PM VET</span>
+                        <div class="raffle-countdown" id="raffle-countdown-timer">
+                            <div class="timer-unit"><span id="raffle-days">00</span><small>Días</small></div>
+                            <div class="timer-sep">:</div>
+                            <div class="timer-unit"><span id="raffle-hours">00</span><small>Hs</small></div>
+                            <div class="timer-sep">:</div>
+                            <div class="timer-unit"><span id="raffle-mins">00</span><small>Min</small></div>
+                            <div class="timer-sep">:</div>
+                            <div class="timer-unit"><span id="raffle-secs">00</span><small>Seg</small></div>
+                        </div>
+                    </div>
+
+                    <!-- Ruleta en Canvas -->
+                    <div class="raffle-wheel-container">
+                        <div class="raffle-wheel-pointer"></div>
+                        <canvas id="weekly-raffle-canvas" width="200" height="200"></canvas>
+                    </div>
+
+                    <!-- Info de boletos del usuario -->
+                    <div class="raffle-user-info" id="raffle-user-info">
+                        <span class="tickets-badge">🎟️ Tus tickets en la ruleta: <strong id="user-raffle-tickets">0</strong></span>
+                        <p class="tickets-rule">⚡ Cada 2 amigos invitados = 1 ticket en el sorteo 🚀</p>
+                    </div>
+
+                    <!-- Último Ganador -->
+                    <div id="raffle-last-winner" class="raffle-last-winner" style="display:none;">
+                        <span class="winner-trophy">🏆</span>
+                        <div>
+                            <small>Ganador de la semana pasada:</small>
+                            <strong id="last-winner-name">Jugador</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Diamond Packages Section (Hidden by default) -->

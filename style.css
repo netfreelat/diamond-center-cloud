@@ -3042,4 +3042,213 @@ body::before {
     background: rgba(255,215,0,0.08);
 }
 
+/* ======================================================== */
+/* 🎟️ GRAN SORTEO SEMANAL DE REFERIDOS                       */
+/* ======================================================== */
+
+.weekly-raffle-card {
+    background: linear-gradient(145deg, rgba(20, 10, 35, 0.95), rgba(35, 12, 60, 0.9));
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 20px;
+    padding: 22px 18px;
+    margin-top: 18px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(157, 0, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.weekly-raffle-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.raffle-header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 0, 229, 0.2));
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #FFD700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+}
+
+.raffle-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #fff;
+    margin: 0 0 6px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+.raffle-prize-banner {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px dashed rgba(255, 215, 0, 0.4);
+    border-radius: 12px;
+    padding: 8px 14px;
+    margin: 0 auto 16px;
+    display: inline-block;
+}
+
+.prize-tag {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-right: 4px;
+}
+
+.prize-name {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+}
+
+/* Timer digital */
+.raffle-timer-wrapper {
+    margin-bottom: 16px;
+}
+
+.timer-label {
+    display: block;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 6px;
+}
+
+.raffle-countdown {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+}
+
+.timer-unit {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 6px 10px;
+    min-width: 44px;
+}
+
+.timer-unit span {
+    font-family: 'Montserrat', monospace;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #00F0FF;
+    display: block;
+    line-height: 1;
+}
+
+.timer-unit small {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+}
+
+.timer-sep {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #00F0FF;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Canvas Ruleta */
+.raffle-wheel-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 16px;
+}
+
+.raffle-wheel-pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 22px solid #FFD700;
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+    z-index: 3;
+}
+
+#weekly-raffle-canvas {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 0 25px rgba(157, 0, 255, 0.4);
+}
+
+.raffle-user-info {
+    margin-bottom: 10px;
+}
+
+.tickets-badge {
+    background: linear-gradient(135deg, rgba(157, 0, 255, 0.25), rgba(0, 240, 255, 0.15));
+    border: 1px solid rgba(157, 0, 255, 0.4);
+    border-radius: 12px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: #fff;
+    display: inline-block;
+}
+
+.tickets-badge strong {
+    color: #00FF94;
+    font-size: 0.95rem;
+}
+
+.tickets-rule {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 5px;
+}
+
+.raffle-last-winner {
+    background: rgba(0, 255, 148, 0.08);
+    border: 1px solid rgba(0, 255, 148, 0.25);
+    border-radius: 12px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.winner-trophy {
+    font-size: 1.3rem;
+}
+
+.raffle-last-winner small {
+    display: block;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.raffle-last-winner strong {
+    font-size: 0.85rem;
+    color: #00FF94;
+}
+
+
 

@@ -901,6 +901,20 @@
                 </div>
             </div>
 
+            <!-- 🎟️ CONFIGURACIÓN DEL SORTEO SEMANAL -->
+            <div class="action-card" style="border: 1px solid rgba(255, 215, 0, 0.3); background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(157, 0, 255, 0.05)); margin-bottom: 20px;">
+                <h2><i class="fa-solid fa-ticket" style="color: #FFD700;"></i> Configuración del Sorteo Semanal</h2>
+                <p style="color: var(--text-gray); margin-bottom: 15px; font-size: 0.9rem;">
+                    Cambia el premio del sorteo que se muestra en la tienda para los usuarios que inviten referidos.
+                </p>
+                <div style="display: flex; gap: 10px; align-items: center; max-width: 500px; flex-wrap: wrap;">
+                    <input type="text" id="admin-sorteo-premio-input" placeholder="Ej. 341 Diamantes" style="padding: 10px 15px; font-size: 1rem; color: #FFD700; font-weight: 700;">
+                    <button onclick="saveAdminSorteoPremio()" class="btn-main" style="width: auto; padding: 10px 20px; font-size: 0.9rem;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Premio
+                    </button>
+                </div>
+            </div>
+
             <div class="action-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                     <h2 style="margin:0;"><i class="fa-solid fa-share-nodes" style="color:var(--secondary);"></i> Programa de Referidos</h2>
@@ -1230,6 +1244,14 @@
             const tbody = document.getElementById('ref-table-body');
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-gray);padding:40px;"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</td></tr>';
             try {
+                // Cargar datos del Sorteo Semanal
+                adminFetch(`${SERVER_URL}/api/sorteo-semanal`).then(r => r.json()).then(sData => {
+                    if (sData.success && sData.premio) {
+                        const pInput = document.getElementById('admin-sorteo-premio-input');
+                        if (pInput) pInput.value = sData.premio;
+                    }
+                }).catch(() => {});
+
                 const res = await adminFetch(`${SERVER_URL}/admin/referidos`);
                 const json = await res.json();
                 if (!json.success) throw new Error(json.error || 'Error desconocido');
@@ -1341,6 +1363,38 @@
                 renderReferidosTable(_refData);
             } catch (e) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:30px;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function saveAdminSorteoPremio() {
+            const input = document.getElementById('admin-sorteo-premio-input');
+            const premio = input ? input.value.trim() : '';
+            if (!premio) {
+                return Swal.fire('Error', 'Ingresa una descripción para el premio (ej. 341 Diamantes).', 'error');
+            }
+
+            Swal.fire({ title: 'Guardando premio...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/update-sorteo-premio`, {
+                    method: 'POST',
+                    body: JSON.stringify({ premio })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Premio Actualizado!',
+                        text: `El premio del sorteo ahora es: "${data.premio}". Se mostrará inmediatamente en la tienda.`,
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff',
+                        confirmButtonColor: '#9D00FF'
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo actualizar el premio.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message || 'Error al conectar con el servidor.', 'error');
             }
         }
 

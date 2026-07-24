@@ -211,6 +211,97 @@ function getVEString() {
     });
 }
 
+// --- LÓGICA DE SORTEO SEMANAL DE REFERIDOS (Reinicio Domingo 9:00 PM VET) ---
+function getWeeklyCycleTimes() {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Caracas',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const map = {};
+    parts.forEach(p => map[p.type] = p.value);
+    
+    const y = parseInt(map.year);
+    const m = parseInt(map.month) - 1;
+    const d = parseInt(map.day);
+    const h = parseInt(map.hour);
+
+    const vetDate = new Date(Date.UTC(y, m, d, h, parseInt(map.minute), parseInt(map.second)));
+    const dayOfWeek = vetDate.getUTCDay(); // 0 = Domingo
+
+    let daysToSubtract = dayOfWeek;
+    if (dayOfWeek === 0 && h < 21) {
+        daysToSubtract = 7;
+    }
+
+    const lastSundayDate = new Date(Date.UTC(y, m, d));
+    lastSundayDate.setUTCDate(lastSundayDate.getUTCDate() - daysToSubtract);
+
+    // 21:00 VET = 01:00 UTC del día siguiente
+    const startOfCycle = new Date(Date.UTC(lastSundayDate.getUTCFullYear(), lastSundayDate.getUTCMonth(), lastSundayDate.getUTCDate() + 1, 1, 0, 0, 0));
+    const endOfCycle = new Date(startOfCycle.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    return {
+        startOfCycleISO: startOfCycle.toISOString(),
+        endOfCycleISO: endOfCycle.toISOString(),
+        endOfCycleTimestamp: endOfCycle.getTime()
+    };
+}
+
+function getWeeklyRaffleData() {
+    const cycle = getWeeklyCycleTimes();
+    const startIso = cycle.startOfCycleISO;
+    const endIso = cycle.endOfCycleISO;
+
+    const referrerCounts = {};
+    Object.values(users).forEach(u => {
+        if (u.referred_by && u.registered) {
+            const regTime = u.registered;
+            if (regTime >= startIso && regTime < endIso) {
+                const refUid = u.referred_by;
+                referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
+            }
+        }
+    });
+
+    const participants = [];
+    const ticketList = [];
+
+    Object.entries(referrerCounts).forEach(([uid, count]) => {
+        const tickets = Math.floor(count / 2); // 1 ticket por cada 2 referidos
+        if (tickets > 0) {
+            const userObj = users[uid] || {};
+            let name = (userObj.name || '').trim();
+            if (!name || name === 'Jugador' || name === '—' || name === '-') name = `ID: ${uid}`;
+            
+            participants.push({ uid, name, referrals: count, tickets });
+            for (let i = 0; i < tickets; i++) {
+                ticketList.push({ uid, name });
+            }
+        }
+    });
+
+    participants.sort((a, b) => b.tickets - a.tickets);
+
+    const premioText = (settings.sorteo_semanal && settings.sorteo_semanal.premio) ? settings.sorteo_semanal.premio : '341 Diamantes';
+    const lastWinner = (settings.sorteo_semanal && settings.sorteo_semanal.lastWinner) ? settings.sorteo_semanal.lastWinner : null;
+
+    return {
+        success: true,
+        premio: premioText,
+        startOfCycle: startIso,
+        endOfCycle: endIso,
+        endOfCycleTimestamp: cycle.endOfCycleTimestamp,
+        participants,
+        ticketList,
+        totalTickets: ticketList.length,
+        lastWinner
+    };
+}
+
 function getCaracasDateParts(date = new Date()) {
     const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/Caracas',
@@ -477,7 +568,8 @@ let settings = {
     },
     metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
     whatsapp: { soporte: "", canal: "" },
-    publicidades: []
+    publicidades: [],
+    sorteo_semanal: { premio: "341 Diamantes", lastWinner: null }
 };
 
 // --- Carga inicial desde Supabase ---
@@ -579,7 +671,7 @@ async function loadFromSupabase() {
         // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
         const { data: settingsData, error: settingsError } = await supabase
             .from('ff_settings')
-            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos')
+            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos, sorteo_semanal')
             .eq('id', 1)
             .single();
         if (settingsError) {
@@ -595,6 +687,9 @@ async function loadFromSupabase() {
             // Cargar precios y juegos directamente desde Supabase (source of truth)
             if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
                 settings.precios = settingsData.precios;
+            }
+            if (settingsData.sorteo_semanal) {
+                settings.sorteo_semanal = settingsData.sorteo_semanal;
             }
             if (settingsData.juegos) {
                 settings.juegos = settingsData.juegos;
@@ -2133,6 +2228,95 @@ const server = http.createServer(async (req, res) => {
                 console.error('[RULETA] Error acreditando bono:', e.message);
                 res.writeHead(500);
                 res.end(JSON.stringify({ success: false, message: 'Error interno del servidor.' }));
+            }
+        });
+        return;
+    }
+
+    // ============================================================
+    // 🎟️ SORTEO SEMANAL DE REFERIDOS (API PÚBLICA & ADMIN)
+    // ============================================================
+    if (parsedUrl.pathname === '/api/sorteo-semanal' && req.method === 'GET') {
+        try {
+            const data = getWeeklyRaffleData();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(data));
+        } catch (e) {
+            console.error('[SORTEO-SEMANAL] Error:', e.message);
+            res.writeHead(500);
+            res.end(JSON.stringify({ success: false, message: 'Error interno.' }));
+        }
+        return;
+    }
+
+    if (parsedUrl.pathname === '/admin/update-sorteo-premio' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const { premio } = JSON.parse(body);
+                if (!premio || typeof premio !== 'string') {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Premio inválido.' }));
+                }
+
+                if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+                settings.sorteo_semanal.premio = premio.trim();
+
+                // Persistir en Supabase
+                const { error } = await supabase
+                    .from('ff_settings')
+                    .update({ sorteo_semanal: settings.sorteo_semanal })
+                    .eq('id', 1);
+
+                if (error) console.error('[SORTEO-ADMIN] Error guardando premio en Supabase:', error.message);
+                else console.log(`[SORTEO-ADMIN] 🎁 Premio del sorteo actualizado: "${settings.sorteo_semanal.premio}"`);
+
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, premio: settings.sorteo_semanal.premio }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+        return;
+    }
+
+    if (parsedUrl.pathname === '/admin/set-sorteo-winner' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const { uid, name, premio } = JSON.parse(body);
+                if (!uid) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Falta el UID del ganador.' }));
+                }
+
+                const cycle = getWeeklyCycleTimes();
+                const winnerObj = {
+                    uid,
+                    name: name || uid,
+                    premio: premio || (settings.sorteo_semanal ? settings.sorteo_semanal.premio : '341 Diamantes'),
+                    cycleEnd: cycle.endOfCycleISO,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+                settings.sorteo_semanal.lastWinner = winnerObj;
+
+                // Persistir en Supabase
+                await supabase.from('ff_settings').update({ sorteo_semanal: settings.sorteo_semanal }).eq('id', 1);
+                console.log(`[SORTEO-WINNER] 🏆 Ganador del sorteo registrado: ${name} (${uid})`);
+
+                // Enviar push al ganador
+                sendPushToUser(uid, '🏆 ¡GANASTE EL SORTEO SEMANAL!', `¡Felicidades! Ganaste el sorteo semanal: ${winnerObj.premio}. El admin se contactará por WhatsApp.`, '/icon-192.png', '/');
+
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, winner: winnerObj }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
             }
         });
         return;

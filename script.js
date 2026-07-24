@@ -3944,6 +3944,242 @@ document.addEventListener('DOMContentLoaded', () => {
             try { new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(() => {}); } catch(e) {}
         }
     };
+
+    // ============================================================
+    // 🎟️ GRAN SORTEO SEMANAL DE REFERIDOS - RUEDA & COUNTDOWN
+    // ============================================================
+    let weeklyRaffleTimer = null;
+    let weeklyRaffleAnim = null;
+    let weeklyRaffleAngle = 0;
+
+    async function initWeeklyRaffle() {
+        try {
+            const res = await fetch(`${SERVER_URL}/api/sorteo-semanal`);
+            const data = await res.json();
+            if (!data.success) return;
+
+            // Actualizar texto del premio
+            const prizeEl = document.getElementById('raffle-prize-text');
+            if (prizeEl) prizeEl.textContent = data.premio || '341 Diamantes';
+
+            // Actualizar tickets del usuario actual
+            const currentUid = localStorage.getItem('ff_user_id') || localStorage.getItem('ff_login_uid');
+            const userTicketsEl = document.getElementById('user-raffle-tickets');
+            if (userTicketsEl) {
+                if (currentUid) {
+                    const userPart = (data.participants || []).find(p => p.uid === currentUid);
+                    userTicketsEl.textContent = userPart ? userPart.tickets : 0;
+                } else {
+                    userTicketsEl.textContent = 0;
+                }
+            }
+
+            // Mostrar último ganador si existe
+            const winnerEl = document.getElementById('raffle-last-winner');
+            const winnerNameEl = document.getElementById('last-winner-name');
+            if (winnerEl && winnerNameEl && data.lastWinner) {
+                winnerEl.style.display = 'flex';
+                winnerNameEl.textContent = `${data.lastWinner.name} (Ganó ${data.lastWinner.premio})`;
+            }
+
+            // Iniciar Reloj Cuenta Regresiva
+            startRaffleCountdown(data.endOfCycleTimestamp, data);
+
+            // Renderizar Rueda de Participantes
+            renderWeeklyRaffleWheel(data.ticketList || []);
+
+        } catch (e) {
+            console.error('[SORTEO-SEMANAL-UI] Error al cargar:', e.message);
+        }
+    }
+
+    function startRaffleCountdown(targetTime, raffleData) {
+        if (weeklyRaffleTimer) clearInterval(weeklyRaffleTimer);
+
+        function updateClock() {
+            const now = Date.now();
+            const diff = Math.max(0, targetTime - now);
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const mins = Math.floor((diff / 1000 / 60) % 60);
+            const secs = Math.floor((diff / 1000) % 60);
+
+            const dEl = document.getElementById('raffle-days');
+            const hEl = document.getElementById('raffle-hours');
+            const mEl = document.getElementById('raffle-mins');
+            const sEl = document.getElementById('raffle-secs');
+
+            if (dEl) dEl.textContent = String(days).padStart(2, '0');
+            if (hEl) hEl.textContent = String(hours).padStart(2, '0');
+            if (mEl) mEl.textContent = String(mins).padStart(2, '0');
+            if (sEl) sEl.textContent = String(secs).padStart(2, '0');
+
+            if (diff <= 0) {
+                clearInterval(weeklyRaffleTimer);
+                triggerWeeklyRaffleDraw(raffleData);
+            }
+        }
+
+        updateClock();
+        weeklyRaffleTimer = setInterval(updateClock, 1000);
+    }
+
+    function renderWeeklyRaffleWheel(ticketList) {
+        const canvas = document.getElementById('weekly-raffle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const cx = 100, cy = 100, radius = 98;
+
+        const colors = [
+            '#9D00FF', '#00F0FF', '#FF00E5', '#7928CA',
+            '#00FF94', '#FFD700', '#FF3D71', '#5500CC'
+        ];
+
+        const displayItems = ticketList.length > 0 ? ticketList : [
+            { name: '¡Invita 2 Amigos!' },
+            { name: 'Tu Nombre Aquí' },
+            { name: 'Gana Diamantes' },
+            { name: 'Sorteo Domingo' }
+        ];
+
+        const segAngle = (Math.PI * 2) / displayItems.length;
+
+        function draw(rot) {
+            ctx.clearRect(0, 0, 200, 200);
+            displayItems.forEach((item, i) => {
+                const startA = rot + i * segAngle;
+                const endA = startA + segAngle;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startA, endA);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startA + segAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px Montserrat, sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 3;
+
+                const nameText = item.name.length > 14 ? item.name.substring(0, 12) + '..' : item.name;
+                ctx.fillText(nameText, radius - 6, 3);
+                ctx.restore();
+            });
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#07030D';
+            ctx.fill();
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🎟️', cx, cy);
+        }
+
+        if (weeklyRaffleAnim) cancelAnimationFrame(weeklyRaffleAnim);
+
+        function spinLoop() {
+            weeklyRaffleAngle += 0.005;
+            draw(weeklyRaffleAngle);
+            weeklyRaffleAnim = requestAnimationFrame(spinLoop);
+        }
+
+        spinLoop();
+    }
+
+    function triggerWeeklyRaffleDraw(raffleData) {
+        const ticketList = raffleData.ticketList || [];
+        if (ticketList.length === 0) return;
+
+        if (weeklyRaffleAnim) cancelAnimationFrame(weeklyRaffleAnim);
+
+        const winIdx = Math.floor(Math.random() * ticketList.length);
+        const winner = ticketList[winIdx];
+
+        const canvas = document.getElementById('weekly-raffle-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const segAngle = (Math.PI * 2) / ticketList.length;
+
+        const extraSpins = 6;
+        const targetAngle = (-Math.PI / 2) - (winIdx * segAngle) - (segAngle / 2);
+        const totalRot = (Math.PI * 2) * extraSpins + targetAngle;
+        const startRot = weeklyRaffleAngle;
+        const duration = 6000;
+        const startTime = performance.now();
+
+        function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+        function animate(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const currentRot = startRot + totalRot * easeOut(progress);
+
+            ctx.clearRect(0, 0, 200, 200);
+            ticketList.forEach((item, i) => {
+                const startA = currentRot + i * segAngle;
+                const endA = startA + segAngle;
+                ctx.beginPath();
+                ctx.moveTo(100, 100);
+                ctx.arc(100, 100, 98, startA, endA);
+                ctx.closePath();
+                ctx.fillStyle = ['#9D00FF', '#00F0FF', '#FF00E5', '#7928CA', '#00FF94', '#FFD700'][i % 6];
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.save();
+                ctx.translate(100, 100);
+                ctx.rotate(startA + segAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px Montserrat, sans-serif';
+                ctx.fillText(item.name.length > 14 ? item.name.substring(0, 12) + '..' : item.name, 92, 3);
+                ctx.restore();
+            });
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                if (typeof confetti !== 'undefined') {
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                }
+                Swal.fire({
+                    title: '🏆 ¡TENEMOS GANADOR!',
+                    html: `¡Felicidades a <strong style="color:#00FF94; font-size:1.4rem;">${winner.name}</strong>!<br><br>Ganador de <strong>${raffleData.premio || '341 Diamantes'}</strong> en el Sorteo Semanal 🎉<br><small style="color:#aaa;">El administrador se contactará por WhatsApp para la entrega.</small>`,
+                    icon: 'success',
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+
+                fetch(`${SERVER_URL}/admin/set-sorteo-winner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: winner.uid, name: winner.name, premio: raffleData.premio })
+                }).catch(() => {});
+
+                setTimeout(initWeeklyRaffle, 10000);
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    initWeeklyRaffle();
 });
 
 
