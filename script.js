@@ -953,32 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (pushBellBtn) {
-        pushBellBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const uid = localStorage.getItem('ff_user_id');
-            if (!uid) return;
-
-            if (isPushEnabled) {
-                await unsubscribeUser();
-            } else {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    await subscribeUser(uid);
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Permiso Denegado',
-                        text: 'Debes habilitar los permisos de notificación en tu navegador para usar esta función.',
-                        background: 'rgba(20, 10, 35, 0.98)',
-                        color: '#fff',
-                        confirmButtonColor: '#9D00FF'
-                    });
-                }
-            }
-        });
-    }
-
     const updateAccountUI = (id) => {
         if (id) {
             loginTriggerBtn.style.display = 'none';
