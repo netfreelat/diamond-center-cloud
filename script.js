@@ -4244,7 +4244,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function getNotifications() {
         const stored = localStorage.getItem('ff_user_notifications');
         if (stored) {
-            try { return JSON.parse(stored); } catch(e) {}
+            try { 
+                const parsed = JSON.parse(stored);
+                if (parsed && parsed.length > 0) return parsed;
+            } catch(e) {}
         }
         return [
             {
@@ -4275,15 +4278,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateNotifBadge() {
         const notifs = getNotifications();
-        const unreadCount = notifs.filter(n => n.unread).length;
         const badge = document.getElementById('notif-badge');
         if (badge) {
-            if (unreadCount > 0) {
-                badge.style.display = 'flex';
-                badge.textContent = unreadCount;
-            } else {
-                badge.style.display = 'none';
-            }
+            badge.style.display = 'flex';
+            badge.textContent = Math.max(1, notifs.length);
         }
     }
 
@@ -4314,18 +4312,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function openNotificationCenter() {
         const notifs = getNotifications();
         
-        // Marcar todas como leídas al abrir
-        notifs.forEach(n => n.unread = false);
-        saveNotifications(notifs);
-
+        // Mantener notificaciones activas sin borrar ni ocultar insignia automáticamente
         let notifHtml = '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
         if (notifs.length === 0) {
-            notifHtml += '<p style="color:#aaa; text-align:center; padding:20px;">No tienes notificaciones por el momento.</p>';
+            notifHtml += '<p style="color:#aaa; text-align:center; padding:20px;">No tienes notificaciones pendientes por el momento.</p>';
         } else {
-            notifs.forEach(n => {
+            notifs.forEach((n, idx) => {
                 let btnHtml = '';
                 if (n.action === 'roulette') {
-                    btnHtml = `<button onclick="Swal.close(); if(window.lastRouletteTrigger) window.lastRouletteTrigger(); else handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
+                    btnHtml = `<button onclick="Swal.close(); window.handleNotifRouletteClick(${idx});" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
                 } else if (n.action === 'share') {
                     btnHtml = `<button onclick="Swal.close(); handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
                 }
@@ -4344,10 +4339,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         notifHtml += '</div>';
 
+        let clearBtnHtml = notifs.length > 0 ? `
+            <div style="text-align:right; margin-top:8px;">
+                <button onclick="window.clearAllNotifs()" style="background:transparent; border:none; color:rgba(255,255,255,0.4); font-size:0.72rem; cursor:pointer; font-weight:600;">
+                    <i class="fa-solid fa-trash-can"></i> Limpiar Notificaciones
+                </button>
+            </div>
+        ` : '';
+
         let pushPromptHtml = '';
         if ('Notification' in window && Notification.permission !== 'granted') {
             pushPromptHtml = `
-                <div style="margin-top:14px; background:rgba(0,240,255,0.06); border:1px dashed rgba(0,240,255,0.3); border-radius:10px; padding:10px; text-align:center;">
+                <div style="margin-top:10px; background:rgba(0,240,255,0.06); border:1px dashed rgba(0,240,255,0.3); border-radius:10px; padding:10px; text-align:center;">
                     <p style="font-size:0.75rem; color:#aaa; margin:0 0 8px;">🔔 ¿Deseas recibir alertas cuando tus recargas se aprueben?</p>
                     <button id="btn-enable-push" style="background:#00F0FF; color:#000; font-weight:800; border:none; padding:6px 14px; border-radius:8px; font-size:0.75rem; cursor:pointer;">
                         Activar Alertas de Navegador
@@ -4358,7 +4361,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Swal.fire({
             title: '🔔 Centro de Notificaciones',
-            html: notifHtml + pushPromptHtml,
+            html: notifHtml + clearBtnHtml + pushPromptHtml,
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
             showConfirmButton: false,
@@ -4377,6 +4380,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    window.clearAllNotifs = function() {
+        saveNotifications([]);
+        Swal.close();
+    };
+
+    window.handleNotifRouletteClick = function(idx) {
+        const notifs = getNotifications();
+        if (notifs[idx]) {
+            notifs[idx].unread = false;
+            saveNotifications(notifs);
+        }
+        if (window.pendingRouletteData) {
+            window.showRouletteAfterApproval(window.pendingRouletteData.uid, window.pendingRouletteData.ref, window.pendingRouletteData.amount);
+        } else {
+            const raffleCard = document.getElementById('weekly-raffle-card');
+            if (raffleCard) {
+                raffleCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    };
 
     const bellBtn = document.getElementById('push-bell-btn');
     if (bellBtn) bellBtn.addEventListener('click', openNotificationCenter);
