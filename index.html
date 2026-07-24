@@ -16,16 +16,16 @@
         if ('serviceWorker' in navigator) {
             caches.keys().then(names => {
                 for (let name of names) {
-                    if (name !== 'diamond-center-v30') caches.delete(name);
+                    if (name !== 'diamond-center-v35') caches.delete(name);
                 }
             });
-            navigator.serviceWorker.register('/sw.js?v=3.0.0')
+            navigator.serviceWorker.register('/sw.js?v=3.5.0')
                 .then(reg => { reg.update(); });
         }
     </script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css?v=3.3.0">
+    <link rel="stylesheet" href="style.css?v=3.5.0">
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -512,7 +512,7 @@
     </div>
 
     <!-- Custom Script -->
-    <script src="script.js?v=3.3.0"></script>
+    <script src="script.js?v=3.5.0"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>

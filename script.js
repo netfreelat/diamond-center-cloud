@@ -834,16 +834,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkSubscriptionState() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            if (pushBellBtn) pushBellBtn.style.display = 'none';
             return;
         }
 
         try {
             const reg = await navigator.serviceWorker.ready;
             const sub = await reg.pushManager.getSubscription();
-            
             isPushEnabled = !!sub;
-            updateBellUI(isPushEnabled);
         } catch (e) {
             console.error('Error verificando suscripción push:', e);
         }
@@ -851,20 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateBellUI(enabled) {
         if (!pushBellBtn) return;
-        const icon = pushBellBtn.querySelector('i');
-        if (enabled) {
-            pushBellBtn.classList.add('active');
-            pushBellBtn.title = "Notificaciones activas de la App";
-            if (icon) {
-                icon.className = 'fa-solid fa-bell';
-            }
-        } else {
-            pushBellBtn.classList.remove('active');
-            pushBellBtn.title = "Activar notificaciones de la App";
-            if (icon) {
-                icon.className = 'fa-regular fa-bell-slash';
-            }
-        }
+        pushBellBtn.style.display = 'flex';
     }
 
     async function subscribeUser(uid) {
@@ -954,25 +938,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const updateAccountUI = (id) => {
+        if (pushBellBtn) pushBellBtn.style.display = 'flex';
         if (id) {
             loginTriggerBtn.style.display = 'none';
             userDisplay.style.display = 'flex';
             // Mostrar $0 mientras carga el saldo real
             if (headerPointsVal) headerPointsVal.textContent = '0';
             loadUserPoints(id); // loadUserPoints ya actualiza header-points-val internamente
-            if (pushBellBtn) {
-                pushBellBtn.style.display = 'flex';
-                checkSubscriptionState().then(() => {
-                    if (Notification.permission === 'granted' && !isPushEnabled) {
-                        subscribeUser(id);
-                    }
-                });
-            }
+            checkSubscriptionState().then(() => {
+                if (Notification.permission === 'granted' && !isPushEnabled) {
+                    subscribeUser(id);
+                }
+            });
         } else {
             loginTriggerBtn.style.display = 'flex';
             userDisplay.style.display = 'none';
             if (headerPointsVal) headerPointsVal.textContent = '0';
-            if (pushBellBtn) pushBellBtn.style.display = 'none';
         }
     };
 
