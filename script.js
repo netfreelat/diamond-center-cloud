@@ -4180,6 +4180,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initWeeklyRaffle();
+
+    // ============================================================
+    // 🔗 MANEJADOR PARA COMPARTIR LINK DE REFERIDO
+    // ============================================================
+    function handleShareReferralLink() {
+        const uid = localStorage.getItem('ff_user_id') || localStorage.getItem('ff_login_uid');
+        if (!uid) {
+            return Swal.fire({
+                title: '🎮 Inicia Sesión primero',
+                html: 'Para obtener tu link de referido y acumular boletos en la ruleta semanal, primero ingresa tu ID de jugador arriba.',
+                icon: 'info',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#9D00FF',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff'
+            });
+        }
+
+        const refLink = `${window.location.origin}${window.location.pathname}?ref=${uid}`;
+        const shareText = `💎 ¡Recarga diamantes en RecargasNey con entregas al instante!\n🎁 Registrate con mi link y participa en el Sorteo Semanal de 341 Diamantes:\n${refLink}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'RecargasNey - Sorteo Semanal',
+                text: shareText,
+                url: refLink
+            }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(refLink).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Link Copiado!',
+                    html: `Tu enlace de referido es:<br><code style="color:#00FF94; font-size:0.88rem;">${refLink}</code><br><br>Pásalo a tus amigos. ¡Cada 2 amigos que invites = 1 boleto en la ruleta! 🚀`,
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            }).catch(() => {
+                prompt('Copia tu enlace de referido:', refLink);
+            });
+        }
+    }
+
+    const copyBtn1 = document.getElementById('copy-ref-link-btn');
+    if (copyBtn1) copyBtn1.addEventListener('click', handleShareReferralLink);
+
+    const copyBtn2 = document.getElementById('copy-raffle-ref-link-btn');
+    if (copyBtn2) copyBtn2.addEventListener('click', handleShareReferralLink);
 });
 
 
