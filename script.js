@@ -4372,7 +4372,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showCloseButton: true
         });
     }
-    }
 
     window.clearAllNotifs = function() {
         saveNotifications([]);

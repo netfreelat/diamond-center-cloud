@@ -1,4 +1,4 @@
-const CACHE_NAME = 'diamond-center-v33';
+const CACHE_NAME = 'diamond-center-v34';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
