@@ -258,12 +258,9 @@ function getWeeklyRaffleData() {
 
     const referrerCounts = {};
     Object.values(users).forEach(u => {
-        if (u.referred_by && u.registered) {
-            const regTime = u.registered;
-            if (regTime >= startIso && regTime < endIso) {
-                const refUid = u.referred_by;
-                referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
-            }
+        if (u.referred_by) {
+            const refUid = u.referred_by;
+            referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
         }
     });
 
