@@ -14,14 +14,18 @@
     <meta name="theme-color" content="#07030D">
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker registrado:', reg.scope))
-                .catch(err => console.error('Error al registrar Service Worker:', err));
+            caches.keys().then(names => {
+                for (let name of names) {
+                    if (name !== 'diamond-center-v30') caches.delete(name);
+                }
+            });
+            navigator.serviceWorker.register('/sw.js?v=3.0.0')
+                .then(reg => { reg.update(); });
         }
     </script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css?v=1.5.2">
+    <link rel="stylesheet" href="style.css?v=3.0.0">
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -508,7 +512,7 @@
     </div>
 
     <!-- Custom Script -->
-    <script src="script.js?v=1.5.2"></script>
+    <script src="script.js?v=3.0.0"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>
