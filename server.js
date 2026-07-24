@@ -712,40 +712,32 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                   `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
                   `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
         } else {
-            const packStr = (order.pack || '').toLowerCase();
-            const isCard = packStr.includes('tarjeta') || packStr.includes('basica') || packStr.includes('semanal') || packStr.includes('mensual');
-            const isPass = packStr.includes('pase') || packStr.includes('booyah');
-            
-            let itemType = 'diamantes';
-            let itemStatus = '¡Diamantes Enviados! ✨';
-            
-            if (isCard) {
-                itemType = 'tarjetas';
-                itemStatus = '¡Tarjetas Enviadas! ✨';
-            } else if (isPass) {
-                itemType = 'pase booyah';
-                itemStatus = '¡Pase Enviado! ✨';
-            }
+            const name = (order.name && order.name !== '—' && order.name !== '-') ? order.name : 'Cliente';
+            const packRaw = (order.pack || '').trim();
+            const hasType = /diamante|robux|oro|tarjeta|pase|booyah/i.test(packRaw);
+            const packDisplay = hasType ? packRaw : `${packRaw} diamantes`;
 
-            const isBloodStrike = order.juego === 'bloodstrike';
-            const idLabel = isBloodStrike ? 'ID Blood Strike' : 'ID Garena';
-
-            msg = `✅ *¡Recarga Procesada con Éxito!*\n\n` +
-                  `👤 *Jugador:* ${order.name}\n` +
-                  `🆔 *${idLabel}:* ${order.uid}\n` +
-                  `💎 *Paquete:* ${order.pack}`;
-
+            let earnedUsdt = '0.00';
+            let totalUsdt = '0.00';
             const userObj = users[order.login_uid || order.uid];
             if (userObj) {
                 const usdtPrice = parseFloat((order.price || '').split('USDT')[0]);
                 if (!isNaN(usdtPrice) && usdtPrice > 0) {
                     const pointsEarned = Math.floor(usdtPrice * (10 / 3));
-                    const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
-                    const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
-                    msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Saldo total:* $${totalUsdt} USDT`;
+                    earnedUsdt = (pointsEarned * 0.003).toFixed(2);
                 }
+                totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
             }
-            msg += `\n\n¡Gracias por tu compra!`;
+
+            msg = `¡Hola, ${name}! 👋\n` +
+                  `Tu pedido de ${packDisplay} ha sido completado con éxito.\n` +
+                  `• ID Jugador: ${order.uid}\n` +
+                  `• Estado: Entregado\n` +
+                  (order.pin ? `• Código PIN: ${order.pin}\n` : '') +
+                  `• Recompensa obtenida: +${earnedUsdt} crédito\n` +
+                  `• Saldo disponible: ${totalUsdt} crédito\n` +
+                  `Puedes consultar nuestro catálogo respondiendo la palabra PRECIO.\n` +
+                  `Gracias por tu compra en RecargasNey.`;
         }
     } else {
         const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
@@ -3056,71 +3048,32 @@ const server = http.createServer(async (req, res) => {
                           `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
                           `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
                 } else {
-                    const packStr = (order.pack || '').toLowerCase();
-                    const isCard = packStr.includes('tarjeta') || packStr.includes('basica') || packStr.includes('semanal') || packStr.includes('mensual');
-                    const isPass = packStr.includes('pase') || packStr.includes('booyah');
-                    
-                    let itemType = 'diamantes';
-                    let itemStatus = '¡Diamantes Enviados! ✨';
-                    if (isCard) {
-                        itemType = 'tarjetas';
-                        itemStatus = '¡Tarjetas Enviadas! ✨';
-                    } else if (isPass) {
-                        itemType = 'pase booyah';
-                        itemStatus = '¡Pase Enviado! ✨';
-                    }
-                    
-                    const isBloodStrike = order.juego === 'bloodstrike';
-                    const isRoblox = order.juego === 'roblox';
-                    
-                    let headerLine = `🔥 *¡BOOYAH! COMPRA EXITOSA* 🔥`;
-                    let idLabel = 'ID Garena';
-                    if (isBloodStrike) {
-                        headerLine = `🔫 *¡DISPARO! COMPRA EXITOSA* 🔫`;
-                        idLabel = 'ID Blood Strike';
-                    } else if (isRoblox) {
-                        headerLine = `🎮 *¡COMPRA EXITOSA DE ROBLOX!* 🎮`;
-                        idLabel = 'Usuario Roblox';
-                    }
-                    
-                    if (isRoblox) {
-                        const amount = order.pack.split('+')[0].trim();
-                        msg = `${headerLine}\n\n` +
-                              `¡Hola, *${order.name}*! Tu código de Roblox ha sido procesado con éxito. 🚀\n\n` +
-                              `━━━━━━━━━━━━━━━\n` +
-                              `👤 *Usuario:* ${order.name}\n` +
-                              `🎮 *Juego:* Roblox\n` +
-                              `💎 *Paquete:* $${amount}\n` +
-                              `━━━━━━━━━━━━━━━\n\n` +
-                              `✅ *Estado:* ¡Código Generado! ✨\n\n` +
-                              `⚡ *CANJEE SU CÓDIGO AQUÍ:* \n` +
-                              `Presiona el link para ir directo a canjear tu código de Roblox:\n` +
-                              `🔗 https://www.roblox.com/redeem\n\n` +
-                              `🔑 *CÓDIGO (PIN):* \`${order.pin || 'Aún no disponible'}\`\n\n` +
-                              `¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
-                    } else {
-                        const amount = order.pack.split('+')[0].trim();
-                        msg = `${headerLine}\n\n` +
-                              `¡Hola, *${order.name}*! Tu pedido de ${itemType} ha sido procesado con éxito. 🚀\n\n` +
-                              `━━━━━━━━━━━━━━━\n` +
-                              `👤 *Jugador:* ${order.name}\n` +
-                              `🆔 *${idLabel}:* ${order.uid}\n` +
-                              `💎 *Paquete:* ${amount + (order.juego === 'bloodstrike' ? ' oro' : (order.juego === 'roblox' ? '' : ' diamantes'))}\n` +
-                              `━━━━━━━━━━━━━━━\n\n` +
-                              `✅ *Estado:* ${itemStatus}`;
-                              
-                        const userObj = users[order.login_uid || order.uid];
-                        if (userObj) {
-                            const usdtPrice = parseFloat(order.price.split('USDT')[0]);
-                            if (!isNaN(usdtPrice) && usdtPrice > 0) {
-                                const pointsEarned = Math.floor(usdtPrice * (10 / 3));
-                                const earnedUsdt = (pointsEarned * 0.003).toFixed(2);
-                                const totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
-                                msg += `\n\n🎁 *Cashback ganado:* +$${earnedUsdt} USDT\n💰 *Tu saldo total:* $${totalUsdt} USDT`;
-                            }
+                    const name = (order.name && order.name !== '—' && order.name !== '-') ? order.name : 'Cliente';
+                    const packRaw = (order.pack || '').trim();
+                    const hasType = /diamante|robux|oro|tarjeta|pase|booyah/i.test(packRaw);
+                    const packDisplay = hasType ? packRaw : `${packRaw} diamantes`;
+
+                    let earnedUsdt = '0.00';
+                    let totalUsdt = '0.00';
+                    const userObj = users[order.login_uid || order.uid];
+                    if (userObj) {
+                        const usdtPrice = parseFloat((order.price || '').split('USDT')[0]);
+                        if (!isNaN(usdtPrice) && usdtPrice > 0) {
+                            const pointsEarned = Math.floor(usdtPrice * (10 / 3));
+                            earnedUsdt = (pointsEarned * 0.003).toFixed(2);
                         }
-                        msg += `\n\n📱 *Guarda este número* para recibir tus notificaciones y consultar precios enviando la palabra *PRECIO*:\n👉 *+58 412-349-1068*\n\n¡Gracias por confiar en *RECARGASNEY.COM*! 🎯🛡️`;
+                        totalUsdt = (((userObj.points) || 0) * 0.003).toFixed(2);
                     }
+
+                    msg = `¡Hola, ${name}! 👋\n` +
+                          `Tu pedido de ${packDisplay} ha sido completado con éxito.\n` +
+                          `• ID Jugador: ${order.uid}\n` +
+                          `• Estado: Entregado\n` +
+                          (order.pin ? `• Código PIN: ${order.pin}\n` : '') +
+                          `• Recompensa obtenida: +${earnedUsdt} crédito\n` +
+                          `• Saldo disponible: ${totalUsdt} crédito\n` +
+                          `Puedes consultar nuestro catálogo respondiendo la palabra PRECIO.\n` +
+                          `Gracias por tu compra en RecargasNey.`;
                 }
             } else if (isRejected) {
                 const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
