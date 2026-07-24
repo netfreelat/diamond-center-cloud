@@ -4221,7 +4221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stored) {
             try { 
                 const parsed = JSON.parse(stored);
-                if (parsed && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) return parsed;
             } catch(e) {}
         }
         return [
@@ -4231,8 +4231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: 'Por cada recarga aprobada obtienes 1 giro en la Ruleta de la Suerte (premios de 0.050 a 1.00 USDT acreditados a tu saldo).',
                 action: 'roulette',
                 actionText: 'Girar Ruleta',
-                time: 'Hoy',
-                unread: true
+                time: 'Hoy'
             },
             {
                 id: 'notif_weekly_raffle',
@@ -4240,8 +4239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: '¡Invita a tus amigos con tu link! Por cada 2 amigos que invites entras a la ruleta en vivo este Domingo a las 9:00 PM VET.',
                 action: 'share',
                 actionText: 'Compartir Link',
-                time: 'Esta semana',
-                unread: true
+                time: 'Esta semana'
             }
         ];
     }
@@ -4255,10 +4253,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const notifs = getNotifications();
         const badge = document.getElementById('notif-badge');
         if (badge) {
-            badge.style.display = 'flex';
-            badge.textContent = Math.max(1, notifs.length);
+            if (notifs.length > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = notifs.length;
+            } else {
+                badge.style.display = 'none';
+            }
         }
     }
+
+    window.removeNotification = function(idx) {
+        const notifs = getNotifications();
+        if (idx >= 0 && idx < notifs.length) {
+            notifs.splice(idx, 1);
+            saveNotifications(notifs);
+        }
+        if (Swal.isVisible()) {
+            openNotificationCenter();
+        }
+    };
+
+    window.handleNotifAction = function(idx) {
+        const notifs = getNotifications();
+        const item = notifs[idx];
+        
+        if (item) {
+            notifs.splice(idx, 1);
+            saveNotifications(notifs);
+        }
+
+        Swal.close();
+
+        if (item && item.action === 'roulette') {
+            if (window.pendingRouletteData) {
+                window.showRouletteAfterApproval(window.pendingRouletteData.uid, window.pendingRouletteData.ref, window.pendingRouletteData.amount);
+            } else {
+                const raffleCard = document.getElementById('weekly-raffle-card');
+                if (raffleCard) {
+                    raffleCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        } else if (item && item.action === 'share') {
+            handleShareReferralLink();
+        }
+    };
 
     window.addNotification = function(title, body, action, actionText) {
         const notifs = getNotifications();
@@ -4268,8 +4306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body: body,
             action: action || 'none',
             actionText: actionText || 'Ver',
-            time: 'Ahora',
-            unread: true
+            time: 'Ahora'
         };
         notifs.unshift(newNotif);
         saveNotifications(notifs);
@@ -4288,25 +4325,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const notifs = getNotifications();
         
         let notifHtml = '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
-        notifs.forEach((n, idx) => {
-            let btnHtml = '';
-            if (n.action === 'roulette') {
-                btnHtml = `<button onclick="Swal.close(); window.handleNotifRouletteClick(${idx});" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
-            } else if (n.action === 'share') {
-                btnHtml = `<button onclick="Swal.close(); handleShareReferralLink();" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
-            }
+        if (notifs.length === 0) {
+            notifHtml += '<p style="color:#aaa; text-align:center; padding:30px 10px; font-size:0.9rem;">✨ ¡Estás al día! No tienes notificaciones ni avisos pendientes.</p>';
+        } else {
+            notifs.forEach((n, idx) => {
+                let btnHtml = '';
+                if (n.action === 'roulette') {
+                    btnHtml = `<button onclick="window.handleNotifAction(${idx});" class="notif-action-btn"><i class="fa-solid fa-dharmachakra"></i> ${n.actionText || 'Girar Ruleta'}</button>`;
+                } else if (n.action === 'share') {
+                    btnHtml = `<button onclick="window.handleNotifAction(${idx});" class="notif-action-btn"><i class="fa-solid fa-share-nodes"></i> ${n.actionText || 'Compartir Link'}</button>`;
+                } else {
+                    btnHtml = `<button onclick="window.handleNotifAction(${idx});" class="notif-action-btn">Entendido</button>`;
+                }
 
-            notifHtml += `
-                <div class="notif-item unread">
-                    <div class="notif-title">${n.title}</div>
-                    <div class="notif-body">${n.body}</div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                        <span style="font-size:0.68rem; color:rgba(255,255,255,0.4);">${n.time}</span>
-                        ${btnHtml}
+                notifHtml += `
+                    <div class="notif-item unread" style="position:relative;">
+                        <button onclick="window.removeNotification(${idx});" title="Borrar notificación" style="position:absolute; top:8px; right:8px; background:transparent; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:0.85rem; padding:4px;">✕</button>
+                        <div class="notif-title" style="padding-right:22px;">${n.title}</div>
+                        <div class="notif-body">${n.body}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <span style="font-size:0.68rem; color:rgba(255,255,255,0.4);">${n.time}</span>
+                            ${btnHtml}
+                        </div>
                     </div>
-                </div>
-            `;
-        });
+                `;
+            });
+        }
         notifHtml += '</div>';
 
         Swal.fire({
@@ -4317,6 +4361,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showConfirmButton: false,
             showCloseButton: true
         });
+    }
     }
 
     window.clearAllNotifs = function() {
