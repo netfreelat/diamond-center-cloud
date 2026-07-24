@@ -668,7 +668,7 @@ async function loadFromSupabase() {
         // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
         const { data: settingsData, error: settingsError } = await supabase
             .from('ff_settings')
-            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos, sorteo_semanal')
+            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos')
             .eq('id', 1)
             .single();
         if (settingsError) {
@@ -685,11 +685,11 @@ async function loadFromSupabase() {
             if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
                 settings.precios = settingsData.precios;
             }
-            if (settingsData.sorteo_semanal) {
-                settings.sorteo_semanal = settingsData.sorteo_semanal;
-            }
             if (settingsData.juegos) {
                 settings.juegos = settingsData.juegos;
+                if (settingsData.juegos.sorteo_semanal) {
+                    settings.sorteo_semanal = settingsData.juegos.sorteo_semanal;
+                }
                 // Sincronizar paquetes de freefire con precios globales
                 if (settings.juegos.freefire) {
                     settings.juegos.freefire.paquetes = settingsData.precios || settings.juegos.freefire.paquetes;
@@ -2272,10 +2272,12 @@ const server = http.createServer(async (req, res) => {
                 if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
                 settings.sorteo_semanal.premio = premio.trim();
 
-                // Persistir en Supabase
+                // Persistir en Supabase dentro de juegos
+                if (!settings.juegos) settings.juegos = {};
+                settings.juegos.sorteo_semanal = settings.sorteo_semanal;
                 const { error } = await supabase
                     .from('ff_settings')
-                    .update({ sorteo_semanal: settings.sorteo_semanal })
+                    .update({ juegos: settings.juegos })
                     .eq('id', 1);
 
                 if (error) console.error('[SORTEO-ADMIN] Error guardando premio en Supabase:', error.message);
@@ -2314,8 +2316,10 @@ const server = http.createServer(async (req, res) => {
                 if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
                 settings.sorteo_semanal.lastWinner = winnerObj;
 
-                // Persistir en Supabase
-                await supabase.from('ff_settings').update({ sorteo_semanal: settings.sorteo_semanal }).eq('id', 1);
+                // Persistir en Supabase dentro de juegos
+                if (!settings.juegos) settings.juegos = {};
+                settings.juegos.sorteo_semanal = settings.sorteo_semanal;
+                await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
                 console.log(`[SORTEO-WINNER] 🏆 Ganador del sorteo registrado: ${name} (${uid})`);
 
                 // Enviar push al ganador
