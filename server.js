@@ -2233,7 +2233,7 @@ setInterval(async () => {
     } catch (e) {
         console.error('[AUTO-CYCLE] Error en ciclo:', e.message);
     }
-}, 60000); // cada 60 segundos
+}, 10000); // cada 10 segundos para máxima velocidad de auto-aprobación
 // --- SISTEMA DE AUTENTICACIÓN ADMIN ---
 
 // 🔒 NÚMEROS DE WHATSAPP AUTORIZADOS PARA APROBAR/RECHAZAR (ambos admins)
@@ -2856,6 +2856,11 @@ const server = http.createServer(async (req, res) => {
 
         // --- NOTIFICAR A ADMINS VÍA WHATSAPP ---
         notifyAdminsNewOrder({ uid, login_uid, name, pack, method, price, wa, ref, control_num, juego });
+
+        // --- AUTO-APROBACIÓN INSTANTÁNEA (Disparar ciclo a los 0.5s) ---
+        setTimeout(() => {
+            runAutoApprovalCycle().catch(e => console.error('[INSTANT-AUTO] Error en ciclo instantáneo:', e.message));
+        }, 500);
 
         /* 
         // Auto-aprobación desactivada por seguridad a petición del usuario
