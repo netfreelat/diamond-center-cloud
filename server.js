@@ -2043,12 +2043,12 @@ async function runAutoApprovalCycle() {
                         if (bdvResult.checked) {
                             const orderTime = new Date(order.time);
                             const diffMin = (NOW - orderTime) / (1000 * 60);
-                            if (diffMin > 5) {
-                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 5 min. Auto-rechazando...`);
+                            if (diffMin > 2) {
+                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 2 min. Auto-rechazando...`);
                                 
                                 orders[ref].status = 'rejected';
-                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
-                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
+                                orders[ref].reason = 'Pago no encontrado en el banco tras 2 minutos';
+                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 2 minutos');
 
                                 // Notificar cliente por WhatsApp (Rechazo)
                                 queueWhatsAppMessage({ ...orders[ref], ref }, false);
@@ -2119,12 +2119,12 @@ async function runAutoApprovalCycle() {
                 if (binanceCheckSuccess) {
                     for (const [ref, order] of pendingBinance) {
                         const diffMin = (NOW - new Date(order.time)) / (1000 * 60);
-                        if (diffMin > 5) {
-                            console.log(`[BINANCE-AUTO] ❌ Pedido ${ref} sin pago Binance tras 5 min. Auto-rechazando...`);
+                        if (diffMin > 2) {
+                            console.log(`[BINANCE-AUTO] ❌ Pedido ${ref} sin pago Binance tras 2 min. Auto-rechazando...`);
                             
                             orders[ref].status = 'rejected';
-                            orders[ref].reason = 'Pago no encontrado en Binance tras 5 minutos';
-                            updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en Binance tras 5 minutos');
+                            orders[ref].reason = 'Pago no encontrado en Binance tras 2 minutos';
+                            updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en Binance tras 2 minutos');
 
                             // Notificar cliente por WhatsApp (Rechazo)
                             queueWhatsAppMessage({ ...orders[ref], ref }, false);
