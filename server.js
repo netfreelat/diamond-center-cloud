@@ -5570,7 +5570,25 @@ const server = http.createServer(async (req, res) => {
             try {
                 const cleanBody = body.replace(/\r/g, '').trim();
                 console.log(`[ADMIN-LOGIN] Body recibido: ${cleanBody}`);
-                const { username, password } = JSON.parse(cleanBody);
+                
+                let username = '';
+                let password = '';
+                try {
+                    const parsed = JSON.parse(cleanBody);
+                    username = parsed.username;
+                    password = parsed.password;
+                } catch(parseErr) {
+                    const params = new URLSearchParams(cleanBody);
+                    username = params.get('username') || '';
+                    password = params.get('password') || '';
+
+                    if (!username && !password) {
+                        const userMatch = cleanBody.match(/username["']?\s*:\s*["']?([^"',}\s]+)/i);
+                        const passMatch = cleanBody.match(/password["']?\s*:\s*["']?([^"',}\s]+)/i);
+                        if (userMatch) username = userMatch[1];
+                        if (passMatch) password = passMatch[1];
+                    }
+                }
                 
                 const inputUser = (username || '').trim().toLowerCase();
                 const inputPass = (password || '').trim();
