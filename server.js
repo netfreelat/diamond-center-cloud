@@ -2301,6 +2301,15 @@ function isTelegramAdmin(userId) {
 }
 
 function checkAdminAuth(req, res) {
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-WA-Secret'
+        });
+        res.end();
+        return false;
+    }
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     let token = parsedUrl.searchParams.get('token');
     
