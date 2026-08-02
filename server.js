@@ -3705,8 +3705,12 @@ const server = http.createServer(async (req, res) => {
             const referralClaimedCount = Object.values(users).filter(u => u.referral_claimed).length;
             const referral_usdt = +(referralClaimedCount * 17 * 0.003).toFixed(2);
 
-            // USDT entregados por ruleta: acumulado en memoria desde el inicio del proceso
-            const roulette_usdt = +(global.roulettePayoutTotal || 0).toFixed(2);
+            // USDT entregados por ruleta: acumulado de historial en DB y memoria
+            let calculated_roulette_usdt = 0;
+            if (settings.juegos && Array.isArray(settings.juegos.ruleta_history)) {
+                calculated_roulette_usdt = settings.juegos.ruleta_history.reduce((sum, h) => sum + (parseFloat(h.prize_usdt) || 0), 0);
+            }
+            const roulette_usdt = +Math.max(calculated_roulette_usdt, (global.roulettePayoutTotal || 0)).toFixed(2);
 
             const stats = {
                 pending: pendingRes.count || 0,
@@ -3727,6 +3731,11 @@ const server = http.createServer(async (req, res) => {
             const partsVE = getCaracasDateParts(now);
             const startOfToday = new Date(Date.UTC(partsVE.year, partsVE.month, partsVE.day, 4, 0, 0, 0));
 
+            let calculated_roulette_usdt_fallback = 0;
+            if (settings.juegos && Array.isArray(settings.juegos.ruleta_history)) {
+                calculated_roulette_usdt_fallback = settings.juegos.ruleta_history.reduce((sum, h) => sum + (parseFloat(h.prize_usdt) || 0), 0);
+            }
+
             const stats = {
                 pending: Object.values(orders).filter(o => o.status === 'pending').length,
                 approved: Object.values(orders).filter(o => o.status === 'approved' && new Date(o.time) >= startOfToday).length,
@@ -3734,7 +3743,7 @@ const server = http.createServer(async (req, res) => {
                 total_users: Object.values(users).filter(u => u.password || u.points > 0 || u.cedula || u.phone).length,
                 total_pines: Object.values(pines).reduce((acc, curr) => acc + curr.length, 0),
                 referral_usdt: +(Object.values(users).filter(u => u.referral_claimed).length * 17 * 0.003).toFixed(2),
-                roulette_usdt: +(global.roulettePayoutTotal || 0).toFixed(2)
+                roulette_usdt: +Math.max(calculated_roulette_usdt_fallback, (global.roulettePayoutTotal || 0)).toFixed(2)
             };
             res.writeHead(200);
             res.end(JSON.stringify(stats));
