@@ -4721,10 +4721,62 @@ const streamingBtn = document.getElementById('streaming-btn');
 const streamingModal = document.getElementById('streaming-services-modal');
 const streamingModalClose = document.getElementById('streaming-modal-close');
 
+async function updateStreamingStockBadges() {
+    try {
+        const res = await fetch(`${SERVER_URL}/api/streaming-stock`);
+        const data = await res.json();
+        if (data.success && data.stock) {
+            const stock = data.stock;
+            document.querySelectorAll('.streaming-card').forEach(card => {
+                const btn = card.querySelector('.streaming-order-btn');
+                if (!btn) return;
+                const serviceName = (btn.getAttribute('data-service') || '').toLowerCase();
+
+                let key = null;
+                if (serviceName.includes('netflix')) key = 'netflix';
+                else if (serviceName.includes('disney')) key = 'disney';
+                else if (serviceName.includes('max') || serviceName.includes('hbo')) key = 'max';
+                else if (serviceName.includes('vix')) key = 'vix';
+                else if (serviceName.includes('canva')) key = 'canva';
+                else if (serviceName.includes('spotify')) key = 'spotify';
+                else if (serviceName.includes('prime')) key = 'prime';
+                else if (serviceName.includes('crunchyroll')) key = 'crunchyroll';
+
+                let badge = card.querySelector('.streaming-stock-badge');
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'streaming-stock-badge';
+                    badge.style.cssText = 'font-size:0.7rem; font-weight:800; margin-bottom:8px; display:inline-block; padding:2px 8px; border-radius:10px;';
+                    const priceEl = card.querySelector('.streaming-price');
+                    if (priceEl) priceEl.parentNode.insertBefore(badge, priceEl);
+                }
+
+                const count = stock[key] || 0;
+                if (count > 0) {
+                    badge.style.background = 'rgba(0,255,148,0.12)';
+                    badge.style.color = '#00FF94';
+                    badge.style.border = '1px solid rgba(0,255,148,0.3)';
+                    badge.innerHTML = `🟢 ${count} Disponible${count > 1 ? 's' : ''}`;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Comprar Ahora';
+                } else {
+                    badge.style.background = 'rgba(255,61,113,0.12)';
+                    badge.style.color = '#FF3D71';
+                    badge.style.border = '1px solid rgba(255,61,113,0.3)';
+                    badge.innerHTML = `🔴 Agotado`;
+                    btn.innerHTML = 'Sin Stock Disponible';
+                }
+            });
+        }
+    } catch (e) {}
+}
+
 if (streamingBtn && streamingModal) {
     streamingBtn.addEventListener('click', (e) => {
         e.preventDefault();
         streamingModal.style.display = 'flex';
+        updateStreamingStockBadges();
     });
 }
 
@@ -4740,14 +4792,34 @@ if (streamingModalClose && streamingModal) {
     });
 }
 
-// Botones de pedido por WhatsApp dentro del catálogo streaming
+// Botones de pedido directo en la web
 document.querySelectorAll('.streaming-order-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
         const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
-        const phone = '584243790757'; // WhatsApp de atención
-        const text = encodeURIComponent(`Hola! 👋 Vengo de RecargasNey.com y me interesa solicitar información/comprar el servicio: *${serviceName}*. ¿Cuáles son los precios y métodos de pago?`);
-        window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+        
+        // Cerrar modal de streaming
+        if (streamingModal) streamingModal.style.display = 'none';
+
+        // Pre-seleccionar en la interfaz de pago de la web
+        if (typeof selectGame === 'function') {
+            selectGame('streaming');
+        }
+
+        // Desplazarse suavemente al área de recargas
+        const buySection = document.getElementById('game-selector-container') || document.querySelector('.card');
+        if (buySection) {
+            buySection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        Swal.fire({
+            title: `Adquirir ${serviceName}`,
+            text: `Ingresa tu ID de Jugador o Teléfono para recibir tu cuenta de ${serviceName} automáticamente tras confirmar tu pago.`,
+            icon: 'info',
+            background: 'rgba(20, 10, 35, 0.95)',
+            color: '#fff',
+            confirmButtonColor: '#9D00FF'
+        });
     });
 });
 

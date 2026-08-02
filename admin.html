@@ -420,6 +420,8 @@
             <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Push</button>
             <button class="tab-btn" onclick="showTab('block-payment-tab', this)"><i class="fa-solid fa-ban"></i> Bloquear Pagos</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
+            <button class="tab-btn" onclick="showTab('streaming-stock-tab', this); loadStreamingStockAdmin();" style="background:linear-gradient(135deg,rgba(229,9,20,0.15),rgba(157,0,255,0.15));border-color:rgba(229,9,20,0.3);"><i class="fa-solid fa-tv" style="color:#E50914"></i> Almacén Streaming</button>
+            <button class="tab-btn" onclick="showTab('influencers-tab', this); loadInfluencersAdmin();" style="background:linear-gradient(135deg,rgba(255,0,80,0.15),rgba(108,61,232,0.15));border-color:rgba(255,0,80,0.3);"><i class="fa-brands fa-tiktok" style="color:#ff0050"></i> Influencers <span id="influencers-pending-badge" class="badge" style="background:#ff0050;">0</span></button>
         </nav>
 
         <!-- DASHBOARD TAB -->
@@ -636,6 +638,53 @@
             </div>
         </div>
 
+        <!-- STREAMING STOCK TAB -->
+        <div id="streaming-stock-tab" class="tab-content">
+            <div class="card" style="margin-bottom: 20px;">
+                <h2><i class="fa-solid fa-box-archive" style="color: #E50914;"></i> Almacén de Cuentas y Licencias Streaming</h2>
+                <p style="color: var(--text-gray); font-size: 0.85rem;">Carga cuentas, perfiles o accesos para entregar automáticamente cuando tus clientes compren un servicio de streaming.</p>
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
+                    <!-- Formulario de Carga -->
+                    <div style="background: rgba(255,255,255,0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <h3 style="font-size: 1rem; color: var(--secondary); margin-bottom: 12px;"><i class="fa-solid fa-plus-circle"></i> Cargar Nuevas Cuentas</h3>
+                        
+                        <label style="font-size: 0.8rem; color: #ccc; display: block; margin-bottom: 5px;">Selecciona el Servicio:</label>
+                        <select id="streaming-service-select" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;">
+                            <option value="netflix">🍿 Netflix Ultra HD 4K</option>
+                            <option value="disney">🏰 Disney+ / Star+</option>
+                            <option value="max">🍿 Max (HBO Max)</option>
+                            <option value="vix">🎬 ViX Premium</option>
+                            <option value="canva">🎨 Canva Pro</option>
+                            <option value="spotify">🎵 Spotify Premium</option>
+                            <option value="prime">📦 Amazon Prime Video</option>
+                            <option value="crunchyroll">🍿 Crunchyroll Mega Fan</option>
+                        </select>
+
+                        <label style="font-size: 0.8rem; color: #ccc; display: block; margin-bottom: 5px;">Pega las Cuentas / Accesos (1 por línea):</label>
+                        <textarea id="streaming-accounts-input" rows="8" placeholder="Ejemplo:&#10;user1@gmail.com:clave123 (Perfil 1 - PIN 1234)&#10;user2@gmail.com:clave456 (Perfil 2)&#10;https://canva.com/join?code=XYZ" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-family: monospace; font-size: 0.8rem; margin-bottom: 15px;"></textarea>
+
+                        <button onclick="addStreamingAccountsAdmin()" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #E50914, #9D00FF); cursor: pointer;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Cuentas en Almacén
+                        </button>
+                    </div>
+
+                    <!-- Resumen de Inventario Activo -->
+                    <div>
+                        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 12px;"><i class="fa-solid fa-list-check"></i> Stock Disponible en Tiempo Real</h3>
+                        <div id="streaming-stock-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                            <!-- Cargado por JS -->
+                        </div>
+
+                        <h4 style="font-size: 0.9rem; color: var(--secondary); margin-bottom: 8px;">Detalle de Cuentas Guardadas:</h4>
+                        <div id="streaming-accounts-detail" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; max-height: 320px; overflow-y: auto; font-family: monospace; font-size: 0.78rem;">
+                            <p style="opacity: 0.5; text-align: center;">Cargando inventario...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- SETTINGS TAB -->
         <div id="settings" class="tab-content">
             <div class="action-card">
@@ -699,9 +748,13 @@
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enlaces de WhatsApp</h3>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: left;">
                     <div class="form-group">
-                        <label>Número de Soporte (Ej: 584125322412):</label>
+                        <label>Número Bot (Consultas):</label>
+                        <input type="text" id="wa-bot" placeholder="584123491068">
+                    </div>
+                    <div class="form-group">
+                        <label>Número de Soporte:</label>
                         <input type="text" id="wa-soporte" placeholder="584125322412">
                     </div>
                     <div class="form-group">
@@ -1845,11 +1898,17 @@
                     <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.costBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
                 </div>
 
-                <!-- Ganancia Neta -->
-                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.1),rgba(0,255,148,0.02)); border-color:rgba(0,255,148,0.25);">
-                    <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
+                <!-- Ganancia Neta (Botón Interactivo) -->
+                <div class="stat-card" onclick="showSimpleProfitBreakdownModal()" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.14),rgba(0,255,148,0.03)); border:1px solid rgba(0,255,148,0.4); cursor:pointer; position:relative; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,255,148,0.12);" title="Toca para ver la lista de ganancia por producto">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
+                        <span style="font-size:0.62rem; background:rgba(0,255,148,0.25); color:#00FF94; padding:2px 7px; border-radius:4px; font-weight:800; border:1px solid rgba(0,255,148,0.4);"><i class="fa-solid fa-list-ul"></i> Ver Lista</span>
+                    </div>
                     <span class="value" style="font-size:1.6rem; color:${profitColor};">$${d.profitUsdt.toFixed(2)}</span>
-                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.profitBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                        <span style="font-size:0.65rem; color:var(--text-gray);">${d.profitBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</span>
+                        <span style="font-size:0.62rem; color:#00FF94; font-weight:700;">Toca para ver detalle 📊</span>
+                    </div>
                 </div>
             `;
 
@@ -1866,6 +1925,59 @@
             document.getElementById('fin-count-pm').textContent  = d.countPM;
             document.getElementById('fin-count-bin').textContent = d.countBin;
             document.getElementById('fin-tasa').textContent      = tasa;
+        }
+
+        function showSimpleProfitBreakdownModal() {
+            const periodData = _financialData ? _financialData[_currentFinancialPeriod] : null;
+            if (!periodData || !periodData.sales || periodData.sales.length === 0) {
+                return Swal.fire({
+                    icon: 'info',
+                    title: '📊 Sin Ventas Aprobadas',
+                    text: 'No hay ventas aprobadas registradas para el período seleccionado.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            }
+
+            const periodNames = { today: 'Hoy', yesterday: 'Ayer', week: 'Esta Semana', month: 'Este Mes' };
+            const periodName = periodNames[_currentFinancialPeriod] || 'Hoy';
+
+            let listHtml = `
+                <div style="margin-bottom:12px; font-size:0.8rem; color:#aaa; text-align:left;">
+                    Ganancia Neta Total: <strong style="color:#00FF94; font-size:1.05rem;">$${periodData.profitUsdt.toFixed(2)} USDT</strong>
+                    &nbsp;·&nbsp; ${periodData.totalOrders} venta${periodData.totalOrders !== 1 ? 's' : ''}
+                </div>
+                <div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">`;
+
+            periodData.sales.forEach(s => {
+                const isPos = s.profitUsdt >= 0;
+                const color = isPos ? '#00FF94' : '#FF3D71';
+                const sign = isPos ? '+' : '-';
+                listHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; margin-bottom:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.07); text-align:left;">
+                        <div>
+                            <strong style="color:#fff; font-size:0.88rem; display:block;">${s.product}</strong>
+                            <span style="font-size:0.7rem; color:#888;">Ref: <code style="color:var(--secondary);">${s.ref}</code> ${s.time ? `· ${s.time}` : ''}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="color:${color}; font-weight:800; font-size:0.95rem; display:block;">${sign}$${Math.abs(s.profitUsdt).toFixed(2)} USDT</span>
+                            <span style="font-size:0.68rem; color:#aaa;">${sign}${Math.abs(s.profitBs).toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</span>
+                        </div>
+                    </div>`;
+            });
+
+            listHtml += '</div>';
+
+            Swal.fire({
+                title: `<i class="fa-solid fa-chart-line" style="color:#00FF94;"></i> Ganancias (${periodName})`,
+                html: listHtml,
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#9D00FF',
+                width: '420px'
+            });
         }
         // ────────────────────────────────────────────────────────────────────
 
@@ -1974,7 +2086,7 @@
                     <td>
                         <span style="color:#25D366; font-weight:700; font-size:0.78rem;">${order.price || 'N/A'}</span><br>
                         <code style="font-size:0.75rem;">${order.ref}</code><br>
-                        <small style="color:var(--text-gray); font-size:0.72rem;">${order.method === 'pagomovil' ? 'Pago Móvil' : 'Binance'}</small>
+                        <small style="color:var(--text-gray); font-size:0.72rem;">${order.method === 'pagomovil' ? 'Pago Móvil' : (order.method === 'canje' ? '🎁 Canje de Puntos' : 'Binance')}</small>
                     </td>
                     <td>
                         <div style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.name || ''}">${order.name || '-'}</div>
@@ -2468,6 +2580,7 @@
 
                 // Cargar WhatsApp
                 if (allSettings.whatsapp) {
+                    if (document.getElementById('wa-bot')) document.getElementById('wa-bot').value = allSettings.whatsapp.bot || '584123491068';
                     document.getElementById('wa-soporte').value = allSettings.whatsapp.soporte;
                     document.getElementById('wa-canal').value = allSettings.whatsapp.canal;
                     document.getElementById('wa-modo').value = allSettings.whatsapp.modo || 'activo';
@@ -2585,6 +2698,7 @@
                     }
                 },
                 whatsapp: {
+                    bot: document.getElementById('wa-bot') ? document.getElementById('wa-bot').value : '584123491068',
                     soporte: document.getElementById('wa-soporte').value,
                     canal: document.getElementById('wa-canal').value,
                     modo: document.getElementById('wa-modo').value,
@@ -2872,7 +2986,119 @@
                 badge.style.display = 'none';
                 stopTitleFlash();
             }
-            lastPendingCount = count;
+        // --- ALMACÉN Y STOCK STREAMING ---
+        async function loadStreamingStockAdmin() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/streaming-stock`);
+                const data = await res.json();
+                if (!data.success) return;
+
+                const stock = data.stock || {};
+                const services = [
+                    { id: 'netflix', name: 'Netflix', icon: 'fa-film', color: '#E50914' },
+                    { id: 'disney', name: 'Disney+', icon: 'fa-clapperboard', color: '#00D2FF' },
+                    { id: 'max', name: 'Max HBO', icon: 'fa-play', color: '#002BE7' },
+                    { id: 'vix', name: 'ViX', icon: 'fa-tv', color: '#FF5000' },
+                    { id: 'canva', name: 'Canva Pro', icon: 'fa-paintbrush', color: '#00C4CC' },
+                    { id: 'spotify', name: 'Spotify', icon: 'fa-spotify', color: '#1DB954' },
+                    { id: 'prime', name: 'Prime Video', icon: 'fa-video', color: '#00A8E1' },
+                    { id: 'crunchyroll', name: 'Crunchyroll', icon: 'fa-masks-theater', color: '#F47521' }
+                ];
+
+                const summaryGrid = document.getElementById('streaming-stock-summary-grid');
+                const detailContainer = document.getElementById('streaming-accounts-detail');
+
+                if (summaryGrid) {
+                    summaryGrid.innerHTML = '';
+                    services.forEach(s => {
+                        const count = (stock[s.id] && Array.isArray(stock[s.id])) ? stock[s.id].length : 0;
+                        const isLow = count < 3;
+                        const isEmpty = count === 0;
+
+                        summaryGrid.innerHTML += `
+                            <div style="background: rgba(255,255,255,0.04); border: 1px solid ${s.color}40; padding: 10px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 1.2rem; margin-bottom: 4px;"><i class="fa-solid ${s.icon}" style="color:${s.color}"></i></div>
+                                <div style="font-size: 0.72rem; color: #aaa; font-weight: 700;">${s.name}</div>
+                                <div style="font-size: 1.3rem; font-weight: 900; color: ${isEmpty ? '#ff3d71' : (isLow ? '#ffd93d' : '#00ff94')}; margin-top: 2px;">
+                                    ${count}
+                                </div>
+                                <div style="font-size: 0.6rem; color: ${isEmpty ? '#ff3d71' : '#00ff94'}; font-weight: 800;">
+                                    ${isEmpty ? 'SIN STOCK' : 'DISPONIBLES'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (detailContainer) {
+                    detailContainer.innerHTML = '';
+                    let totalCount = 0;
+                    services.forEach(s => {
+                        const accList = stock[s.id] || [];
+                        if (accList.length > 0) {
+                            totalCount += accList.length;
+                            detailContainer.innerHTML += `<div style="color:${s.color}; font-weight:800; margin-top:8px; margin-bottom:4px; font-size:0.82rem;"><i class="fa-solid ${s.icon}"></i> ${s.name} (${accList.length}):</div>`;
+                            accList.forEach((acc, idx) => {
+                                detailContainer.innerHTML += `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; margin-bottom:3px;">
+                                        <span style="color:#eee; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx+1}. ${acc}</span>
+                                        <button onclick="deleteStreamingAccountAdmin('${s.id}', ${idx})" style="background:rgba(255,0,0,0.2); border:1px solid #ff4b2b; color:#ff4b2b; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Eliminar cuenta">✕</button>
+                                    </div>
+                                `;
+                            });
+                        }
+                    });
+
+                    if (totalCount === 0) {
+                        detailContainer.innerHTML = `<p style="opacity:0.5; text-align:center; margin:20px 0;">No hay cuentas de streaming cargadas aún.</p>`;
+                    }
+                }
+            } catch (e) { console.error('Error cargando almacén streaming:', e); }
+        }
+
+        async function addStreamingAccountsAdmin() {
+            const service = document.getElementById('streaming-service-select').value;
+            const text = document.getElementById('streaming-accounts-input').value;
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            if (!lines || lines.length === 0) {
+                return Swal.fire('Atención', 'Ingresa al menos 1 cuenta o acceso.', 'warning');
+            }
+
+            Swal.fire({ title: 'Guardando cuentas...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/add-streaming-stock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, accounts: lines })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('¡Éxito!', `Se agregaron ${data.countAdded} cuentas a ${service.toUpperCase()}. Total en almacén: ${data.totalStock}`, 'success');
+                    document.getElementById('streaming-accounts-input').value = '';
+                    loadStreamingStockAdmin();
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Fallo de conexión al servidor.', 'error');
+            }
+        }
+
+        async function deleteStreamingAccountAdmin(service, index) {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/delete-streaming-stock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, index })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadStreamingStockAdmin();
+                }
+            } catch (e) {}
         }
 
         function notifyNewOrder() {
@@ -3325,6 +3551,393 @@
             }
         }
     </script>
+
+    <!-- ====================================================
+         INFLUENCERS ADMIN TAB
+    ==================================================== -->
+    <div id="influencers-tab" class="tab-content">
+
+        <!-- SUB-TABS -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <button id="inf-subtab-solicitudes" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;" onclick="showInfluencerSubtab('solicitudes')"><i class="fa-solid fa-user-check"></i> Solicitudes</button>
+            <button id="inf-subtab-videos" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('videos')"><i class="fa-solid fa-video"></i> Videos</button>
+            <button id="inf-subtab-tarifas" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('tarifas')"><i class="fa-solid fa-gem"></i> Tarifas</button>
+        </div>
+
+        <!-- SOLICITUDES -->
+        <div id="inf-panel-solicitudes" class="action-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <h2><i class="fa-brands fa-tiktok" style="color:#ff0050"></i> Influencers Registrados</h2>
+                <button onclick="loadInfluencersAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
+                <select id="inf-filter-status" onchange="loadInfluencersAdmin()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;">
+                    <option value="all">Todos</option>
+                    <option value="pending">Pendientes</option>
+                    <option value="approved">Aprobados</option>
+                    <option value="rejected">Rechazados</option>
+                </select>
+                <input type="text" id="inf-search" placeholder="Buscar usuario o TikTok..." onkeyup="renderInfluencersTable()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;min-width:240px;">
+            </div>
+            <div class="table-container">
+                <table><thead><tr>
+                    <th>Usuario / TikTok</th><th>UID Free Fire</th><th>Seguidores</th><th>Estado</th><th>Saldo Wallet</th><th>Total Ganado</th><th>Registro</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="influencers-table-body"><tr><td colspan="8" style="text-align:center;padding:30px;color:#b0a8c0;">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIDEOS -->
+        <div id="inf-panel-videos" class="action-card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <h2><i class="fa-solid fa-video" style="color:var(--secondary)"></i> Videos Enviados</h2>
+                <button onclick="loadSubmissionsAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:15px;">
+                <select id="sub-filter-status" onchange="loadSubmissionsAdmin()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;">
+                    <option value="all">Todos</option><option value="pending">Pendientes</option><option value="approved">Aprobados</option><option value="paid">Pagados</option><option value="rejected">Rechazados</option>
+                </select>
+            </div>
+            <div id="submissions-admin-list" style="display:flex;flex-direction:column;gap:14px;"><div style="text-align:center;padding:40px;color:#b0a8c0;">Cargando...</div></div>
+        </div>
+
+        <!-- TARIFAS -->
+        <div id="inf-panel-tarifas" class="action-card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <h2><i class="fa-solid fa-dollar-sign" style="color:#00FF94"></i> Tabla de Tarifas ($ USD)</h2>
+                <button onclick="loadRatesAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
+            </div>
+            <p style="color:var(--text-gray);margin-bottom:20px;font-size:0.9rem;">Define el monto en $ USD (saldo de billetera) que se paga según las visualizaciones del video.</p>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:20px;margin-bottom:24px;">
+                <h4 style="margin-bottom:14px;color:var(--secondary);"><i class="fa-solid fa-plus"></i> Agregar Tarifa</h4>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Nombre</label><input type="text" id="rate-label" placeholder="Ej: Viral" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;"></div>
+                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Min. Vistas</label><input type="number" id="rate-min" placeholder="10000" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:120px;"></div>
+                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Max. Vistas</label><input type="number" id="rate-max" placeholder="Sin limite" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:120px;"></div>
+                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Monto ($ USD)</label><input type="number" step="0.5" id="rate-diamonds" placeholder="5.00" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100px;"></div>
+                    <button onclick="addRateAdmin()" class="btn-main" style="width:auto;padding:10px 18px;font-size:0.85rem;"><i class="fa-solid fa-plus"></i> Agregar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table><thead><tr><th>Nombre</th><th>Min Vistas</th><th>Max Vistas</th><th>Pago ($ USD)</th><th>Activa</th><th>Eliminar</th></tr></thead>
+                <tbody id="rates-admin-table-body"><tr><td colspan="6" style="text-align:center;padding:20px;color:#b0a8c0;">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MODALS: Review y Edit Rate -->
+        <div id="review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#0d0d1f;border:1px solid rgba(108,61,232,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
+                <button onclick="closeReviewModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
+                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-dollar-sign" style="color:#00FF94"></i> Revisar y Pagar Video</h3>
+                <input type="hidden" id="review-sub-id">
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Vistas verificadas</label><input type="number" id="review-views" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Monto a pagar ($ USD) <span id="review-suggestion" style="color:#00FF94;margin-left:8px;"></span></label><input type="number" step="0.01" id="review-diamonds" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Notas para el influencer</label><input type="text" id="review-notes" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="submitReview('paid')" class="btn-main" style="flex:1;background:linear-gradient(135deg,#059669,#34d399);"><i class="fa-solid fa-dollar-sign"></i> Pagar a Billetera</button>
+                    <button onclick="submitReview('rejected')" class="btn-main" style="flex:1;background:rgba(220,38,38,0.3);"><i class="fa-solid fa-times"></i> Rechazar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="edit-rate-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#0d0d1f;border:1px solid rgba(108,61,232,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
+                <button onclick="closeEditRateModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
+                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-pen-to-square" style="color:var(--secondary)"></i> Editar Tarifa</h3>
+                <input type="hidden" id="edit-rate-id">
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Nombre de la Tarifa</label><input type="text" id="edit-rate-label" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Mínimo Vistas</label><input type="number" id="edit-rate-min" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Máximo Vistas (vacío = sin límite)</label><input type="number" id="edit-rate-max" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Pago en $ USD</label><input type="number" step="0.01" id="edit-rate-dollars" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <button onclick="saveRateEdit()" class="btn-main" style="width:100%;background:linear-gradient(135deg,#6c3de8,#8b5cf6);"><i class="fa-solid fa-save"></i> Guardar Cambios</button>
+            </div>
+        </div>
+        <div id="diamonds-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#0d0d1f;border:1px solid rgba(245,158,11,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
+                <button onclick="closeDiamondsModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
+                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-gem" style="color:#FFD93D"></i> Ajustar Diamantes</h3>
+                <p id="diamonds-modal-name" style="color:#b0a8c0;font-size:0.9rem;margin-bottom:16px;"></p>
+                <input type="hidden" id="diamonds-modal-inf-id">
+                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Monto (+ agregar, - restar)</label><input type="number" id="diamonds-amount" placeholder="Ej: 500 o -100" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Nota</label><input type="text" id="diamonds-note" placeholder="Ej: Bono especial" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
+                <button onclick="submitDiamonds()" class="btn-main" style="width:100%;background:linear-gradient(135deg,#b45309,#f59e0b);"><i class="fa-solid fa-gem"></i> Aplicar Ajuste</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFLUENCER ADMIN SCRIPTS -->
+    <script>
+    let allInfluencers = [];
+    let allRates = [];
+    let currentSubId = null;
+
+    function showInfluencerSubtab(tab) {
+        ['solicitudes','videos','tarifas'].forEach(t => {
+            document.getElementById('inf-panel-' + t).style.display = (t === tab) ? '' : 'none';
+            const btn = document.getElementById('inf-subtab-' + t);
+            if (btn) { btn.style.background = (t === tab) ? '' : 'rgba(255,255,255,0.1)'; btn.style.color = (t === tab) ? '' : '#b0a8c0'; }
+        });
+        if (tab === 'solicitudes') loadInfluencersAdmin();
+        if (tab === 'videos') loadSubmissionsAdmin();
+        if (tab === 'tarifas') loadRatesAdmin();
+    }
+
+    // Helper fetch con Bearer token usando adminFetch del script principal
+    async function infFetch(url, options = {}) {
+        const token = localStorage.getItem('admin_token') || '';
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = 'Bearer ' + token;
+        if (!options.headers['Content-Type'] && options.method && options.method !== 'GET') {
+            options.headers['Content-Type'] = 'application/json';
+        }
+        return fetch(url, options);
+    }
+
+    async function loadInfluencersAdmin() {
+        try {
+            const res = await infFetch('/api/admin/influencers');
+            const data = await res.json();
+            if (!data.success) { console.error('Influencers error:', data.message); return; }
+            allInfluencers = data.influencers || [];
+            const pending = allInfluencers.filter(i => i.status === 'pending').length;
+            const badge = document.getElementById('influencers-pending-badge');
+            if (badge) badge.textContent = pending;
+            renderInfluencersTable();
+        } catch(e) {
+            const tbody = document.getElementById('influencers-table-body');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff3d71;">Error: ' + e.message + '</td></tr>';
+        }
+    }
+
+    function renderInfluencersTable() {
+        const tbody = document.getElementById('influencers-table-body');
+        const filter = document.getElementById('inf-filter-status')?.value || 'all';
+        const search = (document.getElementById('inf-search')?.value || '').toLowerCase();
+        let list = allInfluencers;
+        if (filter !== 'all') list = list.filter(i => i.status === filter);
+        if (search) list = list.filter(i => (i.username||'').toLowerCase().includes(search) || (i.tiktok_handle||'').toLowerCase().includes(search) || (i.ff_uid||'').includes(search));
+        if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#b0a8c0;">No hay influencers registrados</td></tr>'; return; }
+        const sc = { pending:'#FFD93D', approved:'#00FF94', rejected:'#FF3D71', suspended:'#b0a8c0' };
+        const sl = { pending:'Pendiente', approved:'Aprobado', rejected:'Rechazado', suspended:'Suspendido' };
+        tbody.innerHTML = list.map(inf => `<tr>
+            <td><strong style="color:var(--secondary);">${escInf(inf.username)}</strong><br><small style="color:#b0a8c0;">@${escInf(inf.tiktok_handle)}</small><br><small style="color:#b0a8c0;">${escInf(inf.email)}</small></td>
+            <td><span style="font-weight:700;color:#ff9100;"><i class="fa-solid fa-gamepad"></i> ${escInf(inf.ff_uid || 'No indicado')}</span></td>
+            <td>${Number(inf.followers_count||0).toLocaleString()}</td>
+            <td><span style="color:${sc[inf.status]||'#fff'};font-weight:700;">${sl[inf.status]||inf.status}</span></td>
+            <td style="color:#00FF94;font-weight:800;">$${Number(inf.dollars_balance||0).toFixed(2)} USDT</td>
+            <td style="color:#b0a8c0;">$${Number(inf.total_dollars_earned||0).toFixed(2)} USDT</td>
+            <td style="font-size:0.8rem;color:#b0a8c0;">${inf.created_at ? new Date(inf.created_at).toLocaleDateString('es-VE') : '-'}</td>
+            <td><div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${inf.status!=='approved'?`<button onclick="changeInfluencerStatus(${inf.id},'approved')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#059669;color:#fff;cursor:pointer;">Aprobar</button>`:''}
+                ${inf.status!=='rejected'?`<button onclick="changeInfluencerStatus(${inf.id},'rejected')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#dc2626;color:#fff;cursor:pointer;">Rechazar</button>`:''}
+            </div></td>
+        </tr>`).join('');
+    }
+
+    async function changeInfluencerStatus(id, status) {
+        try {
+            const res = await infFetch('/api/admin/influencers/' + id + '/status', { method: 'PUT', body: JSON.stringify({ status }) });
+            const data = await res.json();
+            if (data.success) loadInfluencersAdmin();
+            else alert('Error: ' + (data.message || data.error));
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function loadSubmissionsAdmin() {
+        const statusFilter = document.getElementById('sub-filter-status')?.value || 'all';
+        const container = document.getElementById('submissions-admin-list');
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#b0a8c0;">Cargando...</div>';
+        try {
+            const res = await infFetch('/api/admin/influencer-submissions?status=' + statusFilter);
+            const data = await res.json();
+            if (!data.success) { container.innerHTML = '<div style="color:#FF3D71;padding:20px;">Error: ' + (data.message||'Sin acceso') + '</div>'; return; }
+            const subs = data.submissions || [];
+            if (!subs.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#b0a8c0;">No hay videos</div>'; return; }
+            const sc = { pending:'#FFD93D', approved:'#00b2ff', rejected:'#FF3D71', paid:'#00FF94' };
+            const sl = { pending:'Pendiente', approved:'Aprobado', rejected:'Rechazado', paid:'Pagado' };
+            container.innerHTML = subs.map(s => {
+                const inf = s.ff_influencers || {};
+                const date = s.submitted_at ? new Date(s.submitted_at).toLocaleDateString('es-VE') : '-';
+                const paidVal = s.dollars_awarded || s.diamonds_awarded || 0;
+                return `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+                        <div style="flex:1;">
+                            <span style="color:${sc[s.status]||'#fff'};font-weight:700;font-size:0.85rem;">${sl[s.status]||s.status}</span> <span style="font-size:0.75rem;color:#b0a8c0;">#${s.id} - ${date}</span><br>
+                            <strong>@${escInf(inf.tiktok_handle||'?')}</strong> - ${escInf(inf.username||'?')} ${inf.ff_uid ? `<span style="color:#ff9100;font-size:0.8rem;">(UID FF: ${inf.ff_uid})</span>` : ''}<br>
+                            <a href="${escInf(s.tiktok_url||'')}" target="_blank" style="color:var(--secondary);font-size:0.85rem;">Ver video</a><br>
+                            <span style="font-size:0.85rem;color:#b0a8c0;">Vistas reportadas: <strong style="color:#fff;">${Number(s.views_submitted||0).toLocaleString()}</strong></span>
+                            ${paidVal ? ` | Pagados: <strong style="color:#00FF94;">$${Number(paidVal).toFixed(2)} USDT</strong>` : ''}
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            ${s.status === 'pending' || s.status === 'approved' ? `<button onclick="openReviewModal(${s.id},${s.views_submitted||0})" style="padding:7px 12px;font-size:0.8rem;border-radius:8px;border:none;background:linear-gradient(135deg,#059669,#34d399);color:#fff;cursor:pointer;font-weight:700;">Revisar y Pagar</button>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) { container.innerHTML = '<div style="color:#FF3D71;padding:20px;">Error: ' + e.message + '</div>'; }
+    }
+
+    function openReviewModal(subId, views) {
+        currentSubId = subId;
+        document.getElementById('review-sub-id').value = subId;
+        document.getElementById('review-views').value = views || '';
+        document.getElementById('review-diamonds').value = '';
+        document.getElementById('review-notes').value = '';
+        const s = getSuggestedDiamonds(parseInt(views)||0);
+        document.getElementById('review-suggestion').textContent = s ? '$' + s + ' USD sugerido' : '';
+        if (s) document.getElementById('review-diamonds').value = s;
+        document.getElementById('review-modal').style.display = 'flex';
+    }
+    function closeReviewModal() { document.getElementById('review-modal').style.display = 'none'; }
+
+    function getSuggestedDiamonds(views) {
+        const match = allRates.filter(r => r.is_active).find(r => views >= r.min_views && (r.max_views == null || views <= r.max_views));
+        return match ? (match.dollars_reward || match.diamonds_reward) : null;
+    }
+
+    async function submitReview(status) {
+        const subId = parseInt(document.getElementById('review-sub-id').value);
+        const views = parseInt(document.getElementById('review-views').value) || 0;
+        const dollars = parseFloat(document.getElementById('review-diamonds').value) || 0;
+        const notes = document.getElementById('review-notes').value;
+        try {
+            const res = await infFetch('/api/admin/influencer-submissions/' + subId + '/review', { method: 'PUT', body: JSON.stringify({ status, views_verified: views, dollars_awarded: dollars, admin_notes: notes }) });
+            const data = await res.json();
+            if (data.success) { closeReviewModal(); loadSubmissionsAdmin(); if (status==='paid') Swal.fire({ icon:'success', title:'¡Pagado!', text: '$' + dollars.toFixed(2) + ' USDT acreditados a la billetera del usuario.', background:'#0d0d1f', color:'#fff' }); }
+            else alert('Error: ' + (data.message||data.error));
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function loadRatesAdmin() {
+        try {
+            const res = await infFetch('/api/admin/influencer-rates');
+            const data = await res.json();
+            if (!data.success) return;
+            allRates = data.rates || [];
+            renderRatesTable();
+        } catch(e) {}
+    }
+
+    function renderRatesTable() {
+        const tbody = document.getElementById('rates-admin-table-body');
+        if (!allRates.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#b0a8c0;">No hay tarifas configuradas</td></tr>'; return; }
+        tbody.innerHTML = allRates.map(r => `<tr>
+            <td><strong>${escInf(r.label)}</strong></td>
+            <td>${Number(r.min_views).toLocaleString()}</td>
+            <td>${r.max_views ? Number(r.max_views).toLocaleString() : 'Sin límite'}</td>
+            <td style="color:#00FF94;font-weight:800;">$${Number(r.dollars_reward || r.diamonds_reward || 0).toFixed(2)} USD</td>
+            <td><input type="checkbox" ${r.is_active?'checked':''} onchange="toggleRate(${r.id},this.checked)" style="width:16px;height:16px;"> ${r.is_active ? '<span style="color:#00FF94;">Activa</span>' : '<span style="color:#b0a8c0;">Inactiva</span>'}</td>
+            <td>
+                <button onclick="openEditRateModal(${r.id})" style="padding:5px 10px;border-radius:6px;border:none;background:linear-gradient(135deg,#6c3de8,#8b5cf6);color:#fff;cursor:pointer;margin-right:4px;">✏️ Editar</button>
+                <button onclick="deleteRate(${r.id})" style="padding:5px 10px;border-radius:6px;border:none;background:rgba(239,68,68,0.2);color:#fca5a5;cursor:pointer;">Eliminar</button>
+            </td>
+        </tr>`).join('');
+    }
+
+    async function addRateAdmin() {
+        const label = document.getElementById('rate-label').value.trim();
+        const min = parseInt(document.getElementById('rate-min').value);
+        const max = document.getElementById('rate-max').value ? parseInt(document.getElementById('rate-max').value) : null;
+        const dollars = parseFloat(document.getElementById('rate-diamonds').value);
+        if (!label || isNaN(min) || isNaN(dollars)) { alert('Completa Nombre, Mínimo y Monto ($).'); return; }
+        try {
+            const res = await infFetch('/api/admin/influencer-rates', { method: 'POST', body: JSON.stringify({ label, min_views: min, max_views: max, dollars_reward: dollars, diamonds_reward: dollars }) });
+            const data = await res.json();
+            if (data.success) { document.getElementById('rate-label').value=''; document.getElementById('rate-min').value=''; document.getElementById('rate-max').value=''; document.getElementById('rate-diamonds').value=''; loadRatesAdmin(); }
+            else alert('Error: ' + (data.error||data.message));
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function toggleRate(id, active) {
+        try { await infFetch('/api/admin/influencer-rates/' + id, { method: 'PUT', body: JSON.stringify({ is_active: active }) }); loadRatesAdmin(); } catch(e) {}
+    }
+
+    function openEditRateModal(id) {
+        const rate = allRates.find(r => r.id === id);
+        if (!rate) return;
+        document.getElementById('edit-rate-id').value = rate.id;
+        document.getElementById('edit-rate-label').value = rate.label || '';
+        document.getElementById('edit-rate-min').value = rate.min_views || 0;
+        document.getElementById('edit-rate-max').value = rate.max_views !== null ? rate.max_views : '';
+        document.getElementById('edit-rate-dollars').value = rate.dollars_reward || rate.diamonds_reward || 0;
+        document.getElementById('edit-rate-modal').style.display = 'flex';
+    }
+
+    function closeEditRateModal() {
+        document.getElementById('edit-rate-modal').style.display = 'none';
+    }
+
+    async function saveRateEdit() {
+        const id = parseInt(document.getElementById('edit-rate-id').value);
+        const label = document.getElementById('edit-rate-label').value.trim();
+        const min_views = parseInt(document.getElementById('edit-rate-min').value);
+        const maxVal = document.getElementById('edit-rate-max').value;
+        const max_views = maxVal !== '' ? parseInt(maxVal) : null;
+        const dollars = parseFloat(document.getElementById('edit-rate-dollars').value);
+
+        if (!label || isNaN(min_views) || isNaN(dollars)) {
+            alert('Por favor completa todos los campos correctamente.');
+            return;
+        }
+
+        try {
+            const res = await infFetch('/api/admin/influencer-rates/' + id, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    label,
+                    min_views,
+                    max_views,
+                    dollars_reward: dollars,
+                    diamonds_reward: dollars
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeEditRateModal();
+                loadRatesAdmin();
+                Swal.fire({ icon:'success', title:'Tarifa actualizada', text:'Los cambios han sido guardados.', background:'#0d0d1f', color:'#fff' });
+            } else {
+                alert('Error: ' + (data.message || data.error));
+            }
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function deleteRate(id) {
+        if (!confirm('Eliminar esta tarifa?')) return;
+        try { await infFetch('/api/admin/influencer-rates/' + id, { method: 'DELETE' }); loadRatesAdmin(); } catch(e) {}
+    }
+
+    function openDiamondsModal(id, username, currentBalance) {
+        document.getElementById('diamonds-modal-inf-id').value = id;
+        document.getElementById('diamonds-modal-name').textContent = '@' + username + ' - Saldo: ' + Number(currentBalance).toLocaleString() + ' 💎';
+        document.getElementById('diamonds-amount').value = '';
+        document.getElementById('diamonds-note').value = '';
+        document.getElementById('diamonds-modal').style.display = 'flex';
+    }
+    function closeDiamondsModal() { document.getElementById('diamonds-modal').style.display = 'none'; }
+
+    async function submitDiamonds() {
+        const id = parseInt(document.getElementById('diamonds-modal-inf-id').value);
+        const amount = parseInt(document.getElementById('diamonds-amount').value);
+        const note = document.getElementById('diamonds-note').value;
+        if (isNaN(amount)) { alert('Ingresa un monto valido.'); return; }
+        try {
+            const res = await infFetch('/api/admin/influencers/' + id + '/diamonds', { method: 'PUT', body: JSON.stringify({ amount, note }) });
+            const data = await res.json();
+            if (data.success) { closeDiamondsModal(); loadInfluencersAdmin(); Swal.fire({ icon:'success', title:'Ajuste aplicado', text:'Nuevo saldo: ' + Number(data.new_balance).toLocaleString() + ' 💎', background:'#0d0d1f', color:'#fff' }); }
+            else alert('Error: ' + (data.message||data.error));
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function escInf(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { loadRatesAdmin(); }, 3000); });
+    </script>
+
 </body>
 </html>
 

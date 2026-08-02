@@ -1604,6 +1604,35 @@ function isPaqueteEspecial(amountKey) {
     return PAQUETES_ESPECIALES.includes(amountKey.toString().toLowerCase());
 }
 
+async function getStreamingStockAccount(packName) {
+    if (!packName) return null;
+    const packLower = packName.toLowerCase();
+
+    let serviceKey = null;
+    if (packLower.includes('netflix')) serviceKey = 'netflix';
+    else if (packLower.includes('disney') || packLower.includes('star')) serviceKey = 'disney';
+    else if (packLower.includes('max') || packLower.includes('hbo')) serviceKey = 'max';
+    else if (packLower.includes('vix')) serviceKey = 'vix';
+    else if (packLower.includes('canva')) serviceKey = 'canva';
+    else if (packLower.includes('spotify')) serviceKey = 'spotify';
+    else if (packLower.includes('prime')) serviceKey = 'prime';
+    else if (packLower.includes('crunchyroll')) serviceKey = 'crunchyroll';
+
+    if (serviceKey && settings.juegos && settings.juegos.streaming_stock && Array.isArray(settings.juegos.streaming_stock[serviceKey])) {
+        if (settings.juegos.streaming_stock[serviceKey].length > 0) {
+            const deliveredAccount = settings.juegos.streaming_stock[serviceKey].shift();
+            try {
+                await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
+            } catch (e) {
+                console.error('[STREAMING-STOCK] Error actualizando stock en Supabase:', e.message);
+            }
+            console.log(`[STREAMING-STOCK] 🍿 Entregada cuenta de ${serviceKey}: ${deliveredAccount.substring(0, 15)}... Quedan: ${settings.juegos.streaming_stock[serviceKey].length}`);
+            return deliveredAccount;
+        }
+    }
+    return null;
+}
+
 async function getFallbackPin(amount) {
     const { qty, amountKey } = extractPackInfo(amount);
     
@@ -4888,6 +4917,87 @@ const server = http.createServer(async (req, res) => {
                 console.error('[ALMACEN] ❌ ERROR:', e.message);
                 res.writeHead(400); 
                 res.end(JSON.stringify({ success: false, message: e.message || 'Error interno del servidor' })); 
+            }
+        });
+    // ============================================================
+    // ENDPOINTS DE ALMACÉN Y STOCK DE STREAMING
+    // ============================================================
+    } else if (parsedUrl.pathname === '/api/streaming-stock' && req.method === 'GET') {
+        const stockMap = {};
+        const services = ['netflix', 'disney', 'max', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll'];
+        const stockData = (settings.juegos && settings.juegos.streaming_stock) ? settings.juegos.streaming_stock : {};
+        services.forEach(s => {
+            stockMap[s] = (stockData[s] && Array.isArray(stockData[s])) ? stockData[s].length : 0;
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, stock: stockMap }));
+
+    } else if (parsedUrl.pathname === '/admin/streaming-stock' && req.method === 'GET') {
+        const stockData = (settings.juegos && settings.juegos.streaming_stock) ? settings.juegos.streaming_stock : {};
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, stock: stockData }));
+
+    } else if (parsedUrl.pathname === '/admin/add-streaming-stock' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { service, accounts } = JSON.parse(body);
+                if (!service || !accounts || !Array.isArray(accounts)) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Servicio y lista de cuentas requeridas.' }));
+                }
+
+                const cleanAccounts = accounts.map(a => a.trim()).filter(a => a.length > 0);
+                if (cleanAccounts.length === 0) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'No hay cuentas válidas para ingresar.' }));
+                }
+
+                if (!settings.juegos) settings.juegos = {};
+                if (!settings.juegos.streaming_stock) settings.juegos.streaming_stock = {};
+                if (!settings.juegos.streaming_stock[service]) settings.juegos.streaming_stock[service] = [];
+
+                cleanAccounts.forEach(acc => settings.juegos.streaming_stock[service].push(acc));
+
+                try {
+                    await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
+                } catch (e) {
+                    console.error('[STREAMING-STOCK] Error guardando en Supabase:', e.message);
+                }
+
+                console.log(`[STREAMING-STOCK] 🍿 Cargadas ${cleanAccounts.length} cuentas para el servicio ${service}. Total: ${settings.juegos.streaming_stock[service].length}`);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, countAdded: cleanAccounts.length, totalStock: settings.juegos.streaming_stock[service].length }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+
+    } else if (parsedUrl.pathname === '/admin/delete-streaming-stock' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { service, index } = JSON.parse(body);
+                if (!service || index === undefined) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Parámetros inválidos.' }));
+                }
+
+                if (settings.juegos && settings.juegos.streaming_stock && settings.juegos.streaming_stock[service]) {
+                    settings.juegos.streaming_stock[service].splice(index, 1);
+                    try {
+                        await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
+                    } catch (e) {}
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
             }
         });
     } else if (parsedUrl.pathname === '/api/check_password') {
