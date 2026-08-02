@@ -4714,3 +4714,40 @@ window.addEventListener('appinstalled', () => {
     console.log('[PWA] ¡App instalada con éxito!');
 });
 
+// ============================================================
+// MODAL DE SERVICIOS STREAMING (Netflix, Disney, ViX, Canva, etc.)
+// ============================================================
+const streamingBtn = document.getElementById('streaming-btn');
+const streamingModal = document.getElementById('streaming-services-modal');
+const streamingModalClose = document.getElementById('streaming-modal-close');
+
+if (streamingBtn && streamingModal) {
+    streamingBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        streamingModal.style.display = 'flex';
+    });
+}
+
+if (streamingModalClose && streamingModal) {
+    streamingModalClose.addEventListener('click', () => {
+        streamingModal.style.display = 'none';
+    });
+    
+    streamingModal.addEventListener('click', (e) => {
+        if (e.target === streamingModal) {
+            streamingModal.style.display = 'none';
+        }
+    });
+}
+
+// Botones de pedido por WhatsApp dentro del catálogo streaming
+document.querySelectorAll('.streaming-order-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
+        const phone = '584243790757'; // WhatsApp de atención
+        const text = encodeURIComponent(`Hola! 👋 Vengo de RecargasNey.com y me interesa solicitar información/comprar el servicio: *${serviceName}*. ¿Cuáles son los precios y métodos de pago?`);
+        window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+    });
+});
+

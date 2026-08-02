@@ -156,8 +156,8 @@
                 <button id="favorites-btn" class="btn-secondary-outline">
                     <i class="fa-solid fa-star"></i> Favoritos
                 </button>
-                <button id="prices-btn" class="btn-secondary-outline">
-                    <i class="fa-solid fa-tag"></i> Precios
+                <button id="streaming-btn" class="btn-secondary-outline btn-streaming-highlight">
+                    <i class="fa-solid fa-tv" style="color: #E50914;"></i> Streaming 🍿
                 </button>
             </div>
 
@@ -557,6 +557,112 @@
                 </div>
             </div>
             <button id="ios-understood-btn" class="btn-primary" style="margin-top: 15px; width: 100%;">¡Entendido!</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL DE SERVICIOS STREAMING & PREMIUM     -->
+    <!-- ========================================== -->
+    <div id="streaming-services-modal" class="streaming-modal" style="display: none;">
+        <div class="streaming-modal-content">
+            <button id="streaming-modal-close" class="streaming-modal-close-btn">&times;</button>
+
+            <div class="streaming-modal-header">
+                <div class="streaming-header-badge">🍿 CATÁLOGO PREMIUM</div>
+                <h2>Servicios de Streaming</h2>
+                <p>Cuentas, perfiles y licencias digitales con entrega inmediata</p>
+            </div>
+
+            <div class="streaming-services-grid">
+                <!-- Netflix -->
+                <div class="streaming-card brand-netflix">
+                    <div class="streaming-card-badge">POPULAR</div>
+                    <div class="streaming-icon"><i class="fa-solid fa-film" style="color: #E50914;"></i></div>
+                    <h3>Netflix Ultra HD 4K</h3>
+                    <p class="streaming-desc">Perfil privado o Cuenta completa de 1 Mes</p>
+                    <div class="streaming-price">Desde $3.50 USDT</div>
+                    <button class="streaming-order-btn" data-service="Netflix Ultra HD 4K">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Disney+ -->
+                <div class="streaming-card brand-disney">
+                    <div class="streaming-icon"><i class="fa-solid fa-clapperboard" style="color: #00D2FF;"></i></div>
+                    <h3>Disney+ / Star+</h3>
+                    <p class="streaming-desc">Acceso a películas, series y deportes en vivo (ESPN)</p>
+                    <div class="streaming-price">Desde $3.00 USDT</div>
+                    <button class="streaming-order-btn" data-service="Disney+ / Star+">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Max HBO -->
+                <div class="streaming-card brand-max">
+                    <div class="streaming-icon"><i class="fa-solid fa-play" style="color: #002BE7;"></i></div>
+                    <h3>Max (HBO Max)</h3>
+                    <p class="streaming-desc">Plan Estándar 1 Mes con series exclusivas</p>
+                    <div class="streaming-price">Desde $2.80 USDT</div>
+                    <button class="streaming-order-btn" data-service="Max (HBO)">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- ViX Premium -->
+                <div class="streaming-card brand-vix">
+                    <div class="streaming-icon"><i class="fa-solid fa-tv" style="color: #FF5000;"></i></div>
+                    <h3>ViX Premium</h3>
+                    <p class="streaming-desc">Fútbol en vivo, liga mexicana, series y novelas</p>
+                    <div class="streaming-price">Desde $2.50 USDT</div>
+                    <button class="streaming-order-btn" data-service="ViX Premium">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Canva Pro -->
+                <div class="streaming-card brand-canva">
+                    <div class="streaming-icon"><i class="fa-solid fa-paintbrush" style="color: #00C4CC;"></i></div>
+                    <h3>Canva Pro</h3>
+                    <p class="streaming-desc">Licencia Pro para diseño, kit de marca y plantillas</p>
+                    <div class="streaming-price">Desde $2.00 USDT</div>
+                    <button class="streaming-order-btn" data-service="Canva Pro">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Spotify Premium -->
+                <div class="streaming-card brand-spotify">
+                    <div class="streaming-icon"><i class="fa-brands fa-spotify" style="color: #1DB954;"></i></div>
+                    <h3>Spotify Premium</h3>
+                    <p class="streaming-desc">Música sin anuncios, descargas e historial ilimitado</p>
+                    <div class="streaming-price">Desde $2.50 USDT</div>
+                    <button class="streaming-order-btn" data-service="Spotify Premium">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Amazon Prime -->
+                <div class="streaming-card brand-prime">
+                    <div class="streaming-icon"><i class="fa-solid fa-video" style="color: #00A8E1;"></i></div>
+                    <h3>Prime Video</h3>
+                    <p class="streaming-desc">Catálogo de películas y producciones originales</p>
+                    <div class="streaming-price">Desde $2.50 USDT</div>
+                    <button class="streaming-order-btn" data-service="Amazon Prime Video">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+
+                <!-- Crunchyroll -->
+                <div class="streaming-card brand-crunchyroll">
+                    <div class="streaming-icon"><i class="fa-solid fa-masks-theater" style="color: #F47521;"></i></div>
+                    <h3>Crunchyroll Mega Fan</h3>
+                    <p class="streaming-desc">Anime sin anuncios en HD y simuldubs en tiempo real</p>
+                    <div class="streaming-price">Desde $2.50 USDT</div>
+                    <button class="streaming-order-btn" data-service="Crunchyroll Mega Fan">
+                        <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
