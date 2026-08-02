@@ -1373,7 +1373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return Swal.fire({
                         icon: 'error',
                         title: 'ID de Jugador no encontrado',
-                        text: 'No pudimos verificar tu ID en los servidores de Free Fire. Asegúrate de ingresar un ID real y activo.',
+                        text: 'No pudimos verificar tu ID de jugador. Asegúrate de ingresar un ID real y activo.',
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
@@ -1950,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Verificando ID...',
                 html: `
                     <div class="ff-loader-container">
-                        <div class="ff-loader-text">Consultando servidores de Garena...</div>
+                        <div class="ff-loader-text">Verificando ID del jugador...</div>
                         <div class="ff-progress-bar"><div class="ff-progress-fill"></div></div>
                     </div>
                 `,
@@ -1967,7 +1967,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { isConfirmed } = await Swal.fire({
                         icon: 'warning',
                         title: '⚠️ Error de Conexión',
-                        html: `<p style="color:#eee;">No se pudo conectar con Garena para verificar el ID.<br>
+                        html: `<p style="color:#eee;">No se pudo conectar con el servicio de verificación.<br>
                                <strong style="color:#ffd700;">El ID puede ser válido.</strong><br>
                                <span style="color:#aaa;font-size:0.85rem;">¿Deseas continuar de todos modos?</span></p>`,
                         showCancelButton: true,
@@ -1989,7 +1989,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Swal.fire({
                         icon: 'error',
                         title: '❌ ID No Válido',
-                        html: `<p style="color:#eee;">El ID <strong style="color:#ff4b2b;">${targetId}</strong> no existe en los servidores de Garena.</p>
+                        html: `<p style="color:#eee;">El ID <strong style="color:#ff4b2b;">${targetId}</strong> no fue encontrado o es inválido.</p>
                                <p style="color:#aaa;font-size:0.82rem;">Verifica que el ID sea correcto e intenta de nuevo.</p>`,
                         confirmButtonText: '🔄 Intentar de nuevo',
                         confirmButtonColor: '#9D00FF',
@@ -2297,7 +2297,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Validando ID...',
             html: `
                 <div class="ff-loader-container">
-                    <div class="ff-loader-text">Conectando con servidores de Garena...</div>
+                    <div class="ff-loader-text">Verificando ID del jugador...</div>
                     <div class="ff-progress-bar">
                         <div class="ff-progress-fill"></div>
                     </div>
@@ -2319,7 +2319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: '⚠️ Error de Conexión',
                     html: `
                         <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
-                            No se pudo conectar con los servidores de Garena.<br>
+                            No se pudo conectar con el servidor del juego.<br>
                             <strong style="color:#ffd700;">Tu ID puede ser válido.</strong>
                         </p>
                         <p style="color:#aaa; font-size:0.82rem;">
@@ -2347,7 +2347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: '❌ ID No Válido',
                     html: `
                         <p style="color:#eee; font-size:0.95rem; margin-bottom:10px;">
-                            El ID <strong style="color:#ff4b2b;">${uid}</strong> no existe en los servidores de Garena.
+                            El ID <strong style="color:#ff4b2b;">${uid}</strong> no fue encontrado en los servidores del juego.
                         </p>
                         <p style="color:#aaa; font-size:0.82rem;">
                             ⚠️ Verifica que el ID sea correcto e intenta de nuevo.<br>

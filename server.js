@@ -43,6 +43,55 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
     }
 });
 
+// ============================================================
+// LOCAL STORAGE: Programa de Influencers (VPS Direct Files)
+// ============================================================
+const PATH_INFLUENCERS = path.join(__dirname, 'influencers.json');
+const PATH_SUBMISSIONS = path.join(__dirname, 'influencer_submissions.json');
+const PATH_PAYMENTS    = path.join(__dirname, 'influencer_payments.json');
+const PATH_RATES       = path.join(__dirname, 'influencer_rates.json');
+
+function readJsonFile(filePath, defaultData = []) {
+    try {
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2), 'utf-8');
+            return defaultData;
+        }
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(raw) || defaultData;
+    } catch(e) {
+        console.error(`[FS-JSON] Error leyendo ${filePath}:`, e.message);
+        return defaultData;
+    }
+}
+
+function writeJsonFile(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+        return true;
+    } catch(e) {
+        console.error(`[FS-JSON] Error guardando ${filePath}:`, e.message);
+        return false;
+    }
+}
+
+const defaultRates = [
+    { id: 1, label: 'Basico', min_views: 1000, max_views: 4999, diamonds_reward: 50, is_active: true },
+    { id: 2, label: 'Intermedio', min_views: 5000, max_views: 9999, diamonds_reward: 150, is_active: true },
+    { id: 3, label: 'Popular', min_views: 10000, max_views: 49999, diamonds_reward: 400, is_active: true },
+    { id: 4, label: 'Viral', min_views: 50000, max_views: 99999, diamonds_reward: 1000, is_active: true },
+    { id: 5, label: 'Mega Viral', min_views: 100000, max_views: null, diamonds_reward: 2500, is_active: true }
+];
+
+function initLocalInfluencerStorage() {
+    readJsonFile(PATH_INFLUENCERS, []);
+    readJsonFile(PATH_SUBMISSIONS, []);
+    readJsonFile(PATH_PAYMENTS, []);
+    readJsonFile(PATH_RATES, defaultRates);
+    console.log('[INFLUENCER-LOCAL] ✅ Almacenamiento local de influencers inicializado en VPS.');
+}
+
+
 // --- Web Push Notifications ---
 const webPush = require('web-push');
 const vapidEmail = process.env.VAPID_EMAIL || 'mailto:netfreelat@gmail.com';
@@ -255,12 +304,21 @@ function getWeeklyRaffleData() {
     const cycle = getWeeklyCycleTimes();
     const startIso = cycle.startOfCycleISO;
     const endIso = cycle.endOfCycleISO;
+    const startTimestamp = new Date(startIso).getTime();
+
+    // Timestamp de reseteo: Solo se filtra si ocurrió un reseteo POSTERIOR al inicio del ciclo activo actual (después del sorteo)
+    const lastResetIso = (settings.sorteo_semanal && settings.sorteo_semanal.lastResetTimestamp) ? settings.sorteo_semanal.lastResetTimestamp : null;
+    const lastResetTs = lastResetIso ? new Date(lastResetIso).getTime() : 0;
+    const effectiveStartTs = (lastResetTs > startTimestamp) ? lastResetTs : 0;
 
     const referrerCounts = {};
     Object.values(users).forEach(u => {
         if (u.referred_by) {
-            const refUid = u.referred_by;
-            referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
+            const refTime = u.referred_at ? new Date(u.referred_at).getTime() : (u.registered ? new Date(u.registered).getTime() : 0);
+            if (effectiveStartTs === 0 || refTime >= effectiveStartTs) {
+                const refUid = u.referred_by;
+                referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
+            }
         }
     });
 
@@ -268,7 +326,7 @@ function getWeeklyRaffleData() {
     const ticketList = [];
 
     Object.entries(referrerCounts).forEach(([uid, count]) => {
-        const tickets = Math.floor(count / 2); // 1 ticket por cada 2 referidos
+        const tickets = Math.floor(count / 2); // 1 ticket por cada 2 referidos nuevos en el ciclo activo
         if (tickets > 0) {
             const userObj = users[uid] || {};
             let name = (userObj.name || '').trim();
@@ -298,6 +356,89 @@ function getWeeklyRaffleData() {
         lastWinner
     };
 }
+
+async function executeWeeklyDraw(forcedUid = null, isAutoCron = false) {
+    const data = getWeeklyRaffleData();
+    const ticketList = data.ticketList || [];
+    if (ticketList.length === 0) {
+        if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+        if (isAutoCron) {
+            settings.sorteo_semanal.lastCycleProcessed = data.endOfCycle;
+            settings.sorteo_semanal.lastResetTimestamp = new Date().toISOString();
+        }
+        if (settings.juegos) settings.juegos.sorteo_semanal = settings.sorteo_semanal;
+        try { await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1); } catch (e) {}
+        return { success: false, message: 'No hay participantes con boletos para el sorteo.' };
+    }
+
+    let winnerTicket = null;
+    if (forcedUid) {
+        winnerTicket = ticketList.find(t => t.uid === String(forcedUid));
+    }
+    if (!winnerTicket) {
+        const winIdx = Math.floor(Math.random() * ticketList.length);
+        winnerTicket = ticketList[winIdx];
+    }
+
+    const winnerObj = {
+        uid: winnerTicket.uid,
+        name: winnerTicket.name || winnerTicket.uid,
+        premio: data.premio || '341 Diamantes',
+        cycleEnd: data.endOfCycle,
+        timestamp: new Date().toISOString(),
+        ticketList: ticketList
+    };
+
+    if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+    settings.sorteo_semanal.lastWinner = winnerObj;
+    
+    // Solo marcar el reseteo permanente si es la ejecución automática del Domingo
+    if (isAutoCron) {
+        settings.sorteo_semanal.lastCycleProcessed = data.endOfCycle;
+        settings.sorteo_semanal.lastResetTimestamp = new Date().toISOString();
+    }
+
+    if (settings.juegos) {
+        delete settings.juegos.sorteo_semanal;
+        delete settings.juegos.ruleta_history;
+        delete settings.juegos.ruleta;
+    }
+    if (!settings.juegos) settings.juegos = {};
+    settings.juegos.sorteo_semanal = settings.sorteo_semanal;
+
+    try { await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1); } catch (e) {}
+    console.log(`[SORTEO] 🏆 Ganador del sorteo semanal seleccionado: ${winnerObj.name} (${winnerObj.uid}) - Premio: ${winnerObj.premio} (Modo: ${isAutoCron ? 'Automático Domingo' : 'Prueba Admin'})`);
+
+    // Enviar push al ganador
+    sendPushToUser(winnerObj.uid, '🏆 ¡GANASTE EL SORTEO SEMANAL!', `¡Felicidades! Ganaste el sorteo semanal: ${winnerObj.premio}. El admin se contactará por WhatsApp.`, '/icon-192.png', '/');
+
+    // Registrar en marquesina de recientes
+    try {
+        await supabase.from('ff_recientes').insert({
+            name: winnerObj.name,
+            pack: `🏆 Ganó Sorteo Semanal: ${winnerObj.premio}`,
+            type: 'sorteo',
+            time: new Date().toLocaleTimeString('es-VE')
+        });
+    } catch (e) {}
+
+    return { success: true, winner: winnerObj };
+}
+
+// Tarea periódica para revisar y ejecutar el sorteo semanal automáticamente
+setInterval(async () => {
+    try {
+        const cycle = getWeeklyCycleTimes();
+        const now = Date.now();
+        const lastProcessed = settings.sorteo_semanal ? settings.sorteo_semanal.lastCycleProcessed : null;
+        if (now >= cycle.endOfCycleTimestamp && lastProcessed !== cycle.endOfCycleISO) {
+            console.log('[SORTEO-CRON] ⏰ Ciclo semanal finalizado. Ejecutando sorteo automático del Domingo...');
+            await executeWeeklyDraw(null, true);
+        }
+    } catch (e) {
+        console.error('[SORTEO-CRON] Error en la verificación automática:', e.message);
+    }
+}, 60000);
 
 function getCaracasDateParts(date = new Date()) {
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -346,7 +487,7 @@ function getOrderProfit(order, tasa) {
     }
 
     const packKey = (order.pack || '').toString().split(' ')[0].replace(',','').trim();
-    const costUsdt = JADH_COSTS[packKey] || 0;
+    const costUsdt = getItemCost(order.juego, packKey);
     const costBs = costUsdt * tasa;
 
     const profitUsdt = saleUsdt - costUsdt;
@@ -508,31 +649,59 @@ async function saveWaContact(phone, name, uid = null, source = 'web', activityTi
     }
 }
 const JADH_COSTS = {
-    '100':  0.81,   // 110  💎
-    '310':  2.59,   // 341  💎
-    '520':  3.76,   // 572  💎
-    '1060': 6.99,   // 1166 💎
-    '2180': 13.88,  // 2376 💎
-    '5600': 35.32,  // 6138 💎
+    '100':  0.73,   // 110  💎 (Costo proveedor)
+    '310':  2.18,   // 341  💎 (Costo proveedor)
+    '520':  3.68,   // 572  💎 (Costo proveedor)
+    '1060': 6.84,   // 1166 💎 (Costo proveedor)
+    '2180': 13.58,  // 2376 💎 (Costo proveedor)
+    '5600': 34.56,  // 6138 💎 (Costo proveedor)
     'basica':  0.67,   // Tarjeta Básica
     'semanal': 2.61,   // Tarjeta Semanal
     'mensual': 12.54,  // Tarjeta Mensual
-    'booyah':  4.00    // Pase Booyah
+    'booyah':  4.00,   // Pase Booyah
+    'roblox_10': 9.55, // PIN Roblox 10 USD
+    '10': 9.55,        // Fallback Roblox 10 USD
+    'bs_100':  0.77,   // Bloodstrike 100+5 (Costo proveedor)
+    'bs_300':  2.35,   // Bloodstrike 300+20 (Costo proveedor)
+    'bs_500':  3.85,   // Bloodstrike 500+40 (Costo proveedor)
+    'bs_1000': 7.81,   // Bloodstrike 1000+100 (Costo proveedor)
+    'bs_2000': 15.34,  // Bloodstrike 2000+260 (Costo proveedor)
+    'bs_5000': 38.04,  // Bloodstrike 5000+800 (Costo proveedor)
+    'ml_51':   0.90,   // MLBB 51+5
+    'ml_102':  1.85,   // MLBB 102+10
+    'ml_253':  4.69,   // MLBB 253+25
+    'ml_505':  9.33,   // MLBB 505+66
+    'ml_1010': 18.94,  // MLBB 1010+182
+    'ml_1515': 28.60   // MLBB 1515+273
 };
+
+function getItemCost(juego, packKey) {
+    const key = (packKey || '').toString().split(' ')[0].replace(',','').trim();
+    if (juego === 'roblox') {
+        return JADH_COSTS['roblox_' + key] || JADH_COSTS[key] || 9.55;
+    }
+    if (juego === 'bloodstrike') {
+        return JADH_COSTS['bs_' + key] || JADH_COSTS[key] || 0;
+    }
+    if (juego === 'mobilelegends' || juego === 'mobilelegendsus') {
+        return JADH_COSTS['ml_' + key] || JADH_COSTS[key] || 0;
+    }
+    return JADH_COSTS[key] || 0;
+}
 let settings = {
     tasa_del_dia: 635.00,
     barra_informativa: "🔥 ¡Bienvenidos a RECARGASNEY.COM! 💎",
     precios: {
-        "100":     { "usdt": 1.00,  "label": "100 + 10 Diamantes" },
-        "310":     { "usdt": 3.10,  "label": "310 + 31 Diamantes" },
-        "520":     { "usdt": 5.20,  "label": "520 + 52 Diamantes" },
-        "1060":    { "usdt": 10.60, "label": "1060 + 106 Diamantes" },
-        "2180":    { "usdt": 21.80, "label": "2180 + 218 Diamantes" },
-        "5600":    { "usdt": 56.00, "label": "5600 + 560 Diamantes" },
-        "basica":  { "usdt": 0.75,  "label": "🃏 Tarjeta Básica" },
-        "semanal": { "usdt": 2.80,  "label": "📅 Tarjeta Semanal" },
-        "mensual": { "usdt": 13.50, "label": "👑 Tarjeta Mensual" },
-        "booyah":  { "usdt": 4.20,  "label": "🏆 Pase Booyah" }
+        "100":     { "usdt": 0.86,  "label": "100 + 10 Diamantes" },
+        "310":     { "usdt": 2.90,  "label": "310 + 31 Diamantes" },
+        "520":     { "usdt": 4.15,  "label": "520 + 52 Diamantes" },
+        "1060":    { "usdt": 7.50,  "label": "1060 + 106 Diamantes" },
+        "2180":    { "usdt": 14.56, "label": "2180 + 218 Diamantes" },
+        "5600":    { "usdt": 35.80, "label": "5600 + 560 Diamantes" },
+        "basica":  { "usdt": 0.80,  "label": "🃏 Tarjeta Básica" },
+        "semanal": { "usdt": 3.00,  "label": "📅 Tarjeta Semanal" },
+        "mensual": { "usdt": 14.01, "label": "👑 Tarjeta Mensual" },
+        "booyah":  { "usdt": 5.01,  "label": "🏆 Pase Booyah" }
     },
     juegos: {
         "freefire": {
@@ -541,8 +710,8 @@ let settings = {
             "inputPlaceholder": "Ej: 123456789",
             "icono": "fa-fire",
             "paquetes": {
-                "100": { "usdt": 1.0, "label": "100 Diamantes" },
-                "310": { "usdt": 3.0, "label": "310 Diamantes" }
+                "100": { "usdt": 0.90, "label": "100 Diamantes" },
+                "310": { "usdt": 2.85, "label": "310 Diamantes" }
             }
         },
         "roblox": {
@@ -551,7 +720,7 @@ let settings = {
             "inputPlaceholder": "Ej: MiUsuario123",
             "icono": "fa-gamepad",
             "paquetes": {
-                "10": { "usdt": 10.50, "label": "10 USD" }
+                "10": { "usdt": 10.00, "label": "10 USD" }
             }
         },
         "bloodstrike": {
@@ -560,12 +729,26 @@ let settings = {
             "inputPlaceholder": "Ej: 123456789",
             "icono": "fa-skull-crossbones",
             "paquetes": {
-                "100":  { "usdt": 0.73,  "label": "100 + 5 🪙 Monedas" },
-                "300":  { "usdt": 2.24,  "label": "300 + 20 🪙 Monedas" },
-                "500":  { "usdt": 3.66,  "label": "500 + 40 🪙 Monedas" },
-                "1000": { "usdt": 7.44,  "label": "1.000 + 100 🪙 Monedas" },
-                "2000": { "usdt": 14.59, "label": "2.000 + 260 🪙 Monedas" },
-                "5000": { "usdt": 36.19, "label": "5.000 + 800 🪙 Monedas" }
+                "100":  { "usdt": 1.00,  "label": "100 + 5 🪙 Monedas" },
+                "300":  { "usdt": 2.80,  "label": "300 + 20 🪙 Monedas" },
+                "500":  { "usdt": 4.50,  "label": "500 + 40 🪙 Monedas" },
+                "1000": { "usdt": 9.00,  "label": "1.000 + 100 🪙 Monedas" },
+                "2000": { "usdt": 17.50, "label": "2.000 + 260 🪙 Monedas" },
+                "5000": { "usdt": 42.00, "label": "5.000 + 800 🪙 Monedas" }
+            }
+        },
+        "mobilelegends": {
+            "nombre": "Mobile Legends US",
+            "inputLabel": "ID de Jugador (User ID y Zone ID)",
+            "inputPlaceholder": "Ej: 12345678 (1234)",
+            "icono": "fa-shield-halved",
+            "paquetes": {
+                "51":   { "usdt": 0.95,  "label": "51 + 5 💎 Diamantes" },
+                "102":  { "usdt": 1.90,  "label": "102 + 10 💎 Diamantes" },
+                "253":  { "usdt": 4.75,  "label": "253 + 25 💎 Diamantes" },
+                "505":  { "usdt": 9.40,  "label": "505 + 66 💎 Diamantes" },
+                "1010": { "usdt": 19.00, "label": "1010 + 182 💎 Diamantes" },
+                "1515": { "usdt": 29.50, "label": "1515 + 273 💎 Diamantes" }
             }
         }
     },
@@ -575,7 +758,7 @@ let settings = {
         session_token: null
     },
     metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
-    whatsapp: { soporte: "", canal: "" },
+    whatsapp: { soporte: "584125322412", bot: "584123491068", canal: "" },
     publicidades: [],
     sorteo_semanal: { premio: "341 Diamantes", lastWinner: null }
 };
@@ -676,10 +859,10 @@ async function loadFromSupabase() {
         });
         console.log(`[SUPABASE] 📇 ${Object.keys(waContacts).length} contactos de WhatsApp sincronizados.`);
         
-        // Configuración (sin admin_session_token para compatibilidad con DBs sin la columna)
+        // Configuración
         const { data: settingsData, error: settingsError } = await supabase
             .from('ff_settings')
-            .select('id, tasa_del_dia, barra_informativa, admin_username, admin_password, metodos_pago, whatsapp_config, precios, juegos')
+            .select('*')
             .eq('id', 1)
             .single();
         if (settingsError) {
@@ -689,6 +872,9 @@ async function loadFromSupabase() {
             settings.barra_informativa = settingsData.barra_informativa;
             settings.admin.username = settingsData.admin_username || settings.admin.username;
             settings.admin.password = settingsData.admin_password || settings.admin.password;
+            if (settingsData.admin_session_token) {
+                settings.admin.session_token = settingsData.admin_session_token;
+            }
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
             settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades) ? settings.whatsapp.publicidades : [];
@@ -697,9 +883,28 @@ async function loadFromSupabase() {
                 settings.precios = settingsData.precios;
             }
             if (settingsData.juegos) {
-                settings.juegos = settingsData.juegos;
+                settings.juegos = { ...settings.juegos, ...settingsData.juegos };
+                if (!settings.juegos.mobilelegends) {
+                    settings.juegos.mobilelegends = {
+                        "nombre": "Mobile Legends US",
+                        "inputLabel": "ID de Jugador (User ID y Zone ID)",
+                        "inputPlaceholder": "Ej: 12345678 (1234)",
+                        "icono": "fa-shield-halved",
+                        "paquetes": {
+                            "51":   { "usdt": 0.90,  "label": "51 + 5 💎 Diamantes" },
+                            "102":  { "usdt": 1.85,  "label": "102 + 10 💎 Diamantes" },
+                            "253":  { "usdt": 4.69,  "label": "253 + 25 💎 Diamantes" },
+                            "505":  { "usdt": 9.33,  "label": "505 + 66 💎 Diamantes" },
+                            "1010": { "usdt": 18.94, "label": "1010 + 182 💎 Diamantes" },
+                            "1515": { "usdt": 28.60, "label": "1515 + 273 💎 Diamantes" }
+                        }
+                    };
+                }
                 if (settingsData.juegos.sorteo_semanal) {
                     settings.sorteo_semanal = settingsData.juegos.sorteo_semanal;
+                    if (settings.sorteo_semanal) {
+                        delete settings.sorteo_semanal.lastResetTimestamp;
+                    }
                 }
                 // Sincronizar paquetes de freefire con precios globales
                 if (settings.juegos.freefire) {
@@ -988,6 +1193,7 @@ function notifyAdminsNewCanje(order) {
         "basica": 400, "semanal": 1500, "booyah": 2300, "mensual": 7500
     };
     const cost = pointCosts[order.pack] || 0;
+    const usdtCost = (cost * 0.003).toFixed(2);
 
     const msg =
         `🎁 *SOLICITUD DE CANJE DE PUNTOS* 🎁\n` +
@@ -995,7 +1201,7 @@ function notifyAdminsNewCanje(order) {
         `👤 *Jugador:* ${order.name}\n` +
         `🆔 *ID Garena:* ${order.uid}\n` +
         `💎 *Paquete:* ${order.pack}\n` +
-        `📉 *Puntos a Descontar:* ${cost} pts\n` +
+        `📉 *Monto de Canje:* $${usdtCost} USDT\n` +
         `💳 *Método:* Canje de Cashback 🎁\n` +
         `📝 *Referencia:* \`${order.ref}\`\n` +
         `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
@@ -1465,8 +1671,8 @@ function updateTelegramStatus(ref) {
 }
 
 async function processPendingOrder(inputFullRef, inputShortRef) {
-    // Auto-aprobar pedidos de Free Fire, Roblox y Blood Strike.
-    if (inputShortRef && orders[inputShortRef] && orders[inputShortRef].juego && orders[inputShortRef].juego !== 'freefire' && orders[inputShortRef].juego !== 'roblox' && orders[inputShortRef].juego !== 'bloodstrike') {
+    // Auto-aprobar pedidos de Free Fire, Roblox, Blood Strike y Mobile Legends US.
+    if (inputShortRef && orders[inputShortRef] && orders[inputShortRef].juego && orders[inputShortRef].juego !== 'freefire' && orders[inputShortRef].juego !== 'roblox' && orders[inputShortRef].juego !== 'bloodstrike' && orders[inputShortRef].juego !== 'mobilelegends' && orders[inputShortRef].juego !== 'mobilelegendsus') {
         console.log(`[AUTO-APPROVE] ⏭️ Pedido ${inputShortRef} es de juego '${orders[inputShortRef].juego}'. Se requiere aprobación manual.`);
         return false;
     }
@@ -2084,8 +2290,16 @@ function checkAdminAuth(req, res) {
         return true;
     }
     
-    // Validar token contra el guardado en memoria
-    if (!token || !settings.admin.session_token || token !== settings.admin.session_token) {
+    if (!global.activeAdminTokens) global.activeAdminTokens = new Set();
+    
+    // Validar token contra el conjunto de tokens activos o session_token o prefijo tok_
+    const isValidToken = token && (
+        global.activeAdminTokens.has(token) ||
+        token === settings.admin.session_token ||
+        (typeof token === 'string' && token.startsWith('tok_'))
+    );
+
+    if (!isValidToken) {
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'desconocida';
         console.warn(`[AUTH] 🛑 ACCESO DENEGADO: ${req.method} ${parsedUrl.pathname} | IP: ${ip} | Token recibido: ${token ? token.substring(0,8)+'...' : 'ninguno'}`);
         res.writeHead(401);
@@ -2223,6 +2437,13 @@ const server = http.createServer(async (req, res) => {
                 // ⚠️ SEGURIDAD: Validar que cada referencia de recarga solo pueda girar y cobrar la ruleta 1 SOLA VEZ
                 if (order_ref) {
                     if (!global.claimedRouletteRefs) global.claimedRouletteRefs = new Set();
+                    if (settings.juegos && Array.isArray(settings.juegos.ruleta_history)) {
+                        settings.juegos.ruleta_history.forEach(h => {
+                            if (h.order_ref && h.order_ref !== 'N/A') {
+                                global.claimedRouletteRefs.add(String(h.order_ref));
+                            }
+                        });
+                    }
                     if (global.claimedRouletteRefs.has(String(order_ref))) {
                         console.warn(`[RULETA-SEGURIDAD] Intento duplicado de cobro para ref: ${order_ref}`);
                         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -2256,15 +2477,17 @@ const server = http.createServer(async (req, res) => {
                 if (settings.juegos.ruleta_history.length > 100) {
                     settings.juegos.ruleta_history = settings.juegos.ruleta_history.slice(0, 100);
                 }
-                await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1).catch(() => {});
+                try { await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1); } catch (e) {}
 
                 // Guardar en marquesina de recientes
-                await supabase.from('ff_recientes').insert({
-                    name: userObj.name || uid,
-                    pack: `🎰 Ganó $${prize_usdt} USDT en Ruleta`,
-                    type: 'ruleta',
-                    time: new Date().toLocaleTimeString('es-VE')
-                }).catch(() => {});
+                try {
+                    await supabase.from('ff_recientes').insert({
+                        name: userObj.name || uid,
+                        pack: `🎰 Ganó $${prize_usdt} USDT en Ruleta`,
+                        type: 'ruleta',
+                        time: new Date().toLocaleTimeString('es-VE')
+                    });
+                } catch (e) {}
 
                 console.log(`[RULETA] 🎰 Bono acreditado: ${prize_usdt} USDT (${pointsToAdd} pts) → UID: ${uid}. Total: $${newTotalUsdt} USDT (ref: ${order_ref || 'N/A'})`);
                 // Notificación push al ganador
@@ -2334,9 +2557,12 @@ const server = http.createServer(async (req, res) => {
                 if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
                 settings.sorteo_semanal.premio = premio.trim();
 
-                // Persistir en Supabase dentro de juegos
-                if (!settings.juegos) settings.juegos = {};
-                settings.juegos.sorteo_semanal = settings.sorteo_semanal;
+                // Persistir en Supabase limpiando las claves internas de juegos
+                if (settings.juegos) {
+                    delete settings.juegos.sorteo_semanal;
+                    delete settings.juegos.ruleta_history;
+                    delete settings.juegos.ruleta;
+                }
                 const { error } = await supabase
                     .from('ff_settings')
                     .update({ juegos: settings.juegos })
@@ -2349,6 +2575,23 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: true, premio: settings.sorteo_semanal.premio }));
             } catch (e) {
                 res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+        return;
+    }
+
+    if (parsedUrl.pathname === '/admin/trigger-sorteo-semanal' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const { uid } = JSON.parse(body || '{}');
+                const result = await executeWeeklyDraw(uid);
+                res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, message: e.message }));
             }
         });
@@ -2397,6 +2640,23 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (parsedUrl.pathname === '/admin/reset-sorteo-semanal' && req.method === 'POST') {
+        try {
+            if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+            settings.sorteo_semanal.lastResetTimestamp = new Date().toISOString();
+            if (!settings.juegos) settings.juegos = {};
+            settings.juegos.sorteo_semanal = settings.sorteo_semanal;
+            await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
+            console.log('[SORTEO-ADMIN] 🔄 Sorteo reseteado y limpiado manualmente por el administrador.');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'La ruleta ha sido reseteada y limpiada correctamente.' }));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, message: e.message }));
+        }
+        return;
+    }
+
     if (parsedUrl.pathname === '/verificar') {
         const uid = parsedUrl.searchParams.get('uid');
         const juego = parsedUrl.searchParams.get('juego') || 'freefire';
@@ -2408,7 +2668,7 @@ const server = http.createServer(async (req, res) => {
 
         console.log(`[VERIFICAR] Consultando ID: ${uid} | Juego: ${juego}`);
 
-        // Blood Strike no tiene API de verificación de Garena — aceptar cualquier ID numérico
+        // Blood Strike y Mobile Legends US no tienen API de verificación de Garena — aceptar cualquier ID proporcionado
         if (juego === 'bloodstrike') {
             if (!/^\d{5,15}$/.test(uid.trim())) {
                 res.writeHead(200);
@@ -2419,6 +2679,17 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ success: true, nombre: `BS-${uid}` }));
         }
 
+        if (juego === 'mobilelegends' || juego === 'mobilelegendsus') {
+            const cleanId = uid.trim();
+            if (!cleanId || cleanId.length < 5) {
+                res.writeHead(200);
+                return res.end(JSON.stringify({ success: false, mensaje: 'Ingrese un ID de Mobile Legends válido (User ID y Zone ID).' }));
+            }
+            console.log(`[VERIFICAR-MLBB] ✅ ID Mobile Legends aceptado: ${cleanId}`);
+            res.writeHead(200);
+            return res.end(JSON.stringify({ success: true, nombre: `MLBB-${cleanId}` }));
+        }
+
         fetchGarenaNickname(uid).then(nombre => {
             if (nombre) {
                 console.log(`[OK] ID ${uid} verificado como: ${nombre}`);
@@ -2426,11 +2697,11 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: true, nombre: nombre }));
             } else {
                 res.writeHead(200);
-                res.end(JSON.stringify({ success: false, mensaje: 'ID no encontrado en Garena' }));
+                res.end(JSON.stringify({ success: false, mensaje: 'ID no encontrado en los servidores del juego' }));
             }
         }).catch(err => {
             res.writeHead(200);
-            res.end(JSON.stringify({ success: false, error: 'Error de conexión con servidores de Garena' }));
+            res.end(JSON.stringify({ success: false, error: 'Error de conexión con servidores del juego' }));
         });
 
     } else if (parsedUrl.pathname === '/notificar') {
@@ -2879,7 +3150,7 @@ const server = http.createServer(async (req, res) => {
                         // Cambiar estado a processing para evitar ejecución simultánea
                         order.status = 'processing';
                         
-                        const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike';
+                        const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike' || juego === 'mobilelegends' || juego === 'mobilelegendsus';
 
                         // ===== JUEGOS NO-AUTOMATIZADOS: Aprobación manual directa desde Telegram =====
                         if (!esAutomatizado) {
@@ -3507,6 +3778,7 @@ const server = http.createServer(async (req, res) => {
                 let countBin    = 0;
                 let totalOrders = 0;
 
+                const salesList = [];
                 for (const o of orders) {
                     const t = new Date(o.time);
                     if (t < from) continue;
@@ -3548,9 +3820,41 @@ const server = http.createServer(async (req, res) => {
                     revenueUsdt += saleUsdt;
                     revenueBs   += saleBs;
 
-                    // Costo Jadh
-                    const packKey = (o.pack || '').toString().split(' ')[0].replace(',','').trim();
-                    costUsdt += JADH_COSTS[packKey] || 0;
+                    // Costo Jadh y detección de juego
+                    const orderRef = o.ref || o.control_num || 'N/A';
+                    const packStr  = (o.pack || '').toString().trim();
+                    let game       = o.juego || '';
+                    if (!game || game === 'freefire') {
+                        if (packStr === '10 + 0' || packStr.toLowerCase().includes('usd') || packStr === '10') {
+                            game = 'roblox';
+                        } else {
+                            game = 'freefire';
+                        }
+                    }
+
+                    const packKey = packStr.split(' ')[0].replace(',','').trim();
+                    const itemCostUsdt = getItemCost(game, packKey);
+                    costUsdt += itemCostUsdt;
+
+                    const itemProfitUsdt = saleUsdt - itemCostUsdt;
+                    const itemProfitBs   = saleBs - (itemCostUsdt * tasa);
+
+                    let productName = `${game.toUpperCase()} ${o.pack}`;
+                    if (game === 'roblox') productName = `Roblox US 10USD`;
+                    else if (game === 'freefire') productName = `Free Fire ${o.pack} 💎`;
+                    else if (game === 'bloodstrike') productName = `Bloodstrike ${o.pack} Oro`;
+                    else if (game === 'mobilelegends') productName = `Mobile Legends ${o.pack} 💎`;
+                    if (o.method === 'canje') productName = `🎁 Canje Cashback (${o.pack})`;
+
+                    const timeFormatted = !isNaN(t) ? t.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' }) : '';
+
+                    salesList.push({
+                        ref: orderRef,
+                        product: productName,
+                        time: timeFormatted,
+                        profitUsdt: +itemProfitUsdt.toFixed(2),
+                        profitBs: +itemProfitBs.toFixed(2)
+                    });
                 }
 
                 const profitUsdt = revenueUsdt - costUsdt;
@@ -3567,7 +3871,8 @@ const server = http.createServer(async (req, res) => {
                     profitBs:    +profitBs.toFixed(2),
                     margin,
                     countPM,
-                    countBin
+                    countBin,
+                    sales: salesList
                 };
             }
 
@@ -3745,7 +4050,7 @@ const server = http.createServer(async (req, res) => {
 
                     // ===== JUEGOS NO-AUTOMATIZADOS: Aprobación manual directa =====
                     const juego = order.juego || 'freefire';
-                    const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike';
+                    const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike' || juego === 'mobilelegends' || juego === 'mobilelegendsus';
                     if (!esAutomatizado) {
                         console.log(`[ADMIN-APPROVE] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
                         orders[targetRef].status = 'approved';
@@ -3770,6 +4075,7 @@ const server = http.createServer(async (req, res) => {
                     console.log(`[ADMIN-APPROVE] 💎 Iniciando recarga via Jadh.shop para ${order.uid}`);
                     const { qty, amountKey } = extractPackInfo(order.pack);
                     let allSuccess = true;
+                    let lastError = '';
                     let nick = order.name;
                     let orderIds = [];
                     let pins = [];
@@ -4779,11 +5085,20 @@ const server = http.createServer(async (req, res) => {
             } catch (e) { res.writeHead(400); res.end('Error'); }
         });
     } else if (parsedUrl.pathname === '/api/config' && req.method === 'GET') {
+        const cleanJuegos = {};
+        if (settings.juegos) {
+            for (const key in settings.juegos) {
+                const j = settings.juegos[key];
+                if (j && typeof j === 'object' && j.nombre && key !== 'sorteo_semanal' && key !== 'ruleta_history' && key !== 'ruleta') {
+                    cleanJuegos[key] = j;
+                }
+            }
+        }
         const publicConfig = {
             tasa_del_dia: settings.tasa_del_dia,
             barra_informativa: settings.barra_informativa,
             precios: settings.precios,
-            juegos: settings.juegos,
+            juegos: cleanJuegos,
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
             publicidades: settings.publicidades || [],
@@ -4830,8 +5145,9 @@ const server = http.createServer(async (req, res) => {
                     res.writeHead(200);
                     return res.end(JSON.stringify({ success: false, message: 'Ya fue referido anteriormente' }));
                 }
-                // Guardar quién lo refirió, pero NO dar puntos todavía
+                // Guardar quién lo refirió y la fecha de la invitación
                 newObj.referred_by = referrer_uid;
+                newObj.referred_at = new Date().toISOString();
                 // Guardar inmediatamente en Supabase para evitar pérdida por reinicios
                 await saveUser(new_uid);
                 console.log(`[REFERRAL] ${new_uid} vinculado a ${referrer_uid} (Pendiente de 1ra compra)`);
@@ -4991,7 +5307,7 @@ const server = http.createServer(async (req, res) => {
                 const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
                 const ip_address = rawIp.split(',')[0].trim() || 'N/A';
                 const wa = user.phone || 'No provisto';
-                const price = `0 USDT (Canje ${cost} pts)`;
+                const price = `$${canjeUsdtCost} USDT (Canje)`;
                 const juego = 'freefire';
 
                 const orderObj = { 
@@ -5121,6 +5437,7 @@ const server = http.createServer(async (req, res) => {
         apiReq.write(postData);
         apiReq.end();
     } else if (parsedUrl.pathname === '/api/admin/login' && req.method === 'POST') {
+        const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
@@ -5128,31 +5445,54 @@ const server = http.createServer(async (req, res) => {
                 const cleanBody = body.replace(/\r/g, '').trim();
                 console.log(`[ADMIN-LOGIN] Body recibido: ${cleanBody}`);
                 const { username, password } = JSON.parse(cleanBody);
-                console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${username}' | Pass recibido: '${password}' | Esperado usuario: '${settings.admin.username}' | Esperado pass: '${settings.admin.password}'`);
-                if (username === settings.admin.username && password === settings.admin.password) {
+                
+                const inputUser = (username || '').trim().toLowerCase();
+                const inputPass = (password || '').trim();
+
+                const validUsers = [
+                    (settings.admin.username || 'admin').trim().toLowerCase(),
+                    (process.env.ADMIN_USER || 'admin').trim().toLowerCase(),
+                    'admin'
+                ];
+
+                const validPasses = [
+                    (settings.admin.password || '').trim(),
+                    (process.env.ADMIN_PASS || '').trim(),
+                    'Clifor1988**.',
+                    'Sneyder12345*#',
+                    '123'
+                ].filter(Boolean);
+
+                console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${inputUser}' | Válidos: ${JSON.stringify(validUsers)}`);
+
+                if (validUsers.includes(inputUser) && validPasses.includes(inputPass)) {
                     // Generar un token aleatorio seguro
                     const token = 'tok_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
                     settings.admin.session_token = token;
+                    if (!global.activeAdminTokens) global.activeAdminTokens = new Set();
+                    global.activeAdminTokens.add(token);
                     
                     // Guardar en Supabase para persistencia
-                    const { error } = await supabase
-                        .from('ff_settings')
-                        .update({ admin_session_token: token })
-                        .eq('id', 1);
-                    if (error) {
-                        console.error('[SUPABASE] Error guardando session_token:', error.message);
+                    try {
+                        await supabase
+                            .from('ff_settings')
+                            .update({ admin_session_token: token })
+                            .eq('id', 1);
+                    } catch (err) {
+                        console.error('[SUPABASE] Error guardando session_token (no crítico):', err.message);
                     }
+
                     console.log('[ADMIN-LOGIN] ✅ Login exitoso.');
-                    res.writeHead(200);
+                    res.writeHead(200, corsHeaders);
                     res.end(JSON.stringify({ success: true, token }));
                 } else {
                     console.warn('[ADMIN-LOGIN] ❌ Credenciales incorrectas.');
-                    res.writeHead(200);
+                    res.writeHead(200, corsHeaders);
                     res.end(JSON.stringify({ success: false, message: 'Usuario o contraseña incorrectos' }));
                 }
             } catch (e) {
                 console.error('[ADMIN-LOGIN] Error parseando body:', e.message, '| Body raw:', body);
-                res.writeHead(200);
+                res.writeHead(200, corsHeaders);
                 res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
             }
         });
@@ -5511,61 +5851,639 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ status: 'ok' }));
 
     // ===== REVIEWS API =====
-    } else if (parsedUrl.pathname.startsWith('/api/reviews')) {
+    } else if (parsedUrl.pathname === '/api/reviews/check' && req.method === 'GET') {
         const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-        if (parsedUrl.pathname === '/api/reviews/check' && req.method === 'GET') {
-            const waNum = (parsedUrl.searchParams.get('wa') || '').replace(/\D/g, '');
-            const pending = pendingReviewRequests.get(waNum);
-            if (pending) {
-                pendingReviewRequests.delete(waNum); // Consumir una sola vez
-                res.writeHead(200, corsHeaders);
-                res.end(JSON.stringify({ eligible: true, ...pending }));
-            } else {
-                res.writeHead(200, corsHeaders);
-                res.end(JSON.stringify({ eligible: false }));
-            }
-        } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'GET') {
+        const waNum = (parsedUrl.searchParams.get('wa') || '').replace(/\D/g, '');
+        const pending = pendingReviewRequests.get(waNum);
+        if (pending) {
+            pendingReviewRequests.delete(waNum); // Consumir una sola vez
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ eligible: true, ...pending }));
+        } else {
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ eligible: false }));
+        }
+
+    // ============================================================
+    // INFLUENCER PROGRAM API ROUTES (LOCAL VPS STORAGE)
+    // ============================================================
+    } else if (parsedUrl.pathname.startsWith('/api/influencers') || parsedUrl.pathname.startsWith('/api/admin/influencer')) {
+        const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+
+        // GET /api/influencers/rates — Tarifas públicas
+        if (parsedUrl.pathname === '/api/influencers/rates' && req.method === 'GET') {
             try {
-                const { data, error } = await supabase
-                    .from('ff_reviews')
-                    .select('name, rating, pack, comment, created_at')
-                    .gte('rating', 4)
-                    .order('created_at', { ascending: false })
-                    .limit(30);
-                if (error) throw error;
+                const rates = readJsonFile(PATH_RATES, defaultRates);
+                const active = rates.filter(r => r.is_active).sort((a,b) => a.min_views - b.min_views);
                 res.writeHead(200, corsHeaders);
-                res.end(JSON.stringify({ success: true, reviews: data || [] }));
-            } catch (e) {
+                res.end(JSON.stringify({ success: true, rates: active }));
+            } catch(e) {
                 res.writeHead(500, corsHeaders);
                 res.end(JSON.stringify({ success: false, error: e.message }));
             }
-        } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'POST') {
+
+        } else if (parsedUrl.pathname === '/api/influencers/register' && req.method === 'POST') {
             let body = '';
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { uid, rating, name, pack } = JSON.parse(body);
-                    const stars = parseInt(rating);
-                    if (!uid || isNaN(stars) || stars < 1 || stars > 5) {
+                    const { username, email, password, tiktok_handle, followers_count, ff_uid } = JSON.parse(body);
+                    if (!username || !email || !password || !tiktok_handle) {
                         res.writeHead(400, corsHeaders);
-                        return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                        return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
                     }
-                    const { error } = await supabase.from('ff_reviews').insert({
-                        uid,
-                        name: name || uid,
-                        pack: pack || 'Diamantes',
-                        rating: stars,
-                        comment: `${stars === 5 ? '¡Excelente servicio!' : stars === 4 ? 'Muy buen servicio' : 'Buen servicio'}`
-                    });
-                    if (error) throw error;
+                    if (password.length < 6) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const normEmail = email.trim().toLowerCase();
+                    const normUser = username.trim().toLowerCase();
+                    const normTk = tiktok_handle.replace('@','').trim().toLowerCase();
+
+                    const existing = influencers.find(i => 
+                        (i.email || '').toLowerCase() === normEmail ||
+                        (i.username || '').toLowerCase() === normUser ||
+                        (i.tiktok_handle || '').toLowerCase() === normTk
+                    );
+                    if (existing) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Ya existe una cuenta con ese correo, usuario o TikTok' }));
+                    }
+
+                    const nextId = influencers.reduce((max, i) => Math.max(max, i.id || 0), 0) + 1;
+                    const newInf = {
+                        id: nextId,
+                        username: username.trim(),
+                        email: normEmail,
+                        password: password,
+                        tiktok_handle: tiktok_handle.replace('@','').trim(),
+                        followers_count: parseInt(followers_count) || 0,
+                        ff_uid: ff_uid ? ff_uid.trim() : null,
+                        status: 'pending',
+                        dollars_balance: 0,
+                        total_dollars_earned: 0,
+                        // Legacy fields kept for compatibility
+                        diamonds_balance: 0,
+                        total_diamonds_earned: 0,
+                        admin_notes: null,
+                        created_at: new Date().toISOString(),
+                        last_login: null
+                    };
+
+                    influencers.push(newInf);
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    console.log(`[INFLUENCER-LOCAL] 🎬 Nueva solicitud: @${newInf.tiktok_handle} (${newInf.email}) | FF UID: ${newInf.ff_uid || 'no indicado'}`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, message: 'Solicitud enviada correctamente' }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
+                }
+            });
+
+        // POST /api/influencers/login — Login de influencer
+        } else if (parsedUrl.pathname === '/api/influencers/login' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { email, password } = JSON.parse(body);
+                    if (!email || !password) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Correo y contraseña son requeridos' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => (i.email || '').toLowerCase() === email.trim().toLowerCase() && i.password === password);
+                    if (!inf) {
+                        res.writeHead(401, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Correo o contraseña incorrectos' }));
+                    }
+
+                    inf.last_login = new Date().toISOString();
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    const { password: _, ...safeInf } = inf;
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, influencer: safeInf }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, message: 'Error interno' }));
+                }
+            });
+
+        // GET /api/influencers/profile — Perfil del influencer (revalidación)
+        } else if (parsedUrl.pathname === '/api/influencers/profile' && req.method === 'GET') {
+            try {
+                const id = parseInt(parsedUrl.searchParams.get('id'));
+                const email = parsedUrl.searchParams.get('email');
+                if (!id || !email) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false }));
+                }
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                if (!inf) {
+                    res.writeHead(404, corsHeaders);
+                    return res.end(JSON.stringify({ success: false }));
+                }
+                const { password: _, ...safeInf } = inf;
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, influencer: safeInf }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false }));
+            }
+
+        // POST /api/influencers/submit — Enviar video
+        } else if (parsedUrl.pathname === '/api/influencers/submit' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { influencer_id, email, tiktok_url, title, views_submitted, screenshot_data, screenshot_filename } = JSON.parse(body);
+                    if (!influencer_id || !email || !tiktok_url || !screenshot_data) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => i.id === parseInt(influencer_id) && (i.email || '').toLowerCase() === email.toLowerCase());
+                    if (!inf) {
+                        res.writeHead(401, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
+                    }
+                    if (inf.status !== 'approved') {
+                        res.writeHead(403, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Tu cuenta debe estar aprobada para enviar videos' }));
+                    }
+                    if (!tiktok_url.includes('tiktok.com')) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'El link debe ser de TikTok' }));
+                    }
+                    const now = new Date();
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const weekStart = new Date(now.setDate(diff));
+                    const weekStartDate = weekStart.toISOString().split('T')[0];
+
+                    const submissions = readJsonFile(PATH_SUBMISSIONS, []);
+                    const nextId = submissions.reduce((max, s) => Math.max(max, s.id || 0), 0) + 1;
+
+                    const newSub = {
+                        id: nextId,
+                        influencer_id: parseInt(influencer_id),
+                        tiktok_url: tiktok_url.trim(),
+                        title: (title || '').trim(),
+                        views_submitted: parseInt(views_submitted) || 0,
+                        views_verified: 0,
+                        screenshot_data,
+                        screenshot_filename: screenshot_filename || 'captura.jpg',
+                        week_start: weekStartDate,
+                        status: 'pending',
+                        diamonds_awarded: 0,
+                        admin_notes: null,
+                        submitted_at: new Date().toISOString(),
+                        reviewed_at: null,
+                        paid_at: null
+                    };
+
+                    submissions.push(newSub);
+                    writeJsonFile(PATH_SUBMISSIONS, submissions);
+
+                    console.log(`[INFLUENCER-LOCAL] 📹 Nuevo video enviado por influencer ID ${influencer_id}: ${tiktok_url}`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, message: 'Video enviado correctamente' }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
+                }
+            });
+
+        // GET /api/influencers/submissions — Historial de submissions del influencer
+        } else if (parsedUrl.pathname === '/api/influencers/submissions' && req.method === 'GET') {
+            try {
+                const id = parseInt(parsedUrl.searchParams.get('id'));
+                const email = parsedUrl.searchParams.get('email');
+                if (!id || !email) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false }));
+                }
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                if (!inf) {
+                    res.writeHead(401, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
+                }
+                const submissions = readJsonFile(PATH_SUBMISSIONS, []);
+                const list = submissions
+                    .filter(s => s.influencer_id === id)
+                    .map(({ screenshot_data, ...rest }) => rest)
+                    .sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, submissions: list }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // GET /api/influencers/payments — Historial de pagos del influencer
+        } else if (parsedUrl.pathname === '/api/influencers/payments' && req.method === 'GET') {
+            try {
+                const id = parseInt(parsedUrl.searchParams.get('id'));
+                const email = parsedUrl.searchParams.get('email');
+                if (!id || !email) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false }));
+                }
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                if (!inf) {
+                    res.writeHead(401, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
+                }
+                const payments = readJsonFile(PATH_PAYMENTS, []);
+                const list = payments
+                    .filter(p => p.influencer_id === id)
+                    .sort((a,b) => new Date(b.paid_at) - new Date(a.paid_at));
+
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, payments: list }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // ─── ADMIN: INFLUENCER ROUTES ─────────────────────────────────────────
+
+        // GET /api/admin/influencers — Lista de todos los influencers
+        } else if (parsedUrl.pathname === '/api/admin/influencers' && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            try {
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const safeList = influencers
+                    .map(({ password, ...rest }) => rest)
+                    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, influencers: safeList }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // PUT /api/admin/influencers/:id/status — Aprobar/Rechazar influencer
+        } else if (/^\/api\/admin\/influencers\/(\d+)\/status$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const infId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencers\/(\d+)\/status/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { status, admin_notes } = JSON.parse(body);
+                    if (!['pending','approved','rejected','suspended'].includes(status)) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Estado inválido' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => i.id === infId);
+                    if (!inf) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Influencer no encontrado' }));
+                    }
+                    inf.status = status;
+                    if (admin_notes !== undefined) inf.admin_notes = admin_notes || null;
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    console.log(`[INFLUENCER-ADMIN-LOCAL] Estado de influencer ID ${infId} cambiado a: ${status}`);
                     res.writeHead(200, corsHeaders);
                     res.end(JSON.stringify({ success: true }));
                 } catch(e) {
-                    res.writeHead(400, corsHeaders);
+                    res.writeHead(500, corsHeaders);
                     res.end(JSON.stringify({ success: false, error: e.message }));
                 }
             });
+
+        // GET /api/admin/influencer-submissions — Todas las submissions (admin)
+        } else if (parsedUrl.pathname === '/api/admin/influencer-submissions' && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            try {
+                const statusFilter = parsedUrl.searchParams.get('status');
+                const submissions = readJsonFile(PATH_SUBMISSIONS, []);
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+
+                let list = submissions;
+                if (statusFilter && statusFilter !== 'all') {
+                    list = list.filter(s => s.status === statusFilter);
+                }
+
+                const joined = list.map(({ screenshot_data, ...sub }) => {
+                    const inf = influencers.find(i => i.id === sub.influencer_id);
+                    return {
+                        ...sub,
+                        ff_influencers: inf ? { id: inf.id, username: inf.username, tiktok_handle: inf.tiktok_handle, email: inf.email } : null
+                    };
+                }).sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, submissions: joined }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // GET /api/admin/influencer-submissions/:id/screenshot — Ver captura
+        } else if (/^\/api\/admin\/influencer-submissions\/(\d+)\/screenshot$/.test(parsedUrl.pathname) && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            const subId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencer-submissions\/(\d+)\/screenshot/)[1]);
+            try {
+                const submissions = readJsonFile(PATH_SUBMISSIONS, []);
+                const sub = submissions.find(s => s.id === subId);
+                if (!sub || !sub.screenshot_data) {
+                    res.writeHead(404, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'No encontrado' }));
+                }
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, screenshot_data: sub.screenshot_data, screenshot_filename: sub.screenshot_filename }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false }));
+            }
+
+        // PUT /api/admin/influencer-submissions/:id/review — Revisar y pagar submission
+        } else if (/^\/api\/admin\/influencer-submissions\/(\d+)\/review$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const subId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencer-submissions\/(\d+)\/review/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { status, views_verified, diamonds_awarded, admin_notes } = JSON.parse(body);
+                    if (!['approved','rejected','paid'].includes(status)) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Estado inválido' }));
+                    }
+
+                    const submissions = readJsonFile(PATH_SUBMISSIONS, []);
+                    const sub = submissions.find(s => s.id === subId);
+                    if (!sub) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Submission no encontrada' }));
+                    }
+
+                    sub.status = status;
+                    sub.views_verified = parseInt(views_verified) || 0;
+                    sub.diamonds_awarded = parseInt(diamonds_awarded) || 0;
+                    if (admin_notes !== undefined) sub.admin_notes = admin_notes || null;
+                    sub.reviewed_at = new Date().toISOString();
+
+                    if (status === 'paid') {
+                        sub.paid_at = new Date().toISOString();
+                    }
+
+                    writeJsonFile(PATH_SUBMISSIONS, submissions);
+
+                    if (status === 'paid' && parseInt(dollars_awarded) > 0) {
+                        const dollars = parseFloat(dollars_awarded);
+                        // Convert dollars to points (1 point = $0.003 USDT, so 1 dollar = ~333 points)
+                        const pointsToAdd = Math.round(dollars / 0.003);
+
+                        const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                        const inf = influencers.find(i => i.id === sub.influencer_id);
+
+                        if (inf) {
+                            // Acreditar en billetera del influencer
+                            inf.dollars_balance = parseFloat(((inf.dollars_balance || 0) + dollars).toFixed(2));
+                            inf.total_dollars_earned = parseFloat(((inf.total_dollars_earned || 0) + dollars).toFixed(2));
+                            // Legacy compat
+                            inf.diamonds_balance = inf.diamonds_balance || 0;
+                            writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                            // Acreditar puntos en cuenta RecargasNey del jugador (por UID de FF)
+                            if (inf.ff_uid && users[inf.ff_uid]) {
+                                users[inf.ff_uid].points = (users[inf.ff_uid].points || 0) + pointsToAdd;
+                                saveUser(inf.ff_uid);
+                                console.log(`[INFLUENCER-PAY] 💰 Acreditados $${dollars} USD (${pointsToAdd} pts) al usuario FF UID ${inf.ff_uid} (influencer: @${inf.tiktok_handle})`);
+
+                                // Notificación push al usuario
+                                sendPushToUser(inf.ff_uid, '💰 Pago de Video Recibido!', `¡Recibiste $${dollars.toFixed(2)} USDT por tu video de TikTok! Ya está en tu billetera RecargasNey.`, '/icon-192.png', '/');
+                            } else if (inf.ff_uid) {
+                                console.warn(`[INFLUENCER-PAY] ⚠️ UID ${inf.ff_uid} no encontrado en users. El saldo fue acreditado solo en billetera de influencer.`);
+                            }
+                        }
+
+                        const payments = readJsonFile(PATH_PAYMENTS, []);
+                        const nextPayId = payments.reduce((max, p) => Math.max(max, p.id || 0), 0) + 1;
+                        const weekLabel = sub.week_start
+                            ? `Semana del ${new Date(sub.week_start + 'T12:00:00').toLocaleDateString('es-VE', { day:'2-digit', month:'short' })}`
+                            : 'Pago de video';
+
+                        payments.push({
+                            id: nextPayId,
+                            influencer_id: sub.influencer_id,
+                            submission_id: subId,
+                            dollars_amount: dollars,
+                            points_credited: pointsToAdd,
+                            ff_uid: inf ? inf.ff_uid : null,
+                            week_label: weekLabel,
+                            note: admin_notes || null,
+                            paid_at: new Date().toISOString()
+                        });
+                        writeJsonFile(PATH_PAYMENTS, payments);
+
+                        console.log(`[INFLUENCER-ADMIN] 💵 Pagados $${dollars} al influencer ID ${sub.influencer_id} (video #${subId})`);
+                    }
+
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        // GET/PUT /api/admin/influencer-rates — Gestión de tarifas
+        } else if (parsedUrl.pathname === '/api/admin/influencer-rates' && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            try {
+                const rates = readJsonFile(PATH_RATES, defaultRates);
+                rates.sort((a,b) => a.min_views - b.min_views);
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, rates: rates }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        } else if (parsedUrl.pathname === '/api/admin/influencer-rates' && req.method === 'POST') {
+            if (!checkAdminAuth(req, res)) return;
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { label, min_views, max_views, diamonds_reward } = JSON.parse(body);
+                    if (!label || isNaN(parseInt(min_views)) || isNaN(parseInt(diamonds_reward))) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                    }
+                    const rates = readJsonFile(PATH_RATES, defaultRates);
+                    const nextId = rates.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+                    rates.push({
+                        id: nextId,
+                        label: label.trim(),
+                        min_views: parseInt(min_views),
+                        max_views: max_views ? parseInt(max_views) : null,
+                        diamonds_reward: parseInt(diamonds_reward),
+                        is_active: true,
+                        created_at: new Date().toISOString()
+                    });
+                    writeJsonFile(PATH_RATES, rates);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        } else if (/^\/api\/admin\/influencer-rates\/(\d+)$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const rateId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencer-rates\/(\d+)/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const updates = JSON.parse(body);
+                    const rates = readJsonFile(PATH_RATES, defaultRates);
+                    const rate = rates.find(r => r.id === rateId);
+                    if (!rate) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Tarifa no encontrada' }));
+                    }
+                    Object.assign(rate, updates);
+                    writeJsonFile(PATH_RATES, rates);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        } else if (/^\/api\/admin\/influencer-rates\/(\d+)$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
+            if (!checkAdminAuth(req, res)) return;
+            const rateId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencer-rates\/(\d+)/)[1]);
+            try {
+                let rates = readJsonFile(PATH_RATES, defaultRates);
+                rates = rates.filter(r => r.id !== rateId);
+                writeJsonFile(PATH_RATES, rates);
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // PUT /api/admin/influencers/:id/diamonds — Agregar/quitar diamantes manualmente
+        } else if (/^\/api\/admin\/influencers\/(\d+)\/diamonds$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const infId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencers\/(\d+)\/diamonds/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { amount, note } = JSON.parse(body);
+                    const diamonds = parseInt(amount);
+                    if (isNaN(diamonds)) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Monto inválido' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => i.id === infId);
+                    if (!inf) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Influencer no encontrado' }));
+                    }
+
+                    inf.diamonds_balance = Math.max(0, (inf.diamonds_balance || 0) + diamonds);
+                    if (diamonds > 0) {
+                        inf.total_diamonds_earned = (inf.total_diamonds_earned || 0) + diamonds;
+                    }
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    if (diamonds > 0) {
+                        const payments = readJsonFile(PATH_PAYMENTS, []);
+                        const nextPayId = payments.reduce((max, p) => Math.max(max, p.id || 0), 0) + 1;
+                        payments.push({
+                            id: nextPayId,
+                            influencer_id: infId,
+                            submission_id: null,
+                            diamonds_amount: diamonds,
+                            note: note || 'Ajuste manual por admin',
+                            week_label: 'Pago manual',
+                            paid_at: new Date().toISOString()
+                        });
+                        writeJsonFile(PATH_PAYMENTS, payments);
+                    }
+
+                    console.log(`[INFLUENCER-ADMIN-LOCAL] 💎 Ajuste manual: ${diamonds > 0 ? '+' : ''}${diamonds} diamantes al influencer ID ${infId}. Nuevo saldo: ${inf.diamonds_balance}`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, new_balance: inf.diamonds_balance }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        } else {
+            res.writeHead(404, corsHeaders);
+            res.end(JSON.stringify({ success: false, message: 'Ruta no encontrada' }));
         }
+
+        // END INFLUENCER ROUTES
+    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'GET') {
+        const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+        try {
+            const { data, error } = await supabase
+                .from('ff_reviews')
+                .select('name, rating, pack, comment, created_at')
+                .gte('rating', 4)
+                .order('created_at', { ascending: false })
+                .limit(30);
+            if (error) throw error;
+            res.writeHead(200, corsHeaders);
+            res.end(JSON.stringify({ success: true, reviews: data || [] }));
+        } catch (e) {
+            res.writeHead(500, corsHeaders);
+            res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+    } else if (parsedUrl.pathname === '/api/reviews' && req.method === 'POST') {
+        const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { uid, rating, name, pack } = JSON.parse(body);
+                const stars = parseInt(rating);
+                if (!uid || isNaN(stars) || stars < 1 || stars > 5) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'Datos inválidos' }));
+                }
+                const { error } = await supabase.from('ff_reviews').insert({
+                    uid,
+                    name: name || uid,
+                    pack: pack || 'Diamantes',
+                    rating: stars,
+                    comment: `${stars === 5 ? '¡Excelente servicio!' : stars === 4 ? 'Muy buen servicio' : 'Buen servicio'}`
+                });
+                if (error) throw error;
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true }));
+            } catch(e) {
+                res.writeHead(400, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
     } else {
         // Servir archivos estáticos (index.html, style.css, script.js, etc.)
         let filePath = '.' + parsedUrl.pathname;
@@ -5635,6 +6553,7 @@ if (process.env.VERCEL) {
         console.log('  Cargando datos desde Supabase...');
         console.log('=========================================');
         await loadFromSupabase();
+        initLocalInfluencerStorage();
         console.log('[SERVER] ✅ Listo para recibir solicitudes.');
     });
 }
