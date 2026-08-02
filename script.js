@@ -28,7 +28,14 @@ document.addEventListener('DOMContentLoaded', () => {
         container.style.display = 'block';
         list.innerHTML = '';
 
-        Object.keys(juegos).forEach(key => {
+        const preferredOrder = ['freefire', 'mobilelegends', 'roblox', 'bloodstrike'];
+        const validGameKeys = Object.keys(juegos || {}).filter(key => {
+            const j = juegos[key];
+            return j && typeof j === 'object' && j.nombre && key !== 'sorteo_semanal' && key !== 'ruleta_history' && key !== 'ruleta';
+        });
+        const sortedKeys = preferredOrder.filter(k => validGameKeys.includes(k)).concat(validGameKeys.filter(k => !preferredOrder.includes(k)));
+
+        sortedKeys.forEach(key => {
             const juego = juegos[key];
             const btn = document.createElement('button');
             btn.className = 'btn-secondary-outline game-btn' + (key === currentJuego ? ' active' : '');
@@ -38,68 +45,49 @@ document.addEventListener('DOMContentLoaded', () => {
             const logoImgSrc = juego.logo || `img/${key}_logo.png`;
             btn.innerHTML = `<img src="${logoImgSrc}" alt="${juego.nombre}" class="game-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';"><span style="display: none; font-weight: 700; font-size: 0.9rem;">${juego.nombre}</span>`;
             
-            if (key === 'bloodstrike') {
-                // Blood Strike: flujo normal con ID (igual que Free Fire)
-                btn.onclick = () => {
-                    document.querySelectorAll('.game-btn').forEach(b => {
-                        b.classList.remove('active');
-                        b.style.borderColor = 'rgba(255,255,255,0.2)';
-                        b.style.color = '#fff';
-                    });
-                    btn.classList.add('active');
-                    btn.style.borderColor = 'var(--secondary)';
-                    btn.style.color = 'var(--secondary)';
-                    currentJuego = key;
-                    const input = document.getElementById('player-id');
-                    if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID de Jugador';
-                    // Restaurar vista normal con campo de ID
+            btn.onclick = () => {
+                document.querySelectorAll('.game-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.borderColor = 'rgba(255,255,255,0.2)';
+                    b.style.color = '#fff';
+                });
+                btn.classList.add('active');
+                btn.style.borderColor = 'var(--secondary)';
+                btn.style.color = 'var(--secondary)';
+                currentJuego = key;
+                
+                const input = document.getElementById('player-id');
+                const zoneContainer = document.getElementById('zone-id-container');
+
+                if (key === 'mobilelegends') {
+                    if (input) input.placeholder = 'User ID (Ej: 12345678)';
+                    if (zoneContainer) zoneContainer.style.display = 'flex';
+                } else {
+                    if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID / Usuario';
+                    if (zoneContainer) zoneContainer.style.display = 'none';
+                }
+                
+                renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
+
+                // ── Roblox: saltar directamente a paquetes sin pedir ID ──
+                if (key === 'roblox') {
+                    document.querySelector('.input-group').style.display = 'none';
+                    if (zoneContainer) zoneContainer.style.display = 'none';
+                    document.getElementById('verify-btn').style.display = 'none';
+                    document.getElementById('welcome-section').style.display = 'none';
+                    document.getElementById('packages-section').style.display = 'block';
+                    const titleEl = document.getElementById('packages-section-title');
+                    if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Robux';
+                } else {
+                    // Restaurar vista normal al cambiar a otro juego
                     document.querySelector('.input-group').style.display = 'flex';
                     document.getElementById('verify-btn').style.display = 'flex';
                     document.getElementById('packages-section').style.display = 'none';
                     document.getElementById('welcome-section').style.display = 'none';
-                    document.querySelector('.main-container').classList.remove('expanded');
                     const titleEl = document.getElementById('packages-section-title');
-                    if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Monedas';
-                    renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
-                };
-            } else {
-                btn.onclick = () => {
-                    document.querySelectorAll('.game-btn').forEach(b => {
-                        b.classList.remove('active');
-                        b.style.borderColor = 'rgba(255,255,255,0.2)';
-                        b.style.color = '#fff';
-                    });
-                    btn.classList.add('active');
-                    btn.style.borderColor = 'var(--secondary)';
-                    btn.style.color = 'var(--secondary)';
-                    currentJuego = key;
-                    
-                    const input = document.getElementById('player-id');
-                    if (input) input.placeholder = juego.inputPlaceholder || 'Ingresa ID / Usuario';
-                    
-                    renderPackages(getPackagesForCurrentGame(), APP_CONFIG.tasa_del_dia);
-
-                    // ── Roblox: saltar directamente a paquetes sin pedir ID ──
-                    if (key === 'roblox') {
-                        document.querySelector('.input-group').style.display = 'none';
-                        document.getElementById('verify-btn').style.display = 'none';
-                        document.getElementById('welcome-section').style.display = 'none';
-                        document.getElementById('packages-section').style.display = 'block';
-                        document.querySelector('.main-container').classList.add('expanded');
-                        const titleEl = document.getElementById('packages-section-title');
-                        if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Robux';
-                    } else {
-                        // Restaurar vista normal al cambiar a otro juego
-                        document.querySelector('.input-group').style.display = 'flex';
-                        document.getElementById('verify-btn').style.display = 'flex';
-                        document.getElementById('packages-section').style.display = 'none';
-                        document.getElementById('welcome-section').style.display = 'none';
-                        document.querySelector('.main-container').classList.remove('expanded');
-                        const titleEl = document.getElementById('packages-section-title');
-                        if (titleEl) titleEl.textContent = 'Selecciona tu Paquete de Diamantes';
-                    }
-                };
-            }
+                    if (titleEl) titleEl.textContent = key === 'bloodstrike' ? 'Selecciona tu Paquete de Monedas' : 'Selecciona tu Paquete de Diamantes';
+                }
+            };
             list.appendChild(btn);
         });
     }
@@ -349,6 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="${specialImgs[amount.toLowerCase()]}" alt="${amount}" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;"></div>`;
             } else if (currentJuego === 'bloodstrike') {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/bloodstrike_coin.png" alt="Monedas" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
+            } else if (currentJuego === 'mobilelegends') {
+                iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/badge-diamond.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
             } else {
                 iconHtml = `<div class="diamond-icon special-card-img" style="background:none; padding:0; overflow:hidden; border-radius:10px; width:70px; height:70px;"><img src="/img/diamante.png" alt="Diamantes" style="width:100%; height:100%; object-fit:contain; border-radius:10px; display:block;"></div>`;
             }
@@ -407,31 +397,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const order = currentPlayerHistory.find(o => o.ref === ref);
         if (!order) return;
 
+        const isRoblox = order.juego === 'roblox';
         const statusText  = order.status === 'approved' ? 'APROBADO' : (order.status === 'rejected' ? 'RECHAZADO' : 'PENDIENTE');
         const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
-        const juegoName   = order.juego ? (order.juego.charAt(0).toUpperCase() + order.juego.slice(1)) : 'Free Fire';
+        const juegoName   = isRoblox ? 'Roblox' : (order.juego ? (order.juego.charAt(0).toUpperCase() + order.juego.slice(1)) : 'Free Fire');
         
         let currencyLabel = 'diamantes';
-        if (order.juego === 'roblox') currencyLabel = 'Robux';
+        if (isRoblox) currencyLabel = 'Robux';
         else if (order.juego === 'bloodstrike') currencyLabel = 'oro';
+        else if (order.juego === 'mobilelegends') currencyLabel = 'diamantes';
 
         let productText = `${order.pack} ${currencyLabel}`;
-        if (order.juego === 'roblox') {
-            const amount = order.pack.split('+')[0].trim();
-            productText = `$${amount}`;
+        if (isRoblox) {
+            const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
+            productText = `Roblox US ${amount}USD`;
         }
 
         const ticketHtml = `
             <div id="ticket-receipt" style="text-align: left; padding: 18px; background: #0c0617; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); font-family: 'Inter', sans-serif; position: relative; overflow: hidden; box-shadow: inset 0 0 15px rgba(157,0,255,0.15);">
                 <div style="text-align: center; margin-bottom: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 14px;">
-                    <h3 style="margin: 0; color: #9D00FF; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px;">RECARGASNEY.COM</h3>
+                    <h3 style="margin: 0; color: #9D00FF; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px;">${isRoblox ? 'ROBLOX' : 'RECARGASNEY.COM'}</h3>
                     <p style="font-size: 0.72rem; color: #888; margin: 4px 0 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Comprobante de Pago</p>
                 </div>
                 <div style="display: grid; gap: 9px; font-size: 0.82rem; margin-bottom: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 14px;">
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">N° Control:</span><strong style="color: #fff;">#${order.control_num || '-'}</strong></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Fecha/Hora:</span><span style="color: #fff;">${dateStr}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Juego:</span><span style="color: #fff; font-weight: 700; text-transform: uppercase;">${juegoName}</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">ID Jugador:</span><span style="color: #fff; font-family: monospace; font-weight: 700;">${order.uid || '-'}${order.name ? ` <span style="color:#aaa; font-size:0.78rem; font-family:inherit; font-weight:400;">(${order.name})</span>` : ''}</span></div>
+                    ${!isRoblox ? `<div style="display: flex; justify-content: space-between;"><span style="color: #888;">ID Jugador:</span><span style="color: #fff; font-family: monospace; font-weight: 700;">${order.uid || '-'}${order.name ? ` <span style="color:#aaa; font-size:0.78rem; font-family:inherit; font-weight:400;">(${order.name})</span>` : ''}</span></div>` : ''}
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Método de Pago:</span><span style="color: #fff;">${order.method === 'binance' ? 'Binance Pay' : 'Pago Móvil'}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Referencia:</span><code style="color: var(--secondary); font-weight: 700;">${order.ref}</code></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Estado:</span><span style="color: ${order.status === 'approved' ? '#00FF94' : order.status === 'rejected' ? '#FF3D71' : '#FFD93D'}; font-weight: 900; letter-spacing: 0.5px;">${statusText}</span></div>
@@ -441,10 +433,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <strong style="font-size: 1.2rem; color: #fff; display: block; font-weight: 800;">${productText}</strong>
                     <span style="font-size: 0.88rem; color: #00FF94; font-weight: 800; margin-top: 6px; display: inline-block;">${order.price || 'N/A'}</span>
                 </div>
-                ${order.pin ? `
-                <div style="background: rgba(0,240,255,0.04); border: 1px dashed rgba(0,240,255,0.25); border-radius: 10px; padding: 12px; text-align: center;">
-                    <span style="font-size: 0.7rem; color: #00f0ff; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.5px;">CÓDIGO ENTREGADO</span>
-                    <code style="font-family: monospace; font-size: 0.95rem; color: #fff; font-weight: bold; word-break: break-all; display: block; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 6px;">${order.pin}</code>
+                ${(order.pin && isRoblox) ? `
+                <div style="background: rgba(0,240,255,0.08); border: 1px dashed #00f0ff; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 14px;">
+                    <span style="font-size: 0.72rem; color: #00f0ff; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.5px;">🔑 PIN DE ROBLOX ADQUIRIDO</span>
+                    <code style="font-family: monospace; font-size: 1.1rem; color: #00FF94; font-weight: bold; word-break: break-all; display: block; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; letter-spacing: 1.5px; margin-bottom: 8px;">${order.pin}</code>
+                    <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ PIN Copiado!'; setTimeout(()=>btn.innerText='📋 Copiar PIN', 2000); })" style="background:#00f0ff; color:#07030D; border:none; border-radius:8px; padding:7px 14px; font-weight:800; font-size:0.8rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(0,240,255,0.3);">
+                        📋 Copiar PIN
+                    </button>
                 </div>
                 ` : ''}
                 <div style="margin-top: 14px; text-align: center;">
@@ -473,13 +468,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     `*N° Control:* #${order.control_num || '-'}\n` +
                     `*Fecha/Hora:* ${dateStr}\n` +
                     `*Juego:* ${juegoName.toUpperCase()}\n` +
-                    `*ID Jugador:* ${order.uid || '-'}${order.name ? ` (${order.name})` : ''}\n` +
+                    (!isRoblox ? `*ID Jugador:* ${order.uid || '-'}${order.name ? ` (${order.name})` : ''}\n` : '') +
                     `*Producto:* ${productText}\n` +
                     `*Precio:* ${order.price || 'N/A'}\n` +
                     `*Método:* ${order.method === 'binance' ? 'Binance Pay' : 'Pago Móvil'}\n` +
                     `*Referencia:* ${order.ref}\n` +
                     `*Estado:* ${statusText}\n` +
-                    (order.pin ? `*Código Entregado:* ${order.pin}\n` : '') +
+                    (order.pin ? `*PIN Adquirido:* ${order.pin}\n` : '') +
                     `\n¡Gracias por tu preferencia! 🚀`;
 
                 if (navigator.share) {
@@ -585,16 +580,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let packFormatted = `💎 ${order.pack} diamantes`;
                 if (order.juego === 'roblox') {
-                    const amount = order.pack.split('+')[0].trim();
-                    packFormatted = `🎮 Roblox $${amount}`;
+                    const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
+                    packFormatted = `🎮 Roblox US ${amount}USD`;
                 } else if (order.juego === 'bloodstrike') {
                     packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
+                } else if (order.juego === 'mobilelegends') {
+                    packFormatted = `🛡️ Mobile Legends ${order.pack} 💎`;
                 }
+
+                const isRobloxPin = order.juego === 'roblox';
+                const pinLabelText = isRobloxPin ? `🔑 PIN: ${order.pin}` : `⚡ ID Recarga: ${order.pin}`;
+                const btnText = isRobloxPin ? `📋 Copiar PIN` : `Copiar ID`;
 
                 const pinBox = order.pin
                     ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                           <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
-                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar ID',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar ID</button>
+                           <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">${pinLabelText}</span>
+                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='${btnText}',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">${btnText}</button>
                        </div>`
                     : '';
 
@@ -717,16 +718,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let packFormatted = `💎 ${order.pack} diamantes`;
             if (order.juego === 'roblox') {
-                const amount = order.pack.split('+')[0].trim();
-                packFormatted = `🎮 Roblox $${amount}`;
+                const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
+                packFormatted = `🎮 Roblox US ${amount}USD`;
             } else if (order.juego === 'bloodstrike') {
                 packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
+            } else if (order.juego === 'mobilelegends') {
+                packFormatted = `🛡️ Mobile Legends ${order.pack} 💎`;
             }
+
+            const isRobloxPin = order.juego === 'roblox';
+            const pinLabelText = isRobloxPin ? `🔑 PIN: ${order.pin}` : `⚡ ID Recarga: ${order.pin}`;
+            const btnText = isRobloxPin ? `📋 Copiar PIN` : `Copiar ID`;
 
             const pinBox = order.pin
                 ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                       <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">⚡ ID Recarga: ${order.pin}</span>
-                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='Copiar ID',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">Copiar ID</button>
+                       <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">${pinLabelText}</span>
+                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='${btnText}',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">${btnText}</button>
                    </div>`
                 : '';
             historyHtml += `
@@ -2247,11 +2254,19 @@ document.addEventListener('DOMContentLoaded', () => {
     playerInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') verifyBtn.click();
     });
+    const zoneInput = document.getElementById('zone-id');
+    if (zoneInput) {
+        zoneInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') verifyBtn.click();
+        });
+    }
 
     verifyBtn.addEventListener('click', async () => {
         // ── Roblox no requiere ID: mostrar paquetes directamente ──
         if (currentJuego === 'roblox') {
             document.querySelector('.input-group').style.display = 'none';
+            const zoneContainer = document.getElementById('zone-id-container');
+            if (zoneContainer) zoneContainer.style.display = 'none';
             document.getElementById('verify-btn').style.display = 'none';
             document.getElementById('welcome-section').style.display = 'none';
             document.getElementById('packages-section').style.display = 'block';
@@ -2259,11 +2274,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const uid = playerInput.value.trim();
+        let uid = playerInput.value.trim();
+        const zoneVal = zoneInput ? zoneInput.value.trim() : '';
 
-        if (!uid) {
-            Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Ingresa un ID.', confirmButtonText: 'OK' });
-            return;
+        if (currentJuego === 'mobilelegends') {
+            if (!uid || !zoneVal) {
+                Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Por favor ingresa tanto el User ID como el Zone ID.', confirmButtonText: 'OK' });
+                return;
+            }
+            uid = `${uid} (${zoneVal})`;
+        } else {
+            if (!uid) {
+                Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Ingresa un ID.', confirmButtonText: 'OK' });
+                return;
+            }
         }
 
         Swal.fire({ title: 'Validando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -2787,6 +2811,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeStr = now.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: true });
             const fullDateTime = `${dateStr} ${timeStr}`;
 
+            const receiptLogoTitle = isRobloxOrder ? 'ROBLOX' : (currentJuego === 'bloodstrike' ? 'BLOODSTRIKE' : (currentJuego === 'mobilelegends' ? 'MOBILE LEGENDS' : 'FREE F<span>I</span>RE'));
+            const productTitleVal = isRobloxOrder ? `Roblox US ${selectedPackage.amount}USD` : (esEspecialOrder ? packText : `${selectedPackage.amount} + ${selectedPackage.bonus} Bonus`);
+
             Swal.fire({
                 html: `
                     <div class="receipt-container">
@@ -2794,19 +2821,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h2 class="receipt-title" id="receipt-title">Procesando Pago...</h2>
                         
                         <div class="receipt-card">
-                            <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FREE F<span>I</span>RE</div>
+                            <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${receiptLogoTitle}</div>
                             <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">RECARGASNEY.COM</div>
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
-                                <p><strong>PLAN:</strong> <span class="val">${esEspecialOrder ? packText : `${selectedPackage.amount} + ${selectedPackage.bonus} Bonus`}</span></p>
-                                <p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>
+                                <p><strong>PLAN:</strong> <span class="val">${productTitleVal}</span></p>
+                                ${!isRobloxOrder ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : ''}
                                 ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
                                 <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
                                 <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
                                 <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
                             </div>
 
-                             <!-- Contenedor de PIN ocultado ya que no se trabaja con pines -->
+                            <div id="receipt-pin-container" style="display:none; margin-top: 12px; background: rgba(0,240,255,0.08); border: 1px dashed #00f0ff; border-radius: 10px; padding: 12px; text-align: center;">
+                                <span style="font-size: 0.72rem; color: #00f0ff; font-weight: 700; display: block; margin-bottom: 6px; letter-spacing: 1px;">🔑 PIN DE ROBLOX ADQUIRIDO</span>
+                                <code id="receipt-pin-code" style="font-family: monospace; font-size: 1.15rem; color: #00FF94; font-weight: 800; display: block; letter-spacing: 2px; word-break: break-all; margin-bottom: 8px;"></code>
+                                <button id="btn-copy-receipt-pin" onclick="const p=document.getElementById('receipt-pin-code').innerText; if(p){ navigator.clipboard.writeText(p).then(()=>{ this.innerText='✓ PIN Copiado!'; setTimeout(()=>this.innerText='📋 Copiar PIN', 2000); }); }" style="background: #00f0ff; color: #07030D; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,240,255,0.3);">
+                                    📋 Copiar PIN
+                                </button>
+                            </div>
                             
                             <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
                                 <i class="fa-solid fa-shield-halved"></i> RECARGASNEY.COM - Transacción Segura
@@ -2893,6 +2926,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const orderIdx = myOrders.findIndex(o => o.ref === ref);
                                 if (orderIdx !== -1) {
                                     myOrders[orderIdx].status = data.status;
+                                    if (data.pin) myOrders[orderIdx].pin = data.pin;
                                     localStorage.setItem('ff_my_orders', JSON.stringify(myOrders));
                                 }
 
@@ -2918,11 +2952,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                         confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#ffd700', '#00c853', '#ffffff'] }));
                                     }, 250);
 
-                                    // No mostrar PIN ya que no se trabaja con pines
+                                    // Desplegar PIN en pantalla únicamente si es una orden de Roblox
+                                    if (data.pin && isRobloxOrder) {
+                                        const pinContainer = document.getElementById('receipt-pin-container');
+                                        const pinCode = document.getElementById('receipt-pin-code');
+                                        if (pinContainer && pinCode) {
+                                            pinCode.innerText = data.pin;
+                                            pinContainer.style.display = 'block';
+                                        }
+                                    }
 
                                     const titleEl = document.getElementById('receipt-title');
                                     if (titleEl) {
-                                        titleEl.innerHTML = '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>';
+                                        titleEl.innerHTML = isRobloxOrder
+                                            ? '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🎉 ¡PIN ENTREGADO! 🎉</span>'
+                                            : '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>';
                                         titleEl.style.animation = 'pulse 1s infinite alternate';
                                     }
 
@@ -2955,18 +2999,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     shareBtn.addEventListener('click', () => {
                         const statusText = statusEl.innerText;
-                        const shareText = `💎 *COMPROBANTE DE RECARGA - FREE FIRE* 💎\n` +
-                                         `------------------------------------------\n` +
-                                         `👤 *Jugador:* ${name}\n` +
-                                         `🆔 *ID:* ${playerInput.value}\n` +
-                                         `📦 *Plan:* ${esEspecialOrder ? packText : `${selectedPackage.amount} diamantes`}\n` +
-                                         `✨ *Bonus:* ${esEspecialOrder ? 'N/A' : `${selectedPackage.bonus} diamantes`}\n` +
-                                         `🔢 *N° Control:* ${controlNum}\n` +
-                                         `🔢 *Ref:* ${approvalNum}\n` +
-                                         `📅 *Fecha:* ${fullDateTime}\n` +
-                                         `✅ *Estado:* ${statusText}\n` +
-                                         `------------------------------------------\n` +
-                                         `¡Gracias por tu compra! 🎮`;
+                        const shareHeader = isRobloxOrder ? '🎮 *COMPROBANTE DE RECARGA - ROBLOX* 🎮' : '💎 *COMPROBANTE DE RECARGA - FREE FIRE* 💎';
+                        let shareText = `${shareHeader}\n` +
+                                        `------------------------------------------\n`;
+                        if (!isRobloxOrder) {
+                            shareText += `👤 *Jugador:* ${name}\n` +
+                                         `🆔 *ID:* ${playerInput.value}\n`;
+                        }
+                        shareText += `📦 *Producto:* ${productTitleVal}\n`;
+                        if (!isRobloxOrder && !esEspecialOrder) {
+                            shareText += `✨ *Bonus:* ${selectedPackage.bonus} diamantes\n`;
+                        }
+                        const currentPin = document.getElementById('receipt-pin-code')?.innerText;
+                        if (currentPin) {
+                            shareText += `🔑 *PIN Adquirido:* ${currentPin}\n`;
+                        }
+                        shareText += `🔢 *N° Control:* ${controlNum}\n` +
+                                     `🔢 *Ref:* ${approvalNum}\n` +
+                                     `📅 *Fecha:* ${fullDateTime}\n` +
+                                     `✅ *Estado:* ${statusText}\n` +
+                                     `------------------------------------------\n` +
+                                     `¡Gracias por tu compra! 🎮`;
 
                         if (navigator.share) {
                             navigator.share({
@@ -3669,9 +3722,44 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderAds = renderAds;
 
     // ============================================================
+    // 🔊 MOTOR DE SONIDO DE RULETA (Web Audio API para clicks mecánicos ultra-reales)
+    // ============================================================
+    let rouletteAudioCtx = null;
+    function playRouletteClickSound() {
+        try {
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtxClass) return;
+            if (!rouletteAudioCtx) {
+                rouletteAudioCtx = new AudioCtxClass();
+            }
+            if (rouletteAudioCtx.state === 'suspended') {
+                rouletteAudioCtx.resume().catch(() => {});
+            }
+
+            const osc = rouletteAudioCtx.createOscillator();
+            const gain = rouletteAudioCtx.createGain();
+
+            // Clic agudo que simula el choque de la aguja contra los remaches de la rueda
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(850, rouletteAudioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, rouletteAudioCtx.currentTime + 0.025);
+
+            gain.gain.setValueAtTime(0.3, rouletteAudioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, rouletteAudioCtx.currentTime + 0.025);
+
+            osc.connect(gain);
+            gain.connect(rouletteAudioCtx.destination);
+
+            osc.start(rouletteAudioCtx.currentTime);
+            osc.stop(rouletteAudioCtx.currentTime + 0.025);
+        } catch (e) {}
+    }
+
+    // ============================================================
     // 🎰 RULETA DE LA SUERTE - SE ACTIVA TRAS RECARGA APROBADA
     // ============================================================
     window.showRouletteAfterApproval = function(loginUid, orderRef, paidUsdt) {
+        window.pendingRouletteData = { uid: loginUid, ref: orderRef, amount: paidUsdt };
         if (window.addNotification) {
             window.addNotification(
                 '🎰 ¡Recarga aprobada! Gira la Ruleta',
@@ -3800,15 +3888,13 @@ document.addEventListener('DOMContentLoaded', () => {
             closeBtn.style.display = 'none';
 
             // Calcular rotación final para que caiga en el premio ganado
-            // El puntero apunta hacia arriba (ángulo -π/2). Cada segmento comienza en i*segAngle.
-            // Para que winIdx quede bajo el puntero, la rotación final debe ser:
-            // finalAngle = -π/2 - winIdx*segAngle - segAngle/2  (+ varios giros)
             const extraSpins = 5 + Math.floor(Math.random() * 3); // 5-7 vueltas completas
             const targetAngle = (-Math.PI / 2) - (winIdx * segAngle) - (segAngle / 2) - (Math.random() * segAngle * 0.6 - segAngle * 0.3);
             const totalRotation = (Math.PI * 2) * extraSpins + targetAngle;
 
             const duration = 5000; // ms
             const startTime = performance.now();
+            let lastSegIdx = -1;
 
             function easeOut(t) {
                 return 1 - Math.pow(1 - t, 4);
@@ -3818,6 +3904,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 currentAngle = totalRotation * easeOut(progress);
+
+                // 🔊 Reproducir clic mecánico por cada segmento superado
+                const currentSeg = Math.floor(currentAngle / segAngle);
+                if (currentSeg !== lastSegIdx) {
+                    lastSegIdx = currentSeg;
+                    playRouletteClickSound();
+                }
+
                 drawWheel(currentAngle);
 
                 if (progress < 1) {
@@ -3855,6 +3949,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (userPointsEl) {
                             userPointsEl.textContent = `${data.new_total_usdt.toFixed(2)} USDT`;
                         }
+                        window.pendingRouletteData = null;
                         console.log(`[RULETA] ✅ ${winPrize.amount} USDT acreditados a ${loginUid}`);
                     }
                 } catch (e) {
@@ -3924,8 +4019,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let weeklyRaffleTimer = null;
     let weeklyRaffleAnim = null;
     let weeklyRaffleAngle = 0;
+    let lastAnimatedWinnerTimestamp = null;
+    window.isRaffleSpinningActive = false;
 
-    async function initWeeklyRaffle() {
+    async function initWeeklyRaffle(forceSpin = false) {
+        if (window.isRaffleSpinningActive) return;
+
         try {
             const res = await fetch(`${SERVER_URL}/api/sorteo-semanal`);
             const data = await res.json();
@@ -3947,24 +4046,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Mostrar último ganador si existe
+            // Iniciar Reloj Cuenta Regresiva
+            startRaffleCountdown(data.endOfCycleTimestamp, data);
+
+            // Si hay un nuevo ganador detectado en vivo que no hemos animado aún
+            const winnerTs = data.lastWinner ? new Date(data.lastWinner.timestamp).getTime() : null;
+            const isRecentDraw = winnerTs && (Date.now() - winnerTs < 300000); // Sorteo realizado en los últimos 5 minutos
+
+            if (data.lastWinner && (forceSpin || (winnerTs && winnerTs !== lastAnimatedWinnerTimestamp && isRecentDraw))) {
+                lastAnimatedWinnerTimestamp = winnerTs;
+                if ((!data.ticketList || data.ticketList.length === 0) && data.lastWinner.ticketList) {
+                    data.ticketList = data.lastWinner.ticketList;
+                }
+                // Girar la rueda en vivo con todos los participantes del sorteo
+                triggerWeeklyRaffleDraw(data);
+                return;
+            }
+            if (data.lastWinner && winnerTs) {
+                lastAnimatedWinnerTimestamp = winnerTs;
+            }
+
+            // Mostrar último ganador en reposo solo cuando no hay giro pendiente
             const winnerEl = document.getElementById('raffle-last-winner');
             const winnerNameEl = document.getElementById('last-winner-name');
             if (winnerEl && winnerNameEl && data.lastWinner) {
                 winnerEl.style.display = 'flex';
-                winnerNameEl.textContent = `${data.lastWinner.name} (Ganó ${data.lastWinner.premio})`;
+                winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${data.lastWinner.name}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${data.lastWinner.premio}</span>`;
             }
 
-            // Iniciar Reloj Cuenta Regresiva
-            startRaffleCountdown(data.endOfCycleTimestamp, data);
-
-            // Renderizar Rueda de Participantes
+            // Renderizar Rueda de Participantes en reposo
             renderWeeklyRaffleWheel(data.ticketList || []);
 
         } catch (e) {
             console.error('[SORTEO-SEMANAL-UI] Error al cargar:', e.message);
         }
     }
+
+    // Polling en vivo cada 5 segundos para detectar giros de sorteo en tiempo real
+    setInterval(() => {
+        if (!document.hidden && !window.isRaffleSpinningActive) {
+            initWeeklyRaffle();
+        }
+    }, 5000);
 
     function startRaffleCountdown(targetTime, raffleData) {
         if (weeklyRaffleTimer) clearInterval(weeklyRaffleTimer);
@@ -3990,7 +4113,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (diff <= 0) {
                 clearInterval(weeklyRaffleTimer);
-                triggerWeeklyRaffleDraw(raffleData);
+                fetch(`${SERVER_URL}/api/sorteo-semanal`)
+                    .then(r => r.json())
+                    .then(freshData => {
+                        triggerWeeklyRaffleDraw(freshData);
+                    })
+                    .catch(() => {
+                        triggerWeeklyRaffleDraw(raffleData);
+                    });
             }
         }
 
@@ -4074,25 +4204,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function triggerWeeklyRaffleDraw(raffleData) {
-        const ticketList = raffleData.ticketList || [];
-        if (ticketList.length === 0) return;
+        if (!raffleData || (!raffleData.lastWinner && (!raffleData.ticketList || raffleData.ticketList.length === 0))) return;
 
+        window.isRaffleSpinningActive = true;
         if (weeklyRaffleAnim) cancelAnimationFrame(weeklyRaffleAnim);
 
-        const winIdx = Math.floor(Math.random() * ticketList.length);
-        const winner = ticketList[winIdx];
+        // 1. Determinar el objeto ganador oficial
+        const lastWin = raffleData.lastWinner;
+        let winnerObj = null;
+
+        if (lastWin && lastWin.name) {
+            winnerObj = { uid: String(lastWin.uid || 'N/A'), name: lastWin.name };
+        } else if (raffleData.ticketList && raffleData.ticketList.length > 0) {
+            const randIdx = Math.floor(Math.random() * raffleData.ticketList.length);
+            winnerObj = raffleData.ticketList[randIdx];
+        } else {
+            winnerObj = { uid: 'N/A', name: 'Ganador' };
+        }
+
+        // 2. Construir la lista exacta de ítems que se dibujará en la rueda
+        let itemsToDraw = [];
+        if (raffleData.ticketList && raffleData.ticketList.length > 0) {
+            itemsToDraw = [...raffleData.ticketList];
+        }
+
+        // Buscar el índice del ganador en la lista a dibujar
+        let winIdx = itemsToDraw.findIndex(item => String(item.uid) === String(winnerObj.uid));
+
+        // Si el ganador no está presente en la lista, forzamos su inclusión en la primera posición
+        if (winIdx === -1) {
+            if (itemsToDraw.length > 0) {
+                itemsToDraw[0] = winnerObj;
+            } else {
+                itemsToDraw = [winnerObj];
+            }
+            winIdx = 0;
+        }
+
+        const winner = itemsToDraw[winIdx]; // Objeto idéntico garantizado 100%
 
         const canvas = document.getElementById('weekly-raffle-canvas');
-        if (!canvas) return;
+        if (!canvas) {
+            window.isRaffleSpinningActive = false;
+            return;
+        }
         const ctx = canvas.getContext('2d');
-        const segAngle = (Math.PI * 2) / ticketList.length;
+        const totalItems = itemsToDraw.length;
+        const segAngle = (Math.PI * 2) / totalItems;
 
         const extraSpins = 6;
         const targetAngle = (-Math.PI / 2) - (winIdx * segAngle) - (segAngle / 2);
-        const totalRot = (Math.PI * 2) * extraSpins + targetAngle;
+        
+        // Normalizar la rotación inicial para calcular la distancia exacta al segmento objetivo
+        const currentRotNormalized = weeklyRaffleAngle % (Math.PI * 2);
+        let deltaAngle = (targetAngle - currentRotNormalized) % (Math.PI * 2);
+        if (deltaAngle < 0) deltaAngle += Math.PI * 2;
+
+        const totalRot = (Math.PI * 2) * extraSpins + deltaAngle;
         const startRot = weeklyRaffleAngle;
         const duration = 6000;
         const startTime = performance.now();
+        let lastWeeklySegIdx = -1;
 
         function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
@@ -4101,51 +4273,91 @@ document.addEventListener('DOMContentLoaded', () => {
             const progress = Math.min(elapsed / duration, 1);
             const currentRot = startRot + totalRot * easeOut(progress);
 
+            // 🔊 Reproducir clic mecánico por cada segmento superado
+            const currentSeg = Math.floor(currentRot / segAngle);
+            if (currentSeg !== lastWeeklySegIdx) {
+                lastWeeklySegIdx = currentSeg;
+                playRouletteClickSound();
+            }
+
             ctx.clearRect(0, 0, 200, 200);
-            ticketList.forEach((item, i) => {
+            const colors = ['#9D00FF', '#00F0FF', '#FF00E5', '#7928CA', '#00FF94', '#FFD700', '#FF3D71', '#5500CC'];
+
+            itemsToDraw.forEach((item, i) => {
                 const startA = currentRot + i * segAngle;
                 const endA = startA + segAngle;
+
                 ctx.beginPath();
                 ctx.moveTo(100, 100);
                 ctx.arc(100, 100, 98, startA, endA);
                 ctx.closePath();
-                ctx.fillStyle = ['#9D00FF', '#00F0FF', '#FF00E5', '#7928CA', '#00FF94', '#FFD700'][i % 6];
+                ctx.fillStyle = colors[i % colors.length];
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
+
                 ctx.save();
                 ctx.translate(100, 100);
                 ctx.rotate(startA + segAngle / 2);
                 ctx.textAlign = 'right';
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 9px Montserrat, sans-serif';
-                ctx.fillText(item.name.length > 14 ? item.name.substring(0, 12) + '..' : item.name, 92, 3);
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 3;
+                const nameText = item.name.length > 14 ? item.name.substring(0, 12) + '..' : item.name;
+                ctx.fillText(nameText, 92, 3);
                 ctx.restore();
             });
+
+            // Centro de la rueda
+            ctx.beginPath();
+            ctx.arc(100, 100, 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#07030D';
+            ctx.fill();
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🎟️', 100, 100);
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
-                if (typeof confetti !== 'undefined') {
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                window.isRaffleSpinningActive = false;
+
+                // 🔊 Sonido de victoria al detenerse la rueda
+                try { new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(() => {}); } catch(e) {}
+
+                // Revelar e iluminar el banner del ganador justo al detenerse la aguja sobre su segmento
+                const winnerEl = document.getElementById('raffle-last-winner');
+                const winnerNameEl = document.getElementById('last-winner-name');
+                if (winnerEl && winnerNameEl) {
+                    winnerEl.style.display = 'flex';
+                    winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${winner.name}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${raffleData.premio || '341 Diamantes'}</span>`;
                 }
+
+                if (typeof confetti !== 'undefined') {
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                }
+
                 Swal.fire({
                     title: '🏆 ¡TENEMOS GANADOR!',
-                    html: `¡Felicidades a <strong style="color:#00FF94; font-size:1.4rem;">${winner.name}</strong>!<br><br>Ganador de <strong>${raffleData.premio || '341 Diamantes'}</strong> en el Sorteo Semanal 🎉<br><small style="color:#aaa;">El administrador se contactará por WhatsApp para la entrega.</small>`,
+                    html: `¡Felicidades a <strong style="color:#FFD700; font-size:1.5rem; text-shadow: 0 0 10px rgba(255,215,0,0.8);">${winner.name}</strong>!<br><br>Ganador de <strong style="color:#00FF94;">${raffleData.premio || '341 Diamantes'}</strong> en el Sorteo Semanal 🎉<br><small style="color:#aaa;">El administrador se contactará por WhatsApp para la entrega del premio.</small>`,
                     icon: 'success',
                     background: 'rgba(20,10,35,0.98)',
                     color: '#fff',
                     confirmButtonColor: '#9D00FF'
+                }).then(() => {
+                    // Al cerrar el modal, resetear la interfaz de la ruleta inmediatamente a limpia (0 boletos)
+                    initWeeklyRaffle();
                 });
 
-                fetch(`${SERVER_URL}/admin/set-sorteo-winner`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: winner.uid, name: winner.name, premio: raffleData.premio })
-                }).catch(() => {});
-
-                setTimeout(initWeeklyRaffle, 10000);
+                // Reseteo automático de respaldo después de 8 segundos si no cierra el modal
+                setTimeout(initWeeklyRaffle, 8000);
             }
         }
 
@@ -4408,47 +4620,96 @@ if ('serviceWorker' in navigator) {
 }
 
 // ============================================================
-// BOTÓN "DESCARGAR APLICACIÓN" - PWA Install Prompt
+// SMART PWA INSTALL BANNER & iOS GUIDED MODAL
 // ============================================================
 let deferredInstallPrompt = null;
-const installBtn = document.getElementById('install-app-btn');
+const pwaBanner = document.getElementById('pwa-install-banner');
+const pwaActionBtn = document.getElementById('pwa-install-action-btn');
+const pwaCloseBtn = document.getElementById('pwa-close-banner-btn');
+const oldInstallBtn = document.getElementById('install-app-btn');
 
-// Capturar el evento antes de que el navegador muestre su propio banner
+const iosModal = document.getElementById('ios-pwa-modal');
+const iosCloseBtn = document.getElementById('ios-modal-close');
+const iosUnderstoodBtn = document.getElementById('ios-understood-btn');
+
+// Detectar si el usuario está en modo Standalone (App ya instalada)
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// Detectar si es dispositivo iOS (iPhone/iPad)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+// Verificar si el usuario descartó el banner recientemente (7 días)
+const isBannerDismissed = localStorage.getItem('pwa_banner_dismissed_until');
+const now = Date.now();
+const shouldShowBanner = !isStandalone && (!isBannerDismissed || parseInt(isBannerDismissed) < now);
+
+function showPwaBanner() {
+    if (!shouldShowBanner) return;
+    if (pwaBanner) pwaBanner.style.display = 'flex';
+    if (oldInstallBtn) oldInstallBtn.style.display = 'inline-flex';
+}
+
+// Capturar el evento nativo de Android / Chrome
 window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); // Evitar el banner automático del navegador
+    e.preventDefault();
     deferredInstallPrompt = e;
-
-    // Mostrar nuestro botón personalizado
-    if (installBtn) {
-        installBtn.style.display = 'flex';
-    }
+    setTimeout(showPwaBanner, 2500); // Mostrar banner 2.5s después de cargar
 });
 
-// Al hacer clic en el botón, disparar el diálogo de instalación nativo
-if (installBtn) {
-    installBtn.addEventListener('click', async (e) => {
+// En iOS o cuando el prompt no dispara automáticamente
+if (isIOS && shouldShowBanner) {
+    setTimeout(showPwaBanner, 3000);
+}
+
+// Manejar clic en "INSTALAR"
+if (pwaActionBtn) {
+    pwaActionBtn.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if (deferredInstallPrompt) {
-            // Mostrar el diálogo de instalación del navegador
             deferredInstallPrompt.prompt();
             const { outcome } = await deferredInstallPrompt.userChoice;
-
             if (outcome === 'accepted') {
-                console.log('[PWA] Usuario aceptó instalar la app.');
-                installBtn.style.display = 'none'; // Ocultar botón al instalar
-            } else {
-                console.log('[PWA] Usuario rechazó la instalación.');
+                if (pwaBanner) pwaBanner.style.display = 'none';
+                if (oldInstallBtn) oldInstallBtn.style.display = 'none';
             }
-
             deferredInstallPrompt = null;
+        } else if (isIOS) {
+            // Mostrar modal guía para iPhone
+            if (iosModal) iosModal.style.display = 'flex';
+        } else {
+            // Mensaje alternativo si el navegador no soporta prompt automático
+            alert('Para instalar la app, abre el menú de opciones de tu navegador (...) y selecciona "Agregar a la pantalla de inicio".');
         }
     });
 }
 
-// Ocultar el botón si la app ya fue instalada
+// También vincular el botón secundario en la tarjeta
+if (oldInstallBtn) {
+    oldInstallBtn.addEventListener('click', (e) => {
+        if (pwaActionBtn) pwaActionBtn.click();
+    });
+}
+
+// Cerrar banner y recordar preferencia
+if (pwaCloseBtn) {
+    pwaCloseBtn.addEventListener('click', () => {
+        if (pwaBanner) pwaBanner.style.display = 'none';
+        localStorage.setItem('pwa_banner_dismissed_until', (Date.now() + (7 * 24 * 60 * 60 * 1000)).toString());
+    });
+}
+
+// Cerrar modal iOS
+function closeIosModal() {
+    if (iosModal) iosModal.style.display = 'none';
+}
+if (iosCloseBtn) iosCloseBtn.addEventListener('click', closeIosModal);
+if (iosUnderstoodBtn) iosUnderstoodBtn.addEventListener('click', closeIosModal);
+
+// Ocultar al instalar
 window.addEventListener('appinstalled', () => {
-    if (installBtn) installBtn.style.display = 'none';
+    if (pwaBanner) pwaBanner.style.display = 'none';
+    if (oldInstallBtn) oldInstallBtn.style.display = 'none';
     deferredInstallPrompt = null;
     console.log('[PWA] ¡App instalada con éxito!');
 });

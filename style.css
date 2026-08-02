@@ -901,7 +901,7 @@ body::before {
 }
 
 .main-container.expanded {
-    max-width: 800px;
+    max-width: 500px;
 }
 
 .packages-container {
@@ -3228,30 +3228,41 @@ body::before {
 }
 
 .raffle-last-winner {
-    background: rgba(0, 255, 148, 0.08);
-    border: 1px solid rgba(0, 255, 148, 0.25);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(0, 255, 148, 0.15));
+    border: 1.5px solid #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
     border-radius: 12px;
-    padding: 8px 12px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 10px;
+    margin-top: 12px;
+    animation: winnerGlowPulse 2.5s infinite alternate;
+}
+
+@keyframes winnerGlowPulse {
+    0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); border-color: rgba(255, 215, 0, 0.6); }
+    100% { box-shadow: 0 0 22px rgba(255, 215, 0, 0.7); border-color: #FFD700; }
 }
 
 .winner-trophy {
-    font-size: 1.3rem;
+    font-size: 1.6rem;
+    filter: drop-shadow(0 0 8px #FFD700);
 }
 
 .raffle-last-winner small {
     display: block;
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.72rem;
+    color: #FFD700;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .raffle-last-winner strong {
-    font-size: 0.85rem;
-    color: #00FF94;
+    font-size: 0.95rem;
+    color: #ffffff;
 }
 
 /* ======================================================== */
@@ -3351,6 +3362,318 @@ body::before {
 
 .notif-action-btn:hover {
     transform: scale(1.04);
+}
+
+/* ============================================================
+   SELECTOR DE JUEGOS - ESTILO PREMIUM Y MICRO-ANIMACIONES
+   ============================================================ */
+.game-list-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 2px;
+}
+
+.game-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    outline: none;
+    box-sizing: border-box;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(0, 240, 255, 0.5) !important;
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.25);
+}
+
+.game-btn:active {
+    transform: scale(0.94);
+}
+
+.game-btn.active {
+    background: linear-gradient(135deg, rgba(157, 0, 255, 0.35) 0%, rgba(0, 240, 255, 0.25) 100%) !important;
+    border-color: #00F0FF !important;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.45), inset 0 0 15px rgba(157, 0, 255, 0.25) !important;
+}
+
+/* Animación del Logo al Tocar / Pasar el cursor */
+.game-logo-img {
+    max-height: 40px;
+    width: auto;
+    max-width: 95px;
+    object-fit: contain;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.35s ease;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.game-btn:hover .game-logo-img,
+.game-btn:active .game-logo-img {
+    transform: scale(1.22) rotate(4deg);
+    filter: drop-shadow(0 4px 12px rgba(0, 240, 255, 0.7));
+}
+
+.game-btn.active .game-logo-img {
+    transform: scale(1.15);
+    animation: gameLogoPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes gameLogoPulse {
+    0%, 100% {
+        transform: scale(1.14) translateY(0);
+        filter: drop-shadow(0 2px 8px rgba(0, 240, 255, 0.5));
+    }
+    50% {
+        transform: scale(1.22) translateY(-3px);
+        filter: drop-shadow(0 8px 16px rgba(0, 240, 255, 0.85));
+    }
+}
+
+/* Adaptabilidad Perfecta para Pantallas Móviles */
+@media (max-width: 480px) {
+    .game-list-wrapper {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .game-btn {
+        width: 100%;
+        padding: 10px 6px;
+        min-height: 52px;
+        border-radius: 14px;
+    }
+
+    .game-logo-img {
+        max-height: 34px;
+        max-width: 85px;
+    }
+}
+
+/* ============================================================
+   SMART PWA FLOATING BANNER & iOS MODAL STYLES
+   ============================================================ */
+.pwa-install-banner {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 440px;
+    background: rgba(15, 8, 28, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 99999;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 240, 255, 0.25);
+    animation: pwaSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes pwaSlideUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 60px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.pwa-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.pwa-banner-icon img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pwa-banner-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.pwa-banner-text strong {
+    font-size: 0.9rem;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    letter-spacing: 0.3px;
+}
+
+.pwa-banner-text span {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 2px;
+}
+
+.pwa-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pwa-install-btn {
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pwa-install-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 18px rgba(0, 240, 255, 0.6);
+}
+
+.pwa-close-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 50%;
+    transition: color 0.2s;
+}
+
+.pwa-close-btn:hover {
+    color: #ff6b6b;
+}
+
+/* Modal Guía iOS */
+.ios-pwa-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.ios-modal-content {
+    background: #120924;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    border-radius: 20px;
+    padding: 25px 20px;
+    max-width: 380px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+    text-align: center;
+}
+
+.ios-modal-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.ios-modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.ios-app-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.ios-modal-header h3 {
+    font-size: 1.1rem;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    margin: 0;
+}
+
+.ios-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: left;
+}
+
+.ios-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ios-step-num {
+    background: var(--primary);
+    color: #fff;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.ios-step-item p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #ddd;
+    line-height: 1.4;
 }
 
 

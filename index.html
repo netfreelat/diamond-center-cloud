@@ -517,6 +517,49 @@
         <i class="fa-solid fa-hand-pointer"></i> ¡Paquete seleccionado! Toca <strong>Pagar ahora</strong> para continuar
     </div>
 
+    <!-- Smart PWA Floating Install Banner -->
+    <div id="pwa-install-banner" class="pwa-install-banner" style="display: none;">
+        <div class="pwa-banner-content">
+            <div class="pwa-banner-icon">
+                <img src="/icon-192.png" alt="RecargasNey App">
+            </div>
+            <div class="pwa-banner-text">
+                <strong>Instala RecargasNey App</strong>
+                <span>Recargas más rápidas y notificaciones</span>
+            </div>
+        </div>
+        <div class="pwa-banner-actions">
+            <button id="pwa-install-action-btn" class="pwa-install-btn">
+                <i class="fa-solid fa-download"></i> INSTALAR
+            </button>
+            <button id="pwa-close-banner-btn" class="pwa-close-btn" title="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Guía para iOS (iPhone / iPad) -->
+    <div id="ios-pwa-modal" class="ios-pwa-modal" style="display: none;">
+        <div class="ios-modal-content">
+            <button id="ios-modal-close" class="ios-modal-close-btn">&times;</button>
+            <div class="ios-modal-header">
+                <img src="/icon-192.png" alt="App Icon" class="ios-app-icon">
+                <h3>Instalar RecargasNey en tu iPhone</h3>
+            </div>
+            <div class="ios-steps">
+                <div class="ios-step-item">
+                    <span class="ios-step-num">1</span>
+                    <p>Toca el botón <strong>Compartir</strong> <i class="fa-solid fa-arrow-up-from-bracket" style="color: var(--secondary);"></i> en la barra inferior de Safari.</p>
+                </div>
+                <div class="ios-step-item">
+                    <span class="ios-step-num">2</span>
+                    <p>Desplázate hacia abajo y selecciona <strong>"Agregar al inicio"</strong> <i class="fa-solid fa-square-plus" style="color: #25D366;"></i>.</p>
+                </div>
+            </div>
+            <button id="ios-understood-btn" class="btn-primary" style="margin-top: 15px; width: 100%;">¡Entendido!</button>
+        </div>
+    </div>
+
     <!-- Custom Script -->
     <script src="script.js?v=3.5.0"></script>
 
