@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro de Recargas - Free Fire</title>
-    <meta name="description" content="Compra tus recargas de diamantes de Free Fire de forma segura y recíbelas al instante.">
+    <title>Centro de Recargas Digitales - RecargasNey</title>
+    <meta name="description" content="Plataforma independiente de gestión de recargas digitales de juegos.">
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -61,7 +61,7 @@
             <div class="splash-logo">
                 <span class="splash-logo-text" data-text="RECARGASNEY.COM">RECARGASNEY.COM</span>
             </div>
-            <div class="splash-subtitle">FREE FIRE • RECARGA INSTANTÁNEA</div>
+            <div class="splash-subtitle">MULTIJUEGOS • RECARGA INSTANTÁNEA</div>
             <!-- Barra de carga -->
             <div class="splash-loader-bar">
                 <div class="splash-loader-fill"></div>
@@ -128,8 +128,8 @@
             </div>
 
             <!-- Selector de Juegos -->
-            <div id="game-selector-container" style="display: none; margin-bottom: 20px; overflow: hidden; padding-top: 8px; padding-bottom: 5px;">
-                <div id="game-list" style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+            <div id="game-selector-container" style="display: none; margin-bottom: 20px; padding-top: 8px; padding-bottom: 5px;">
+                <div id="game-list" class="game-list-wrapper">
                     <!-- Botones generados por JS -->
                 </div>
             </div>
@@ -141,13 +141,17 @@
                 </button>
             </div>
 
+            <div class="input-group" id="zone-id-container" style="display: none; margin-top: 10px;">
+                <input type="text" id="zone-id" placeholder="Zone ID (Ej: 1234)" autocomplete="off">
+            </div>
+
             <button id="verify-btn" class="btn-primary">
                 <i class="fa-solid fa-magnifying-glass"></i> Consultar ID
             </button>
 
             <div class="secondary-actions">
                 <button id="history-btn" class="btn-secondary-outline">
-                    <i class="fa-solid fa-receipt"></i> Compras
+                    <i class="fa-solid fa-receipt"></i> Mis Compras
                 </button>
                 <button id="favorites-btn" class="btn-secondary-outline">
                     <i class="fa-solid fa-star"></i> Favoritos
@@ -300,51 +304,51 @@
                 </div>
 
                 <div class="packages-grid">
-                    <div class="package-card" data-amount="100" data-bonus="10" data-price="0.98">
+                    <div class="package-card" data-amount="100" data-bonus="10" data-price="0.86">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">100 + 10</span>
-                            <span class="price-usdt">0.98 USDT</span>
+                            <span class="price-usdt">0.86 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
-                    <div class="package-card" data-amount="310" data-bonus="31" data-price="3.05">
+                    <div class="package-card" data-amount="310" data-bonus="31" data-price="2.90">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">310 + 31</span>
-                            <span class="price-usdt">3.05 USDT</span>
+                            <span class="price-usdt">2.90 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
-                    <div class="package-card" data-amount="520" data-bonus="52" data-price="4.41">
+                    <div class="package-card" data-amount="520" data-bonus="52" data-price="4.15">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">520 + 52</span>
-                            <span class="price-usdt">4.41 USDT</span>
+                            <span class="price-usdt">4.15 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
-                    <div class="package-card" data-amount="1060" data-bonus="106" data-price="8.13">
+                    <div class="package-card" data-amount="1060" data-bonus="106" data-price="7.50">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">1,060 + 106</span>
-                            <span class="price-usdt">8.13 USDT</span>
+                            <span class="price-usdt">7.50 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
-                    <div class="package-card" data-amount="2180" data-bonus="218" data-price="16.01">
+                    <div class="package-card" data-amount="2180" data-bonus="218" data-price="14.56">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">2,180 + 218</span>
-                            <span class="price-usdt">16.01 USDT</span>
+                            <span class="price-usdt">14.56 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
-                    <div class="package-card" data-amount="5600" data-bonus="560" data-price="40.37">
+                    <div class="package-card" data-amount="5600" data-bonus="560" data-price="35.80">
                         <div class="diamond-icon"><i class="fa-solid fa-gem"></i></div>
                         <div class="pack-info">
                             <span class="amount">5,600 + 560</span>
-                            <span class="price-usdt">40.37 USDT</span>
+                            <span class="price-usdt">35.80 USDT</span>
                             <span class="price-bs">0.00 Bs</span>
                         </div>
                     </div>
@@ -472,7 +476,7 @@
             </div>
 
             <div class="footer-text">
-                <p>Compatible con toda la region de LATAM para Free Fire.</p>
+                <p>Compatible con la región de LATAM para servicios multijuegos.</p>
                 
                 <a href="#" target="_blank" class="support-btn" id="wa-soporte-link" style="margin-bottom: 10px;">
                     <i class="fa-solid fa-headset"></i> Soporte Técnico
@@ -483,6 +487,8 @@
                     <span style="color: rgba(255,255,255,0.2);">|</span>
                     <a href="terminos-condiciones.html" style="color: var(--secondary); text-decoration: none;">Términos y Condiciones</a>
                 </div>
+
+                <p style="font-size: 0.72rem; color: #888; margin-top: 15px; text-align: center; line-height: 1.4; padding: 0 10px;"><strong>Aviso Legal:</strong> RecargasNey es una plataforma independiente de servicios de recargas digitales. No estamos afiliados, patrocinados, asociados ni respaldados de manera oficial por Garena, Sea Group ni Free Fire. Todas las marcas registradas pertenecen a sus respectivos dueños.</p>
 
 
 
