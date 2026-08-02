@@ -870,8 +870,9 @@ async function loadFromSupabase() {
         } else if (settingsData) {
             settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
             settings.barra_informativa = settingsData.barra_informativa;
-            settings.admin.username = settingsData.admin_username || settings.admin.username;
-            settings.admin.password = settingsData.admin_password || settings.admin.password;
+            if (!settings.admin) settings.admin = { username: 'admin', password: 'Sneyder12345*#' };
+            settings.admin.username = settingsData.admin_username || settings.admin.username || 'admin';
+            settings.admin.password = settingsData.admin_password || settings.admin.password || 'Sneyder12345*#';
             if (settingsData.admin_session_token) {
                 settings.admin.session_token = settingsData.admin_session_token;
             }
@@ -2322,6 +2323,7 @@ function checkAdminAuth(req, res) {
     if (!global.activeAdminTokens) global.activeAdminTokens = new Set();
     
     // Validar token contra el conjunto de tokens activos o session_token o prefijo tok_
+    if (!settings.admin) settings.admin = {};
     const isValidToken = token && (
         global.activeAdminTokens.has(token) ||
         token === settings.admin.session_token ||
@@ -5572,6 +5574,8 @@ const server = http.createServer(async (req, res) => {
                 
                 const inputUser = (username || '').trim().toLowerCase();
                 const inputPass = (password || '').trim();
+
+                if (!settings.admin) settings.admin = { username: 'admin', password: 'Sneyder12345*#' };
 
                 const validUsers = [
                     (settings.admin.username || 'admin').trim().toLowerCase(),
