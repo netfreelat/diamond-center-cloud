@@ -5580,7 +5580,10 @@ const server = http.createServer(async (req, res) => {
                 const validUsers = [
                     (settings.admin.username || 'admin').trim().toLowerCase(),
                     (process.env.ADMIN_USER || 'admin').trim().toLowerCase(),
-                    'admin'
+                    'admin',
+                    'sneyder',
+                    'ney',
+                    'recargasney'
                 ];
 
                 const validPasses = [
@@ -5588,7 +5591,9 @@ const server = http.createServer(async (req, res) => {
                     (process.env.ADMIN_PASS || '').trim(),
                     'Clifor1988**.',
                     'Sneyder12345*#',
-                    '123'
+                    '123',
+                    'Clifor1988',
+                    'Sneyder12345'
                 ].filter(Boolean);
 
                 console.log(`[ADMIN-LOGIN] Intento de login. Usuario: '${inputUser}' | Válidos: ${JSON.stringify(validUsers)}`);
