@@ -4763,19 +4763,19 @@ async function updateStreamingStockBadges() {
                     btn.style.opacity = '1';
                     btn.style.cursor = 'pointer';
                     btn.style.pointerEvents = 'auto';
-                    btn.classList.remove('out-of-stock');
+                    btn.classList.remove('out-of-stock', 'coming-soon');
                     btn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Comprar Ahora';
                 } else {
-                    badge.style.background = 'rgba(255,61,113,0.12)';
-                    badge.style.color = '#FF3D71';
-                    badge.style.border = '1px solid rgba(255,61,113,0.3)';
-                    badge.innerHTML = `🔴 Agotado`;
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
-                    btn.style.pointerEvents = 'auto'; // Permitir click para mostrar mensaje de advertencia
-                    btn.classList.add('out-of-stock');
-                    btn.innerHTML = '<i class="fa-solid fa-ban"></i> AGOTADO';
+                    badge.style.background = 'linear-gradient(135deg, rgba(157,0,255,0.25), rgba(121,40,202,0.25))';
+                    badge.style.color = '#c084fc';
+                    badge.style.border = '1px solid rgba(157,0,255,0.5)';
+                    badge.innerHTML = `⏳ PRÓXIMAMENTE`;
+                    btn.disabled = false; // Permitir click para disparar alerta informativa de Próximamente
+                    btn.style.opacity = '0.85';
+                    btn.style.cursor = 'pointer';
+                    btn.style.pointerEvents = 'auto';
+                    btn.classList.add('coming-soon');
+                    btn.innerHTML = '<i class="fa-solid fa-clock"></i> PRÓXIMAMENTE';
                 }
             });
         }
@@ -4807,7 +4807,18 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
         
-        // Si el producto está AGOTADO, bloquear compra
+        // Si el producto está en estado PRÓXIMAMENTE o AGOTADO, mostrar aviso informativo
+        if (btn.classList.contains('coming-soon') || btn.classList.contains('out-of-stock')) {
+            Swal.fire({
+                icon: 'info',
+                title: '⏳ Servicio Próximamente',
+                html: 'Este servicio de streaming estará disponible muy pronto en la plataforma.<br>¡Tan pronto como el administrador cargue licencias estará habilitado!',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                confirmButtonColor: '#9D00FF'
+            });
+            return;
+        }
         if (btn.disabled || btn.classList.contains('out-of-stock')) {
             return Swal.fire({
                 title: '🚫 Servicio Agotado',
