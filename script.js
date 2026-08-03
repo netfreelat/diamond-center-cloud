@@ -4072,7 +4072,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const winnerNameEl = document.getElementById('last-winner-name');
             if (winnerEl && winnerNameEl && data.lastWinner) {
                 winnerEl.style.display = 'flex';
-                winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${data.lastWinner.name}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${data.lastWinner.premio}</span>`;
+                const winnerUid = data.lastWinner.uid ? ` (ID: ${data.lastWinner.uid})` : '';
+                winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${data.lastWinner.name}</span> <span style="color: #00f0ff; font-weight: 800; font-size: 0.9rem; font-family: monospace;">${winnerUid}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${data.lastWinner.premio}</span>`;
             }
 
             // Renderizar Rueda de Participantes en reposo

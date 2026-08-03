@@ -977,6 +977,17 @@
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Premio
                     </button>
                 </div>
+            <!-- 🏆 GANADOR DEL ÚLTIMO SORTEO SEMANAL -->
+            <div id="admin-sorteo-last-winner-box" style="display:none; border: 1px solid rgba(255, 215, 0, 0.4); background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(157, 0, 255, 0.12)); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <div style="font-size:0.75rem; color:#FFD700; font-weight:800; text-transform:uppercase; letter-spacing:1px;"><i class="fa-solid fa-trophy"></i> ÚLTIMO GANADOR DEL SORTEO SEMANAL</div>
+                        <div style="font-size:1.3rem; font-weight:900; color:#fff; margin-top:3px;" id="admin-winner-name-display">Cargando...</div>
+                        <div style="font-size:0.9rem; color:#00FF94; font-weight:700; margin-top:2px;" id="admin-winner-prize-display">Premio: -</div>
+                    </div>
+                    <div style="display:flex; gap:8px;" id="admin-winner-actions-container">
+                    </div>
+                </div>
             </div>
 
             <div class="action-card">
@@ -1470,6 +1481,25 @@
                 const res = await adminFetch(`${SERVER_URL}/admin/ruleta-history`);
                 const data = await res.json();
                 
+                if (data.lastWinner) {
+                    const winnerBox = document.getElementById('admin-sorteo-last-winner-box');
+                    const winnerName = document.getElementById('admin-winner-name-display');
+                    const winnerPrize = document.getElementById('admin-winner-prize-display');
+                    const actionsBox = document.getElementById('admin-winner-actions-container');
+
+                    if (winnerBox && winnerName && winnerPrize) {
+                        winnerBox.style.display = 'block';
+                        winnerName.innerHTML = `<strong>${winnerEsc(data.lastWinner.name || 'Ganador')}</strong> — ID / UID: <code style="color:#00f0ff; font-size:1.15rem; font-family:monospace; font-weight:800;">${data.lastWinner.uid || '-'}</code>`;
+                        winnerPrize.innerHTML = `🎁 Premio Ganado: <strong style="color:#00FF94;">${data.lastWinner.premio || 'Premio Semanal'}</strong>`;
+                        
+                        if (actionsBox) {
+                            actionsBox.innerHTML = `
+                                <button onclick="navigator.clipboard.writeText('${data.lastWinner.uid}'); Swal.fire({toast:true, position:'top-end', icon:'success', title:'ID ${data.lastWinner.uid} Copiado', timer:2000, showConfirmButton:false});" style="background:#00f0ff; color:#07030D; border:none; border-radius:8px; padding:8px 14px; font-weight:800; font-size:0.82rem; cursor:pointer;"><i class="fa-solid fa-copy"></i> Copiar ID</button>
+                            `;
+                        }
+                    }
+                }
+
                 if (!data.success || !data.history || data.history.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-gray);">Aún no hay reclamos de ruleta registrados.</td></tr>';
                     return;
