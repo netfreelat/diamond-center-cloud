@@ -2878,6 +2878,33 @@ const server = http.createServer(async (req, res) => {
 
 
 
+        // --- BLOQUEO DE SEGURIDAD: VERIFICAR STOCK DISPONIBLE SI ES STREAMING ---
+        const packLower = (pack || '').toLowerCase();
+        const esStreaming = (juego === 'streaming') || ['netflix', 'disney', 'max', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll'].some(s => packLower.includes(s));
+        
+        if (esStreaming) {
+            let serviceKey = null;
+            if (packLower.includes('netflix')) serviceKey = 'netflix';
+            else if (packLower.includes('disney')) serviceKey = 'disney';
+            else if (packLower.includes('max') || packLower.includes('hbo')) serviceKey = 'max';
+            else if (packLower.includes('vix')) serviceKey = 'vix';
+            else if (packLower.includes('canva')) serviceKey = 'canva';
+            else if (packLower.includes('spotify')) serviceKey = 'spotify';
+            else if (packLower.includes('prime')) serviceKey = 'prime';
+            else if (packLower.includes('crunchyroll')) serviceKey = 'crunchyroll';
+
+            const available = (serviceKey && settings.juegos && settings.juegos.streaming_stock && settings.juegos.streaming_stock[serviceKey]) ? settings.juegos.streaming_stock[serviceKey].length : 0;
+            
+            if (available === 0) {
+                console.log(`[NOTIFICACIÓN] 🛑 Intento de compra para servicio AGOTADO: ${pack}`);
+                res.writeHead(200);
+                return res.end(JSON.stringify({ 
+                    success: false, 
+                    message: `🚫 El servicio (${pack.toUpperCase()}) se encuentra AGOTADO en el almacén por el momento. No realices ningún pago.` 
+                }));
+            }
+        }
+
         // Generar número de control único
         const control_num = `${Date.now().toString().slice(-6)}${Math.floor(Math.random()*100).toString().padStart(2, '0')}`;
 

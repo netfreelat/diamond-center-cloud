@@ -4759,13 +4759,21 @@ async function updateStreamingStockBadges() {
                     badge.innerHTML = `🟢 ${count} Disponible${count > 1 ? 's' : ''}`;
                     btn.disabled = false;
                     btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.style.pointerEvents = 'auto';
+                    btn.classList.remove('out-of-stock');
                     btn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Comprar Ahora';
                 } else {
                     badge.style.background = 'rgba(255,61,113,0.12)';
                     badge.style.color = '#FF3D71';
                     badge.style.border = '1px solid rgba(255,61,113,0.3)';
                     badge.innerHTML = `🔴 Agotado`;
-                    btn.innerHTML = 'Sin Stock Disponible';
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.style.pointerEvents = 'auto'; // Permitir click para mostrar mensaje de advertencia
+                    btn.classList.add('out-of-stock');
+                    btn.innerHTML = '<i class="fa-solid fa-ban"></i> AGOTADO';
                 }
             });
         }
@@ -4796,6 +4804,18 @@ if (streamingModalClose && streamingModal) {
 document.querySelectorAll('.streaming-order-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
+        
+        // Si el producto está AGOTADO, bloquear compra
+        if (btn.disabled || btn.classList.contains('out-of-stock')) {
+            return Swal.fire({
+                title: '🚫 Servicio Agotado',
+                text: 'Este servicio de streaming se encuentra AGOTADO en el almacén por el momento. Por favor no realices ningún pago hasta que haya nuevo stock disponible.',
+                icon: 'warning',
+                background: 'rgba(20, 10, 35, 0.96)',
+                color: '#fff',
+                confirmButtonColor: '#ff3d71'
+            });
+        }
         const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
         const priceUsdt = parseFloat(btn.getAttribute('data-price')) || 2.50;
         
