@@ -885,6 +885,9 @@ async function loadFromSupabase() {
             }
             if (settingsData.juegos) {
                 settings.juegos = { ...settings.juegos, ...settingsData.juegos };
+                if (settings.juegos.sorteo_semanal) {
+                    settings.sorteo_semanal = { ...settings.sorteo_semanal, ...settings.juegos.sorteo_semanal };
+                }
                 if (!settings.juegos.mobilelegends) {
                     settings.juegos.mobilelegends = {
                         "nombre": "Mobile Legends US",

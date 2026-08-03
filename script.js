@@ -4206,28 +4206,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function triggerWeeklyRaffleDraw(raffleData) {
-        if (!raffleData || (!raffleData.lastWinner && (!raffleData.ticketList || raffleData.ticketList.length === 0))) return;
+        // SEGURIDAD GLOBAL: El ganador DEBE provenir 100% del servidor backend (lastWinner).
+        // Ningún cliente debe adivinar o sortear de forma local con Math.random().
+        if (!raffleData || !raffleData.lastWinner || !raffleData.lastWinner.name) {
+            console.warn('[SORTEO-SEMANAL-UI] No hay un ganador oficial registrado por el servidor. Cancelando giro local.');
+            window.isRaffleSpinningActive = false;
+            return;
+        }
 
         window.isRaffleSpinningActive = true;
         if (weeklyRaffleAnim) cancelAnimationFrame(weeklyRaffleAnim);
 
-        // 1. Determinar el objeto ganador oficial
+        // 1. Obtener el ganador oficial único dictado por el servidor
         const lastWin = raffleData.lastWinner;
-        let winnerObj = null;
-
-        if (lastWin && lastWin.name) {
-            winnerObj = { uid: String(lastWin.uid || 'N/A'), name: lastWin.name };
-        } else if (raffleData.ticketList && raffleData.ticketList.length > 0) {
-            const randIdx = Math.floor(Math.random() * raffleData.ticketList.length);
-            winnerObj = raffleData.ticketList[randIdx];
-        } else {
-            winnerObj = { uid: 'N/A', name: 'Ganador' };
-        }
+        const winnerObj = { uid: String(lastWin.uid || 'N/A'), name: lastWin.name };
 
         // 2. Construir la lista exacta de ítems que se dibujará en la rueda
         let itemsToDraw = [];
         if (raffleData.ticketList && raffleData.ticketList.length > 0) {
             itemsToDraw = [...raffleData.ticketList];
+        } else if (lastWin.ticketList && lastWin.ticketList.length > 0) {
+            itemsToDraw = [...lastWin.ticketList];
         }
 
         // Buscar el índice del ganador en la lista a dibujar
@@ -4243,7 +4242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             winIdx = 0;
         }
 
-        const winner = itemsToDraw[winIdx]; // Objeto idéntico garantizado 100%
+        const winner = itemsToDraw[winIdx]; // Objeto idéntico garantizado 100% por el servidor
 
         const canvas = document.getElementById('weekly-raffle-canvas');
         if (!canvas) {
@@ -4339,7 +4338,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const winnerNameEl = document.getElementById('last-winner-name');
                 if (winnerEl && winnerNameEl) {
                     winnerEl.style.display = 'flex';
-                    winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${winner.name}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${raffleData.premio || '341 Diamantes'}</span>`;
+                    const winnerUidStr = winner.uid ? ` (ID: ${winner.uid})` : '';
+                    winnerNameEl.innerHTML = `<span style="color: #FFD700; font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">${winner.name}</span> <span style="color: #00f0ff; font-weight: 800; font-size: 0.9rem; font-family: monospace;">${winnerUidStr}</span> <span style="color: #00FF94; font-weight: 700;">— Ganó ${raffleData.premio || '341 Diamantes'}</span>`;
                 }
 
                 if (typeof confetti !== 'undefined') {
