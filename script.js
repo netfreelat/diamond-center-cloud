@@ -4792,33 +4792,55 @@ if (streamingModalClose && streamingModal) {
     });
 }
 
-// Botones de pedido directo en la web
+// Botones de pedido directo con pasarela de pago y verificación automática por Bot
 document.querySelectorAll('.streaming-order-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
         const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
+        const priceUsdt = parseFloat(btn.getAttribute('data-price')) || 2.50;
         
-        // Cerrar modal de streaming
+        // Cerrar modal de catálogo streaming
         if (streamingModal) streamingModal.style.display = 'none';
 
-        // Pre-seleccionar en la interfaz de pago de la web
-        if (typeof selectGame === 'function') {
-            selectGame('streaming');
+        // Configurar paquete seleccionado
+        selectedGame = 'streaming';
+        selectedPack = serviceName;
+        selectedPriceUsdt = priceUsdt;
+
+        // Calcular monto exacto en Bolívares usando la tasa del día
+        const rate = (typeof tasaDelDia !== 'undefined' && tasaDelDia > 0) ? tasaDelDia : (settings.tasa_del_dia || 65);
+        const priceBs = (priceUsdt * rate).toFixed(2);
+
+        // Actualizar campos de monto en la sección de pago
+        const amountPm = document.getElementById('amount-pagomovil');
+        const amountBin = document.getElementById('amount-binance');
+        if (amountPm) amountPm.value = `${priceBs} Bs`;
+        if (amountBin) amountBin.value = `${priceUsdt} USDT`;
+
+        // Mostrar sección de métodos de pago
+        const paymentSection = document.getElementById('payment-section');
+        const packagesSection = document.getElementById('packages-section');
+        if (packagesSection) packagesSection.style.display = 'none';
+        if (paymentSection) {
+            paymentSection.style.display = 'block';
+            paymentSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Desplazarse suavemente al área de recargas
-        const buySection = document.getElementById('game-selector-container') || document.querySelector('.card');
-        if (buySection) {
-            buySection.scrollIntoView({ behavior: 'smooth' });
-        }
+        // Auto-seleccionar Pago Móvil por defecto si no hay método activo
+        const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
+        if (pmCard) pmCard.click();
 
         Swal.fire({
-            title: `Adquirir ${serviceName}`,
-            text: `Ingresa tu ID de Jugador o Teléfono para recibir tu cuenta de ${serviceName} automáticamente tras confirmar tu pago.`,
+            title: `🛒 Comprar ${serviceName}`,
+            html: `<div style="text-align:center;">
+                <p style="font-size:0.9rem; color:#aaa; margin-bottom:8px;">Realiza tu pago por <strong>Pago Móvil</strong> o <strong>Binance Pay</strong> y pega la referencia abajo para verificación automática instantánea.</p>
+                <div style="font-size:1.4rem; font-weight:800; color:#00FF94; margin-top:5px;">$${priceUsdt.toFixed(2)} USDT / ${priceBs} Bs</div>
+            </div>`,
             icon: 'info',
-            background: 'rgba(20, 10, 35, 0.95)',
+            background: 'rgba(20, 10, 35, 0.96)',
             color: '#fff',
-            confirmButtonColor: '#9D00FF'
+            confirmButtonColor: '#9D00FF',
+            confirmButtonText: '¡Entendido, Ir a Pagar!'
         });
     });
 });

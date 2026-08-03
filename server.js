@@ -1828,6 +1828,25 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                 console.log(`[AUTO-APPROVE] Iniciando recarga automática via Jadh.shop para ${order.uid} | Qty: ${qty}`);
                 
                 (async () => {
+                    const juego = order.juego || 'freefire';
+                    const esStreaming = juego === 'streaming' || ['netflix', 'disney', 'max', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll'].some(s => (order.pack || '').toLowerCase().includes(s));
+
+                    if (esStreaming) {
+                        console.log(`[AUTO-APPROVE] 🍿 Procesando auto-aprobación de streaming: ${order.pack}`);
+                        const deliveredPin = await getStreamingStockAccount(order.pack) || 'Manual';
+                        orders[targetShortRef].status = 'approved';
+                        updateOrderStatus(targetShortRef, 'approved', deliveredPin);
+                        saveRecent(order.name, order.pack);
+                        const usdtPrice = parseFloat(order.price.split('USDT')[0]);
+                        if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
+                        queueWhatsAppMessage({ ...order, ref: targetShortRef, pin: deliveredPin }, true);
+                        notifyAdminsOrderStatus({ ...order, ref: targetShortRef, pin: deliveredPin }, true, 'Auto-Aprobación Bot (Streaming)');
+                        scheduleReviewRequest({ ...order, ref: targetShortRef });
+                        sendPushToUser(order.login_uid || order.uid, 'Servicio Aprobado ✅', `¡Tu pedido de ${order.pack} fue aprobado! Credenciales: ${deliveredPin}`, '/icon-192.png', '/historial');
+                        updateTelegramStatus(targetShortRef);
+                        return;
+                    }
+
                     let allSuccess = true;
                     let nick = order.name;
                     
