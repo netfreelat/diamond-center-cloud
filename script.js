@@ -4828,6 +4828,24 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
         selectedPack = serviceName;
         selectedPriceUsdt = priceUsdt;
 
+        // Ocultar sección de consulta de ID de juego para evitar confusión
+        const playerIdSection = document.querySelector('.card > .input-group') ? document.querySelector('.card > .input-group').parentNode : null;
+        const verifyBtn = document.getElementById('verify-btn');
+        const playerIdInput = document.getElementById('player-id');
+        if (verifyBtn) verifyBtn.style.display = 'none';
+        if (playerIdInput && playerIdInput.parentNode) playerIdInput.parentNode.style.display = 'none';
+        
+        // Auto-asignar un identificador de cliente si el campo está vacío
+        if (playerIdInput && (!playerIdInput.value || playerIdInput.value.trim() === '')) {
+            playerIdInput.value = 'Cliente-Streaming';
+        }
+
+        // Mostrar cabecera de bienvenida adaptada al servicio de streaming
+        const welcomeSection = document.getElementById('welcome-section');
+        const playerNameDisplay = document.getElementById('player-name-display');
+        if (playerNameDisplay) playerNameDisplay.innerHTML = `<i class="fa-solid fa-tv" style="color:#E50914;"></i> ${serviceName}`;
+        if (welcomeSection) welcomeSection.style.display = 'block';
+
         // Calcular monto exacto en Bolívares usando la tasa del día
         const rate = (typeof tasaDelDia !== 'undefined' && tasaDelDia > 0) ? tasaDelDia : (settings.tasa_del_dia || 65);
         const priceBs = (priceUsdt * rate).toFixed(2);
@@ -4838,13 +4856,7 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
         if (amountPm) amountPm.value = `${priceBs} Bs`;
         if (amountBin) amountBin.value = `${priceUsdt} USDT`;
 
-        // Asegurar que el contenedor principal esté visible
-        const mainCard = document.querySelector('.card');
-        const gameSelector = document.getElementById('game-selector-container');
-        if (mainCard) mainCard.style.display = 'block';
-        if (gameSelector) gameSelector.style.display = 'block';
-
-        // Mostrar sección de métodos de pago directamente
+        // Ocultar sección de paquetes de diamantes y mostrar pasarela de pagos
         const paymentSection = document.getElementById('payment-section');
         const packagesSection = document.getElementById('packages-section');
         if (packagesSection) packagesSection.style.display = 'none';
@@ -4856,10 +4868,10 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
         const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
         if (pmCard) pmCard.click();
 
-        // Desplazar la pantalla suavemente a la pasarela de pagos
+        // Desplazar la pantalla suavemente directo al cuadro de pagos
         setTimeout(() => {
             if (paymentSection) paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+        }, 150);
 
         Swal.fire({
             title: `🛒 Comprar ${serviceName}`,
