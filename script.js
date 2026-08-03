@@ -4828,35 +4828,38 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
         selectedPack = serviceName;
         selectedPriceUsdt = priceUsdt;
 
-        // Ocultar sección de consulta de ID de juego para evitar confusión
-        const playerIdSection = document.querySelector('.card > .input-group') ? document.querySelector('.card > .input-group').parentNode : null;
+        // Ocultar sección de consulta de ID y bienvenida para que NO ensucie la pantalla
         const verifyBtn = document.getElementById('verify-btn');
         const playerIdInput = document.getElementById('player-id');
+        const welcomeSection = document.getElementById('welcome-section');
         if (verifyBtn) verifyBtn.style.display = 'none';
         if (playerIdInput && playerIdInput.parentNode) playerIdInput.parentNode.style.display = 'none';
+        if (welcomeSection) welcomeSection.style.display = 'none';
         
-        // Auto-asignar un identificador de cliente si el campo está vacío
+        // Auto-asignar identificador de cliente si está vacío
         if (playerIdInput && (!playerIdInput.value || playerIdInput.value.trim() === '')) {
             playerIdInput.value = 'Cliente-Streaming';
         }
-
-        // Mostrar cabecera de bienvenida adaptada al servicio de streaming
-        const welcomeSection = document.getElementById('welcome-section');
-        const playerNameDisplay = document.getElementById('player-name-display');
-        if (playerNameDisplay) playerNameDisplay.innerHTML = `<i class="fa-solid fa-tv" style="color:#E50914;"></i> ${serviceName}`;
-        if (welcomeSection) welcomeSection.style.display = 'block';
 
         // Calcular monto exacto en Bolívares usando la tasa del día
         const rate = (typeof tasaDelDia !== 'undefined' && tasaDelDia > 0) ? tasaDelDia : (settings.tasa_del_dia || 65);
         const priceBs = (priceUsdt * rate).toFixed(2);
 
-        // Actualizar campos de monto en la sección de pago
+        // Mostrar caja de resumen de producto streaming en la pasarela de pagos
+        const summaryBox = document.getElementById('streaming-selected-summary');
+        const summaryTitle = document.getElementById('streaming-summary-title');
+        const summaryPrice = document.getElementById('streaming-summary-price');
+        if (summaryTitle) summaryTitle.innerText = serviceName;
+        if (summaryPrice) summaryPrice.innerText = `${priceUsdt.toFixed(2)} USDT / ${priceBs} Bs`;
+        if (summaryBox) summaryBox.style.display = 'block';
+
+        // Actualizar campos de monto en los métodos de pago
         const amountPm = document.getElementById('amount-pagomovil');
         const amountBin = document.getElementById('amount-binance');
         if (amountPm) amountPm.value = `${priceBs} Bs`;
         if (amountBin) amountBin.value = `${priceUsdt} USDT`;
 
-        // Ocultar sección de paquetes de diamantes y mostrar pasarela de pagos
+        // Ocultar paquetes de diamantes y mostrar ÚNICAMENTE la pasarela de pagos
         const paymentSection = document.getElementById('payment-section');
         const packagesSection = document.getElementById('packages-section');
         if (packagesSection) packagesSection.style.display = 'none';
