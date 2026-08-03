@@ -343,8 +343,13 @@ function getWeeklyRaffleData() {
 
     participants.sort((a, b) => b.tickets - a.tickets);
 
-    const premioText = (settings.sorteo_semanal && settings.sorteo_semanal.premio) ? settings.sorteo_semanal.premio : '341 Diamantes';
-    const lastWinner = (settings.sorteo_semanal && settings.sorteo_semanal.lastWinner) ? settings.sorteo_semanal.lastWinner : null;
+    const premioText = (settings.sorteo_semanal && settings.sorteo_semanal.premio) ? settings.sorteo_semanal.premio : (settings.juegos && settings.juegos.sorteo_semanal && settings.juegos.sorteo_semanal.premio ? settings.juegos.sorteo_semanal.premio : '341 Diamantes');
+    let lastWinner = (settings.sorteo_semanal && settings.sorteo_semanal.lastWinner) ? settings.sorteo_semanal.lastWinner : (settings.juegos && settings.juegos.sorteo_semanal ? settings.juegos.sorteo_semanal.lastWinner : null);
+
+    // Si aún no está en memoria, asegurar que sorteo_semanal esté sincronizado
+    if (lastWinner && !settings.sorteo_semanal) {
+        settings.sorteo_semanal = { ...settings.juegos.sorteo_semanal };
+    }
 
     return {
         success: true,
@@ -886,7 +891,7 @@ async function loadFromSupabase() {
             if (settingsData.juegos) {
                 settings.juegos = { ...settings.juegos, ...settingsData.juegos };
                 if (settings.juegos.sorteo_semanal) {
-                    settings.sorteo_semanal = { ...settings.sorteo_semanal, ...settings.juegos.sorteo_semanal };
+                    settings.sorteo_semanal = Object.assign({}, settings.sorteo_semanal || {}, settings.juegos.sorteo_semanal);
                 }
                 if (!settings.juegos.mobilelegends) {
                     settings.juegos.mobilelegends = {
