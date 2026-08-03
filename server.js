@@ -5057,6 +5057,34 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: false, message: e.message }));
             }
         });
+    } else if (parsedUrl.pathname === '/admin/edit-streaming-stock' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { service, index, newAccountText } = JSON.parse(body);
+                if (!service || index === undefined || !newAccountText) {
+                    res.writeHead(400);
+                    return res.end(JSON.stringify({ success: false, message: 'Parámetros inválidos.' }));
+                }
+
+                if (settings.juegos && settings.juegos.streaming_stock && settings.juegos.streaming_stock[service] && settings.juegos.streaming_stock[service][index] !== undefined) {
+                    settings.juegos.streaming_stock[service][index] = newAccountText.trim();
+                    try {
+                        await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1);
+                    } catch (e) {
+                        console.error('[STREAMING-STOCK-EDIT] Error actualizando Supabase:', e.message);
+                    }
+                    console.log(`[STREAMING-STOCK-EDIT] ✏️ Editada cuenta #${index} de ${service}: ${newAccountText}`);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(500);
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
     } else if (parsedUrl.pathname === '/api/check_password') {
         const uid = parsedUrl.searchParams.get('uid');
         const pass = parsedUrl.searchParams.get('pass');

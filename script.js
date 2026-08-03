@@ -2828,6 +2828,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p><strong>PLAN:</strong> <span class="val">${productTitleVal}</span></p>
                                 ${!isRobloxOrder ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : ''}
                                 ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
+                                <p><strong>Nº DE APROBACIÓN:</strong> <span class="val" style="color:#00FF94; font-weight:800;">#APROB-${approvalNum}</span> <small style="display:block; font-size:0.65rem; color:#aaa;">(Guarda este código para reclamos o renovaciones)</small></p>
                                 <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
                                 <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
                                 <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
@@ -4837,18 +4838,28 @@ document.querySelectorAll('.streaming-order-btn').forEach(btn => {
         if (amountPm) amountPm.value = `${priceBs} Bs`;
         if (amountBin) amountBin.value = `${priceUsdt} USDT`;
 
-        // Mostrar sección de métodos de pago
+        // Asegurar que el contenedor principal esté visible
+        const mainCard = document.querySelector('.card');
+        const gameSelector = document.getElementById('game-selector-container');
+        if (mainCard) mainCard.style.display = 'block';
+        if (gameSelector) gameSelector.style.display = 'block';
+
+        // Mostrar sección de métodos de pago directamente
         const paymentSection = document.getElementById('payment-section');
         const packagesSection = document.getElementById('packages-section');
         if (packagesSection) packagesSection.style.display = 'none';
         if (paymentSection) {
             paymentSection.style.display = 'block';
-            paymentSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Auto-seleccionar Pago Móvil por defecto si no hay método activo
+        // Auto-seleccionar Pago Móvil por defecto
         const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
         if (pmCard) pmCard.click();
+
+        // Desplazar la pantalla suavemente a la pasarela de pagos
+        setTimeout(() => {
+            if (paymentSection) paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
 
         Swal.fire({
             title: `🛒 Comprar ${serviceName}`,

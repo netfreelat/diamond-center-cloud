@@ -2986,6 +2986,9 @@
                 badge.style.display = 'none';
                 stopTitleFlash();
             }
+            lastPendingCount = count;
+        }
+
         // --- ALMACÉN Y STOCK STREAMING ---
         async function loadStreamingStockAdmin() {
             try {
@@ -3039,10 +3042,14 @@
                             totalCount += accList.length;
                             detailContainer.innerHTML += `<div style="color:${s.color}; font-weight:800; margin-top:8px; margin-bottom:4px; font-size:0.82rem;"><i class="fa-solid ${s.icon}"></i> ${s.name} (${accList.length}):</div>`;
                             accList.forEach((acc, idx) => {
+                                const escapedAcc = acc.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                                 detailContainer.innerHTML += `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; margin-bottom:3px;">
-                                        <span style="color:#eee; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx+1}. ${acc}</span>
-                                        <button onclick="deleteStreamingAccountAdmin('${s.id}', ${idx})" style="background:rgba(255,0,0,0.2); border:1px solid #ff4b2b; color:#ff4b2b; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Eliminar cuenta">✕</button>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; margin-bottom:4px; border:1px solid rgba(255,255,255,0.05);">
+                                        <span style="color:#eee; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.78rem; font-family:monospace;">${idx+1}. ${acc}</span>
+                                        <div style="display:flex; gap:4px; margin-left:8px;">
+                                            <button onclick="editStreamingAccountAdmin('${s.id}', ${idx}, '${escapedAcc}')" style="background:rgba(157,0,255,0.25); border:1px solid #9D00FF; color:#c084fc; border-radius:5px; padding:3px 8px; font-size:0.7rem; cursor:pointer;" title="Editar cuenta">✏️ Editar</button>
+                                            <button onclick="deleteStreamingAccountAdmin('${s.id}', ${idx})" style="background:rgba(255,0,0,0.25); border:1px solid #ff4b2b; color:#ff4b2b; border-radius:5px; padding:3px 8px; font-size:0.7rem; cursor:pointer;" title="Eliminar cuenta">🗑️</button>
+                                        </div>
                                     </div>
                                 `;
                             });
