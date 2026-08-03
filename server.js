@@ -306,16 +306,18 @@ function getWeeklyRaffleData() {
     const endIso = cycle.endOfCycleISO;
     const startTimestamp = new Date(startIso).getTime();
 
-    // Timestamp de reseteo: Solo se filtra si ocurrió un reseteo POSTERIOR al inicio del ciclo activo actual (después del sorteo)
+    // Timestamp de reseteo: El conteo de boletos se limita SIEMPRE al inicio del ciclo activo actual o al último reseteo (el que sea mayor)
     const lastResetIso = (settings.sorteo_semanal && settings.sorteo_semanal.lastResetTimestamp) ? settings.sorteo_semanal.lastResetTimestamp : null;
     const lastResetTs = lastResetIso ? new Date(lastResetIso).getTime() : 0;
-    const effectiveStartTs = (lastResetTs > startTimestamp) ? lastResetTs : 0;
+    
+    // Inicio efectivo para contar boletos: NUNCA se arrastran boletos de semanas o sorteos anteriores
+    const effectiveStartTs = Math.max(startTimestamp, lastResetTs);
 
     const referrerCounts = {};
     Object.values(users).forEach(u => {
         if (u.referred_by) {
             const refTime = u.referred_at ? new Date(u.referred_at).getTime() : (u.registered ? new Date(u.registered).getTime() : 0);
-            if (effectiveStartTs === 0 || refTime >= effectiveStartTs) {
+            if (refTime >= effectiveStartTs) {
                 const refUid = u.referred_by;
                 referrerCounts[refUid] = (referrerCounts[refUid] || 0) + 1;
             }
@@ -392,11 +394,9 @@ async function executeWeeklyDraw(forcedUid = null, isAutoCron = false) {
     if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
     settings.sorteo_semanal.lastWinner = winnerObj;
     
-    // Solo marcar el reseteo permanente si es la ejecución automática del Domingo
-    if (isAutoCron) {
-        settings.sorteo_semanal.lastCycleProcessed = data.endOfCycle;
-        settings.sorteo_semanal.lastResetTimestamp = new Date().toISOString();
-    }
+    // Marcar el reseteo del sorteo para limpiar los boletos anteriores y comenzar el nuevo ciclo desde 0
+    settings.sorteo_semanal.lastCycleProcessed = data.endOfCycle;
+    settings.sorteo_semanal.lastResetTimestamp = new Date().toISOString();
 
     if (settings.juegos) {
         delete settings.juegos.sorteo_semanal;
@@ -5353,6 +5353,16 @@ const server = http.createServer(async (req, res) => {
                 if (newObj.referred_by) {
                     res.writeHead(200);
                     return res.end(JSON.stringify({ success: false, message: 'Ya fue referido anteriormente' }));
+                }
+
+                // ⚠️ SEGURIDAD: Los usuarios existentes NO pueden ser invitados para generar boletos. Solo aplica a USUARIOS NUEVOS.
+                const hasExistingOrders = Object.values(orders).some(o => (o.uid === new_uid || o.login_uid === new_uid) && o.status === 'approved');
+                const isPreExistingAccount = (newObj.registered && (new Date() - new Date(newObj.registered)) > 12 * 60 * 60 * 1000) || hasExistingOrders || (newObj.has_purchased === true);
+
+                if (isPreExistingAccount) {
+                    console.warn(`[REFERRAL-SECURITY] 🛑 Bloqueado: ${new_uid} ya es un usuario registrado previamente en la plataforma.`);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: '🚫 Este usuario ya está registrado en la web. Las invitaciones y boletos del sorteo solo aplican para clientes completamente nuevos.' }));
                 }
                 // Guardar quién lo refirió y la fecha de la invitación
                 newObj.referred_by = referrer_uid;
