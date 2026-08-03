@@ -3875,5 +3875,95 @@ body::before {
     box-shadow: 0 6px 18px rgba(37, 211, 102, 0.4);
 }
 
+/* ============================================================
+   📱 OPTIMIZACIÓN ULTRA-RESPONSIVA PARA TELÉFONOS MÓVILES
+   ============================================================ */
+@media (max-width: 600px) {
+    .streaming-modal {
+        padding: 8px !important;
+    }
+    
+    .streaming-modal-content {
+        padding: 18px 12px 14px 12px !important;
+        border-radius: 18px !important;
+        max-height: 94vh !important;
+        width: 96% !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
+    }
+
+    .streaming-modal-close-btn {
+        top: 10px !important;
+        right: 10px !important;
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 1.1rem !important;
+        background: rgba(255,255,255,0.12) !important;
+    }
+
+    .streaming-modal-header {
+        margin-bottom: 16px !important;
+        padding-right: 30px !important;
+        text-align: center !important;
+    }
+
+    .streaming-header-badge {
+        font-size: 0.65rem !important;
+        padding: 3px 10px !important;
+        margin-bottom: 6px !important;
+    }
+
+    .streaming-modal-header h2 {
+        font-size: 1.15rem !important;
+        line-height: 1.25 !important;
+        margin: 2px 0 4px 0 !important;
+    }
+
+    .streaming-modal-header p {
+        font-size: 0.74rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .streaming-services-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .streaming-card {
+        padding: 12px 14px !important;
+        border-radius: 14px !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .streaming-card h3 {
+        font-size: 0.92rem !important;
+        padding-right: 80px !important; /* Evitar solape con el badge */
+        word-break: break-word !important;
+    }
+
+    .streaming-card-badge {
+        top: 10px !important;
+        right: 10px !important;
+        font-size: 0.6rem !important;
+        padding: 2px 6px !important;
+    }
+
+    .streaming-desc {
+        font-size: 0.74rem !important;
+        margin: 2px 0 8px 0 !important;
+    }
+
+    .streaming-price {
+        font-size: 0.9rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    .streaming-order-btn {
+        padding: 9px 12px !important;
+        font-size: 0.78rem !important;
+        border-radius: 10px !important;
+    }
+}
+
 
 
