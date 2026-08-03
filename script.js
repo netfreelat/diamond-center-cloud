@@ -90,6 +90,21 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             list.appendChild(btn);
         });
+
+        // Agregar botón de Streaming en el selector de juegos superior con su insignia semi-transparente
+        const streamingTab = document.createElement('button');
+        streamingTab.className = 'btn-secondary-outline game-btn btn-streaming-highlight';
+        streamingTab.style.cssText = 'position: relative; background: rgba(157, 0, 255, 0.15); border: 1px solid rgba(157, 0, 255, 0.4); backdrop-filter: blur(4px); padding: 8px 14px; margin-left: 4px;';
+        streamingTab.innerHTML = `<span style="position: absolute; top: -8px; right: -5px; background: rgba(157, 0, 255, 0.45); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.35); color: #f3e8ff; font-size: 0.55rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; text-transform: uppercase;">⏳ PRÓXIMAMENTE</span><i class="fa-solid fa-tv" style="color: #E50914; margin-right: 5px;"></i> <span style="font-weight:700; font-size:0.85rem; color:#fff;">Streaming 🍿</span>`;
+        streamingTab.onclick = (e) => {
+            e.preventDefault();
+            const modal = document.getElementById('streaming-services-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                updateStreamingStockBadges();
+            }
+        };
+        list.appendChild(streamingTab);
     }
 
     // Detectar si estamos en local, en el túnel o en la nube
