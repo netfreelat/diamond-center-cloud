@@ -1,0 +1,7 @@
+[
+  { "id": 1, "label": "Básico", "min_views": 1000, "max_views": 4999, "dollars_reward": 1.00, "diamonds_reward": 1.00, "is_active": true },
+  { "id": 2, "label": "Intermedio", "min_views": 5000, "max_views": 9999, "dollars_reward": 3.00, "diamonds_reward": 3.00, "is_active": true },
+  { "id": 3, "label": "Popular", "min_views": 10000, "max_views": 49999, "dollars_reward": 5.00, "diamonds_reward": 5.00, "is_active": true },
+  { "id": 4, "label": "Viral", "min_views": 50000, "max_views": 99999, "dollars_reward": 12.00, "diamonds_reward": 12.00, "is_active": true },
+  { "id": 5, "label": "Mega Viral", "min_views": 100000, "max_views": null, "dollars_reward": 25.00, "diamonds_reward": 25.00, "is_active": true }
+]

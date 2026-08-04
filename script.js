@@ -90,6 +90,44 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             list.appendChild(btn);
         });
+
+        // Botón de Streaming en la barra de juegos (arriba), con badge semi-transparente
+        const streamingTab = document.createElement('button');
+        streamingTab.id = 'streaming-btn';
+        streamingTab.className = 'btn-secondary-outline game-btn btn-streaming-highlight';
+        streamingTab.style.cssText = 'position: relative; background: rgba(157, 0, 255, 0.12); border: 1px solid rgba(157, 0, 255, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 6px 12px; display: flex; align-items: center; gap: 5px;';
+        streamingTab.innerHTML = `
+            <span style="
+                position: absolute;
+                top: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(157, 0, 255, 0.25);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                border: 1px solid rgba(200, 150, 255, 0.35);
+                color: rgba(240, 220, 255, 0.95);
+                font-size: 0.48rem;
+                font-weight: 900;
+                padding: 2px 6px;
+                border-radius: 20px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                white-space: nowrap;
+                pointer-events: none;
+            ">⏳ PRÓX.</span>
+            <i class="fa-solid fa-tv" style="color:#E50914; font-size:0.9rem;"></i>
+            <span style="font-weight:700; font-size:0.82rem; color:#fff;">Streaming</span>
+        `;
+        streamingTab.onclick = (e) => {
+            e.preventDefault();
+            const modal = document.getElementById('streaming-services-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges();
+            }
+        };
+        list.appendChild(streamingTab);
     }
 
     // Detectar si estamos en local, en el túnel o en la nube

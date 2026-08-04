@@ -10,7 +10,9 @@ pagos.json
 usuarios.json
 pedidos.json
 pagos_recibidos.json
-recientes.json
+influencers.json
+influencer_submissions.json
+influencer_payments.json
 .wwebjs_auth/
 .wwebjs_cache/
 scratch/

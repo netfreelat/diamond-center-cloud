@@ -85,12 +85,12 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         
         // Mapear paquetes de monedas a IDs de jadh.shop (bloodstrike)
         const packMap = {
-            "100":  "162",  // 100+5🪙   $0.73
-            "300":  "163",  // 300+20🪙  $2.24
-            "500":  "164",  // 500+40🪙  $3.66
-            "1000": "165",  // 1000+100🪙 $7.44
-            "2000": "166",  // 2000+260🪙 $14.59
-            "5000": "167"   // 5000+800🪙 $36.19
+            "100":  "162",  // 100+5🪙   $0.77
+            "300":  "163",  // 300+20🪙  $2.35
+            "500":  "164",  // 500+40🪙  $3.85
+            "1000": "165",  // 1000+100🪙 $7.81
+            "2000": "166",  // 2000+260🪙 $15.34
+            "5000": "167"   // 5000+800🪙 $38.04
         };
 
         packageId = packMap[amountKey];
@@ -98,21 +98,44 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             console.error(`[JADH-BOT] ❌ Error: Paquete Blood Strike no mapeado: ${amountKey}`);
             return { success: false, message: `El paquete de ${amountKey} monedas de Blood Strike no está mapeado para recarga directa.` };
         }
+    } else if (game === 'mobilelegends' || game === 'mobilelegendsus') {
+        // Limpiar amountKey para obtener el identificador base
+        amountKey = amountKey.split(' ')[0].replace(',', '').replace('.', '').trim();
+        
+        // Mapear paquetes de diamantes a IDs de jadh.shop (mobile-legends-us)
+        const packMap = {
+            "51":   "176",  // 51+5 💎      $0.90
+            "102":  "177",  // 102+10 💎    $1.85
+            "253":  "178",  // 253+25 💎    $4.69
+            "505":  "179",  // 505+66 💎    $9.33
+            "1010": "180",  // 1010+182 💎  $18.94
+            "1515": "181"   // 1515+273 💎  $28.60
+        };
+
+        packageId = packMap[amountKey];
+        if (!packageId) {
+            console.error(`[JADH-BOT] ❌ Error: Paquete Mobile Legends US no mapeado: ${amountKey}`);
+            return { success: false, message: `El paquete de ${amountKey} diamantes de Mobile Legends US no está mapeado para recarga directa.` };
+        }
     }
 
     let browser = null;
     try {
         console.log('[JADH-BOT] 🌐 Lanzando navegador Puppeteer...');
+        const args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-zygote'
+        ];
+        if (process.platform !== 'win32') {
+            args.push('--single-process');
+        }
+
         const launchOptions = {
             headless: "new",
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-zygote',
-                '--single-process'
-            ]
+            args
         };
 
         if (process.platform === 'win32') {
@@ -125,8 +148,10 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         await page.setDefaultNavigationTimeout(60000);
 
         const productUrlMap = {
-            'roblox':      'https://jadh.shop/producto/roblox-usa',
-            'bloodstrike': 'https://jadh.shop/producto/bloodstrike'
+            'roblox':          'https://jadh.shop/producto/roblox-usa',
+            'bloodstrike':     'https://jadh.shop/producto/bloodstrike',
+            'mobilelegends':   'https://jadh.shop/producto/mobile-legends-us',
+            'mobilelegendsus': 'https://jadh.shop/producto/mobile-legends-us'
         };
         const productUrl = productUrlMap[game] || 'https://jadh.shop/producto/freefire-auto';
         // 1. Navegar directamente al producto (Jadh redirige a /auth si no hay sesión)
@@ -168,7 +193,7 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             throw selectorErr;
         }
         
-        if (game === 'freefire' || game === 'bloodstrike') {
+        if (game === 'freefire' || game === 'bloodstrike' || game === 'mobilelegends' || game === 'mobilelegendsus') {
             await page.select('#packageSelect', packageId);
         } else {
             const packageSelected = await page.evaluate((amountToFind) => {
@@ -201,7 +226,26 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
             }
         }
 
-        if (game !== 'roblox') {
+        if (game === 'mobilelegends' || game === 'mobilelegendsus') {
+            console.log('[JADH-BOT] 📝 Ingresando User ID y Zone ID de Mobile Legends...');
+            const parts = uid.toString().trim().split(/[\s\(\)\|\,\-]+/).filter(Boolean);
+            const userId = parts[0] || '';
+            const zoneId = parts[1] || '';
+
+            const input1 = await page.waitForSelector('input[name="gp_input1"]', { timeout: 15000 }).catch(() => null);
+            if (input1) {
+                await page.type('input[name="gp_input1"]', userId);
+                if (zoneId) {
+                    const input2 = await page.$('input[name="gp_input2"]');
+                    if (input2) {
+                        await page.type('input[name="gp_input2"]', zoneId);
+                    }
+                }
+            } else {
+                console.error('[JADH-BOT] ❌ Error: No se encontró el campo de User ID (gp_input1)');
+                return { success: false, message: 'No se encontró el campo de ID para Mobile Legends en Jadh.shop.' };
+            }
+        } else if (game !== 'roblox') {
             console.log('[JADH-BOT] 📝 Ingresando ID del jugador...');
             const inputSelector = await page.evaluate(() => {
                 // jadh.shop usa #gameAccountId en freefire-auto, o input[name^="gp_"] en otros productos
@@ -390,10 +434,10 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
                     return { match: firstIsRoblox ? transactions[0] : null, all: transactions.slice(0, 3) };
                 }
 
-                // Si es freefire/bloodstrike/otros, buscamos por ID de jugador y que NO haya fallado
-                const cleanPlayerID = playerID.trim();
+                // Si es freefire/bloodstrike/mobilelegends/otros, buscamos por ID de jugador y que NO haya fallado
+                const cleanPlayerID = playerID.trim().split(/[\s\(\)\|\,\-]+/)[0];
                 const match = transactions.find(t => 
-                    t.uid === cleanPlayerID &&
+                    (t.uid && (t.uid.trim() === cleanPlayerID || t.uid.includes(cleanPlayerID))) &&
                     !(t.status && ['fallido', 'cancelado', 'rechazado', 'error', 'failed', 'declined'].some(s => t.status.toLowerCase().includes(s)))
                 );
                 return { match, all: transactions.slice(0, 3) };

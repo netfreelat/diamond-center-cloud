@@ -1,5 +1,5 @@
 # ============================================================
-# DIAMOND CENTER - Deploy Automatico al VPS
+# RECARGASNEY.COM - Deploy Automatico al VPS
 # Usa plink (PuTTY) para autenticacion con contraseña
 # ============================================================
 
@@ -18,7 +18,7 @@ function Write-ERR($msg)  { Write-Host "  ERROR: $msg" -ForegroundColor Red; exi
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Yellow
-Write-Host "   DIAMOND CENTER - DEPLOY AL VPS          " -ForegroundColor Yellow
+Write-Host "   RECARGASNEY.COM - DEPLOY AL VPS         " -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor Yellow
 Write-Host "   IP: $VPS_IP"
 Write-Host "   User: $VPS_USER"
@@ -98,6 +98,10 @@ cd $VPS_PATH
 [ ! -f wa_queue.json ] && echo '[]' > wa_queue.json
 [ ! -f pines.json ] && echo '{}' > pines.json
 [ ! -f usuarios.json ] && echo '[]' > usuarios.json
+[ ! -f influencers.json ] && echo '[]' > influencers.json
+[ ! -f influencer_submissions.json ] && echo '[]' > influencer_submissions.json
+[ ! -f influencer_payments.json ] && echo '[]' > influencer_payments.json
+[ ! -f influencer_rates.json ] && echo '[{"id":1,"label":"Basico","min_views":1000,"max_views":4999,"diamonds_reward":50,"is_active":true},{"id":2,"label":"Intermedio","min_views":5000,"max_views":9999,"diamonds_reward":150,"is_active":true},{"id":3,"label":"Popular","min_views":10000,"max_views":49999,"diamonds_reward":400,"is_active":true},{"id":4,"label":"Viral","min_views":50000,"max_views":99999,"diamonds_reward":1000,"is_active":true},{"id":5,"label":"Mega Viral","min_views":100000,"max_views":null,"diamonds_reward":2500,"is_active":true}]' > influencer_rates.json
 echo 'Directorios OK'
 "@
 Write-OK "Directorio preparado: $VPS_PATH"
@@ -107,14 +111,15 @@ Write-Step "[4/6] Subiendo archivos del proyecto..."
 
 $files = @(
     "server.js", "script.js", "style.css",
-    "index.html", "admin.html", "canjear.html",
+    "index.html", "admin.html", "canjear.html", "influencers.html",
     "politica-privacidad.html", "terminos-condiciones.html",
     "manifest.json", "sw.js", "package.json",
     ".puppeteerrc.cjs", "bdv-service.js", "binance-service.js",
     "email-bot.js", "jadh-service.js", "redeem-service.js",
     "whatsapp-bot.js", "config.json", "set_webhook.js",
     "icon.svg", "icon-192.png", "icon-512.png",
-    "badge-diamond.png", "fondo.jpg", "settings.json"
+    "badge-diamond.png", "fondo.jpg", "settings.json",
+    "influencer_rates.json"
 )
 
 foreach ($file in $files) {

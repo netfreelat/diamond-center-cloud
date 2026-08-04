@@ -412,6 +412,16 @@ async function executeWeeklyDraw(forcedUid = null, isAutoCron = false) {
     settings.juegos.sorteo_semanal = settings.sorteo_semanal;
 
     try { await supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1); } catch (e) {}
+
+    // 🔒 Respaldo local: guardar ganador en archivo para sobrevivir reinicios
+    try {
+        const backupPath = path.join(__dirname, 'winner_backup.json');
+        fs.writeFileSync(backupPath, JSON.stringify(winnerObj, null, 2), 'utf8');
+        console.log('[SORTEO] 💾 Ganador respaldado en winner_backup.json');
+    } catch (backupErr) {
+        console.error('[SORTEO] ⚠️ No se pudo guardar respaldo local del ganador:', backupErr.message);
+    }
+
     console.log(`[SORTEO] 🏆 Ganador del sorteo semanal seleccionado: ${winnerObj.name} (${winnerObj.uid}) - Premio: ${winnerObj.premio} (Modo: ${isAutoCron ? 'Automático Domingo' : 'Prueba Admin'})`);
 
     // Enviar push al ganador
@@ -693,8 +703,15 @@ function getItemCost(juego, packKey) {
     }
     return JADH_COSTS[key] || 0;
 }
+
+const defaultPublicidades = [
+    { imagen: "img/Geminianiversario.png", link: "" },
+    { imagen: "img/11.png", link: "" },
+    { imagen: "img/Gemini_Generated_Image_s5ynsos5ynsos5yn.png", link: "" }
+];
+
 let settings = {
-    tasa_del_dia: 635.00,
+    tasa_del_dia: 812.00,
     barra_informativa: "🔥 ¡Bienvenidos a RECARGASNEY.COM! 💎",
     precios: {
         "100":     { "usdt": 0.86,  "label": "100 + 10 Diamantes" },
@@ -764,7 +781,7 @@ let settings = {
     },
     metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
     whatsapp: { soporte: "584125322412", bot: "584123491068", canal: "" },
-    publicidades: [],
+    publicidades: defaultPublicidades,
     sorteo_semanal: { premio: "341 Diamantes", lastWinner: null }
 };
 
@@ -872,6 +889,20 @@ async function loadFromSupabase() {
             .single();
         if (settingsError) {
             console.error('[SUPABASE] ❌ Error cargando settings:', settingsError.message);
+            // 🔒 Intentar recuperar el ganador desde respaldo local
+            try {
+                const backupPath = path.join(__dirname, 'winner_backup.json');
+                if (fs.existsSync(backupPath)) {
+                    const backupWinner = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+                    if (backupWinner && backupWinner.name) {
+                        if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+                        settings.sorteo_semanal.lastWinner = backupWinner;
+                        console.log(`[SORTEO] 🔄 Ganador recuperado desde respaldo local: ${backupWinner.name} (${backupWinner.uid})`);
+                    }
+                }
+            } catch (bErr) {
+                console.error('[SORTEO] ⚠️ No se pudo leer respaldo local del ganador:', bErr.message);
+            }
         } else if (settingsData) {
             settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
             settings.barra_informativa = settingsData.barra_informativa;
@@ -883,7 +914,7 @@ async function loadFromSupabase() {
             }
             settings.metodos_pago = settingsData.metodos_pago;
             settings.whatsapp = settingsData.whatsapp_config;
-            settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades) ? settings.whatsapp.publicidades : [];
+            settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades && settings.whatsapp.publicidades.length > 0) ? settings.whatsapp.publicidades : (settingsData.publicidades && settingsData.publicidades.length > 0 ? settingsData.publicidades : defaultPublicidades);
             // Cargar precios y juegos directamente desde Supabase (source of truth)
             if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
                 settings.precios = settingsData.precios;
@@ -915,12 +946,14 @@ async function loadFromSupabase() {
                         delete settings.sorteo_semanal.lastResetTimestamp;
                     }
                 }
-                // Sincronizar paquetes de freefire con precios globales
+                // Sincronizar paquetes de freefire combinando con precios globales sin perder los paquetes por defecto
                 if (settings.juegos.freefire) {
-                    settings.juegos.freefire.paquetes = settingsData.precios || settings.juegos.freefire.paquetes;
+                    settings.juegos.freefire.paquetes = Object.assign({}, settings.juegos.freefire.paquetes || {}, settingsData.precios || {});
                 }
-                // Actualizar precios globales con lo que viene de Supabase
-                settings.precios = settingsData.precios || settings.precios;
+                // Actualizar precios globales sin borrar la lista completa
+                if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
+                    settings.precios = Object.assign({}, settings.precios || {}, settingsData.precios);
+                }
             }
             console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
 

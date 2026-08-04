@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -386,15 +386,15 @@
                 </div>
                 
                 <div class="form-group" style="text-align: left; margin-bottom: 30px;">
-                    <label style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Contraseña</label>
+                    <label style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Contrase├▒a</label>
                     <div style="position: relative;">
                         <i class="fa-solid fa-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 0.95rem;"></i>
-                        <input type="password" id="login-password" required placeholder="••••••••" style="padding-left: 45px; height: 50px; border-radius: 12px; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.4); width: 100%;">
+                        <input type="password" id="login-password" required placeholder="ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó" style="padding-left: 45px; height: 50px; border-radius: 12px; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.4); width: 100%;">
                     </div>
                 </div>
                 
                 <button type="submit" class="btn-main" style="height: 50px; box-shadow: 0 4px 20px rgba(157,0,255,0.4);">
-                    <span>Iniciar Sesión</span> <i class="fa-solid fa-arrow-right"></i>
+                    <span>Iniciar Sesi├│n</span> <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </form>
         </div>
@@ -420,8 +420,6 @@
             <button class="tab-btn" onclick="showTab('push-tab', this)"><i class="fa-solid fa-bell"></i> Push</button>
             <button class="tab-btn" onclick="showTab('block-payment-tab', this)"><i class="fa-solid fa-ban"></i> Bloquear Pagos</button>
             <button class="tab-btn" onclick="showTab('settings', this)"><i class="fa-solid fa-cog"></i> Ajustes</button>
-            <button class="tab-btn" onclick="showTab('streaming-stock-tab', this); loadStreamingStockAdmin();" style="background:linear-gradient(135deg,rgba(229,9,20,0.15),rgba(157,0,255,0.15));border-color:rgba(229,9,20,0.3);"><i class="fa-solid fa-tv" style="color:#E50914"></i> Almacén Streaming</button>
-            <button class="tab-btn" onclick="showTab('influencers-tab', this); loadInfluencersAdmin();" style="background:linear-gradient(135deg,rgba(255,0,80,0.15),rgba(108,61,232,0.15));border-color:rgba(255,0,80,0.3);"><i class="fa-brands fa-tiktok" style="color:#ff0050"></i> Influencers <span id="influencers-pending-badge" class="badge" style="background:#ff0050;">0</span></button>
         </nav>
 
         <!-- DASHBOARD TAB -->
@@ -431,11 +429,11 @@
             </div>
             
             <div class="action-card" style="margin-top: 20px;">
-                <h2><i class="fa-solid fa-chart-area" style="color: var(--secondary);"></i> Ingresos de los Últimos 7 Días</h2>
+                <h2><i class="fa-solid fa-chart-area" style="color: var(--secondary);"></i> Ingresos de los ├Ültimos 7 D├¡as</h2>
                 <canvas id="salesChart" height="80"></canvas>
             </div>
 
-            <!-- 💰 RESUMEN FINANCIERO -->
+            <!-- ­ƒÆ░ RESUMEN FINANCIERO -->
             <div class="action-card" style="margin-top: 20px; border: 1px solid rgba(0,240,255,0.2); background: linear-gradient(135deg, rgba(0,240,255,0.03), rgba(157,0,255,0.05));">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
                     <h2 style="margin:0;"><i class="fa-solid fa-coins" style="color:#FFD93D;"></i> Resumen Financiero</h2>
@@ -462,8 +460,8 @@
                         <div id="fin-margin-fill" style="height:100%; background:linear-gradient(90deg, #00FF94, #00F0FF); border-radius:4px; transition:width 0.8s ease; width:0%;"></div>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                        <div style="font-size:0.72rem; color:var(--text-gray);">📦 Pago Móvil: <span id="fin-count-pm" style="color:#fff; font-weight:700;">0</span></div>
-                        <div style="font-size:0.72rem; color:var(--text-gray);">💛 Binance: <span id="fin-count-bin" style="color:#FFD93D; font-weight:700;">0</span></div>
+                        <div style="font-size:0.72rem; color:var(--text-gray);">­ƒôª Pago M├│vil: <span id="fin-count-pm" style="color:#fff; font-weight:700;">0</span></div>
+                        <div style="font-size:0.72rem; color:var(--text-gray);">­ƒÆø Binance: <span id="fin-count-bin" style="color:#FFD93D; font-weight:700;">0</span></div>
                         <div style="font-size:0.72rem; color:var(--text-gray);">Tasa: <span id="fin-tasa" style="color:var(--secondary); font-weight:700;">-</span> Bs/$</div>
                     </div>
                 </div>
@@ -479,7 +477,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h2 style="margin: 0;"><i class="fa-solid fa-receipt" style="color: var(--secondary);"></i> Historial de Ventas</h2>
                     <div style="width: 100%; max-width: 300px;">
-                        <input type="text" id="ventas-search" placeholder="🔍 Buscar por ID, Nombre o Ref..." onkeyup="filterVentas()" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                        <input type="text" id="ventas-search" placeholder="­ƒöì Buscar por ID, Nombre o Ref..." onkeyup="filterVentas()" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
                     </div>
                 </div>
                 <div class="table-container">
@@ -487,7 +485,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 11%;">Fecha/Hora</th>
-                                <th style="width: 8%;">N° Control</th>
+                                <th style="width: 8%;">N┬░ Control</th>
                                 <th style="width: 18%;">Monto y Referencia</th>
                                 <th style="width: 15%;">Jugador</th>
                                 <th style="width: 8%;">Paquete</th>
@@ -509,9 +507,9 @@
         <!-- USUARIOS TAB -->
         <div id="usuarios" class="tab-content">
             <div class="action-card">
-                <h2><i class="fa-solid fa-users-gear" style="color: var(--secondary);"></i> Gestión de Usuarios</h2>
+                <h2><i class="fa-solid fa-users-gear" style="color: var(--secondary);"></i> Gesti├│n de Usuarios</h2>
                 <div class="form-group">
-                    <input type="text" id="user-search" placeholder="🔍 Buscar por ID, Nombre o Teléfono (ej. 58412...)" onkeyup="filterUsers()">
+                    <input type="text" id="user-search" placeholder="­ƒöì Buscar por ID, Nombre o Tel├®fono (ej. 58412...)" onkeyup="filterUsers()">
                 </div>
                 <div class="table-container">
                     <table>
@@ -539,7 +537,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
                     <div>
                         <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Base de Datos de Contactos WhatsApp</h2>
-                        <p style="color: var(--text-gray); font-size: 0.9rem;">Todos los números registrados automáticamente al comprar, registrarse o escribir por WhatsApp.</p>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">Todos los n├║meros registrados autom├íticamente al comprar, registrarse o escribir por WhatsApp.</p>
                     </div>
                     <button class="btn-primary" onclick="exportWaContactsCSV()" style="background: #25D366; color: white; border: none; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
                         <i class="fa-solid fa-file-excel"></i> Exportar a Excel / CSV
@@ -547,19 +545,19 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="wa-contacts-search" placeholder="🔍 Buscar por teléfono, nombre o ID de jugador..." class="form-input" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--dark-bg); color: white;" onkeyup="filterWaContacts()">
+                    <input type="text" id="wa-contacts-search" placeholder="­ƒöì Buscar por tel├®fono, nombre o ID de jugador..." class="form-input" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--dark-bg); color: white;" onkeyup="filterWaContacts()">
                 </div>
 
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>N°</th>
-                                <th>WhatsApp / Teléfono</th>
+                                <th>N┬░</th>
+                                <th>WhatsApp / Tel├®fono</th>
                                 <th>Nombre / Apodo</th>
                                 <th>ID Jugador</th>
                                 <th>Origen</th>
-                                <th>Última Actividad</th>
+                                <th>├Ültima Actividad</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -571,49 +569,49 @@
             </div>
         </div>
 
-        <!-- RECARGA AUTOMÁTICA TAB -->
+        <!-- RECARGA AUTOM├üTICA TAB -->
         <div id="pines" class="tab-content">
             <div class="action-card" style="border: 1px solid rgba(0,240,255,0.3); background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(157,0,255,0.05));">
-                <h2><i class="fa-solid fa-bolt" style="color: var(--secondary);"></i> Estado de Recargas Automáticas</h2>
+                <h2><i class="fa-solid fa-bolt" style="color: var(--secondary);"></i> Estado de Recargas Autom├íticas</h2>
                 <p style="color: var(--text-gray); margin-bottom: 25px; font-size: 0.95rem;">
-                    El sistema procesa todas las recargas automáticamente a través de <strong style="color: var(--secondary);">Jadh.shop</strong>. No se requiere inventario manual de pines.
+                    El sistema procesa todas las recargas autom├íticamente a trav├®s de <strong style="color: var(--secondary);">Jadh.shop</strong>. No se requiere inventario manual de pines.
                 </p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">100 + 10 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">100 + 10 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">310 + 31 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">310 + 31 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">520 + 52 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">520 + 52 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">1060 + 106 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">1060 + 106 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">2180 + 218 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">2180 + 218 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                     <div class="stat-card success" style="padding: 15px; min-height: 90px;">
-                        <span class="label" style="font-size: 0.6rem;">5600 + 560 💎</span>
-                        <span class="value" style="font-size: 2rem;">∞</span>
+                        <span class="label" style="font-size: 0.6rem;">5600 + 560 ­ƒÆÄ</span>
+                        <span class="value" style="font-size: 2rem;">Ôê×</span>
                         <div style="font-size: 0.6rem; margin-top: 2px; font-weight: 800; color: #00FF94;">DISPONIBLE</div>
                     </div>
                 </div>
                 <div style="background: rgba(0,255,148,0.05); border: 1px solid rgba(0,255,148,0.2); border-radius: 12px; padding: 20px; text-align: center;">
                     <i class="fa-solid fa-circle-check" style="color: #00FF94; font-size: 2rem; margin-bottom: 10px; display: block;"></i>
                     <p style="color: #00FF94; font-weight: 800; font-size: 1rem; margin-bottom: 5px;">Sistema Operativo al 100%</p>
-                    <p style="color: var(--text-gray); font-size: 0.85rem;">Las recargas se procesan de forma instantánea y automática via Jadh.shop las 24 horas del día, los 7 días de la semana.</p>
+                    <p style="color: var(--text-gray); font-size: 0.85rem;">Las recargas se procesan de forma instant├ínea y autom├ítica via Jadh.shop las 24 horas del d├¡a, los 7 d├¡as de la semana.</p>
                 </div>
             </div>
         </div>
@@ -622,9 +620,9 @@
         <div id="juegos-tab" class="tab-content">
             <div class="action-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
-                    <h2 style="margin:0;"><i class="fa-solid fa-gamepad" style="color: var(--secondary);"></i> Gestión de Juegos</h2>
+                    <h2 style="margin:0;"><i class="fa-solid fa-gamepad" style="color: var(--secondary);"></i> Gesti├│n de Juegos</h2>
                     <button onclick="showAddGameModal()" class="btn-main" style="width: auto; padding: 10px 20px; font-size: 0.85rem;">
-                        <i class="fa-solid fa-plus"></i> Añadir Juego
+                        <i class="fa-solid fa-plus"></i> A├▒adir Juego
                     </button>
                 </div>
                 <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">Administra los juegos disponibles en la tienda. Puedes editar los paquetes, precios e iconos de cada uno.</p>
@@ -638,71 +636,24 @@
             </div>
         </div>
 
-        <!-- STREAMING STOCK TAB -->
-        <div id="streaming-stock-tab" class="tab-content">
-            <div class="card" style="margin-bottom: 20px;">
-                <h2><i class="fa-solid fa-box-archive" style="color: #E50914;"></i> Almacén de Cuentas y Licencias Streaming</h2>
-                <p style="color: var(--text-gray); font-size: 0.85rem;">Carga cuentas, perfiles o accesos para entregar automáticamente cuando tus clientes compren un servicio de streaming.</p>
-
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
-                    <!-- Formulario de Carga -->
-                    <div style="background: rgba(255,255,255,0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                        <h3 style="font-size: 1rem; color: var(--secondary); margin-bottom: 12px;"><i class="fa-solid fa-plus-circle"></i> Cargar Nuevas Cuentas</h3>
-                        
-                        <label style="font-size: 0.8rem; color: #ccc; display: block; margin-bottom: 5px;">Selecciona el Servicio:</label>
-                        <select id="streaming-service-select" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px;">
-                            <option value="netflix">🍿 Netflix Ultra HD 4K</option>
-                            <option value="disney">🏰 Disney+ / Star+</option>
-                            <option value="max">🍿 Max (HBO Max)</option>
-                            <option value="vix">🎬 ViX Premium</option>
-                            <option value="canva">🎨 Canva Pro</option>
-                            <option value="spotify">🎵 Spotify Premium</option>
-                            <option value="prime">📦 Amazon Prime Video</option>
-                            <option value="crunchyroll">🍿 Crunchyroll Mega Fan</option>
-                        </select>
-
-                        <label style="font-size: 0.8rem; color: #ccc; display: block; margin-bottom: 5px;">Pega las Cuentas / Accesos (1 por línea):</label>
-                        <textarea id="streaming-accounts-input" rows="8" placeholder="Ejemplo:&#10;user1@gmail.com:clave123 (Perfil 1 - PIN 1234)&#10;user2@gmail.com:clave456 (Perfil 2)&#10;https://canva.com/join?code=XYZ" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-family: monospace; font-size: 0.8rem; margin-bottom: 15px;"></textarea>
-
-                        <button onclick="addStreamingAccountsAdmin()" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #E50914, #9D00FF); cursor: pointer;">
-                            <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Cuentas en Almacén
-                        </button>
-                    </div>
-
-                    <!-- Resumen de Inventario Activo -->
-                    <div>
-                        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 12px;"><i class="fa-solid fa-list-check"></i> Stock Disponible en Tiempo Real</h3>
-                        <div id="streaming-stock-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px;">
-                            <!-- Cargado por JS -->
-                        </div>
-
-                        <h4 style="font-size: 0.9rem; color: var(--secondary); margin-bottom: 8px;">Detalle de Cuentas Guardadas:</h4>
-                        <div id="streaming-accounts-detail" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; max-height: 320px; overflow-y: auto; font-family: monospace; font-size: 0.78rem;">
-                            <p style="opacity: 0.5; text-align: center;">Cargando inventario...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- SETTINGS TAB -->
         <div id="settings" class="tab-content">
             <div class="action-card">
-                <h2><i class="fa-solid fa-cog" style="color: var(--primary);"></i> Configuración Global</h2>
+                <h2><i class="fa-solid fa-cog" style="color: var(--primary);"></i> Configuraci├│n Global</h2>
                 
                 <div class="form-group">
-                    <label>Tasa del día (Bs por 1 USDT):</label>
+                    <label>Tasa del d├¡a (Bs por 1 USDT):</label>
                     <input type="number" id="setting-tasa" step="0.01" style="font-size: 1.5rem; color: var(--secondary); font-weight: 800;">
                 </div>
 
                 <div class="form-group">
                     <label>Barra Informativa (Marquesina):</label>
-                    <textarea id="setting-marquee" placeholder="Escribe el mensaje que verán los usuarios..."></textarea>
+                    <textarea id="setting-marquee" placeholder="Escribe el mensaje que ver├ín los usuarios..."></textarea>
                 </div>
 
                 <div class="form-group" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(157, 0, 255, 0.08)); border: 1px solid rgba(255, 215, 0, 0.3); padding: 15px; border-radius: 12px; margin-top: 15px;">
                     <label style="color: #FFD700; font-weight: 700;"><i class="fa-solid fa-ticket"></i> Premio del Sorteo Semanal (Ruleta):</label>
-                    <p style="color: var(--text-gray); margin-bottom: 10px; font-size: 0.85rem;">Cambia la descripción del premio del sorteo que se muestra en la tienda (ej. 341 Diamantes, Pase Booyah, 500 Robux).</p>
+                    <p style="color: var(--text-gray); margin-bottom: 10px; font-size: 0.85rem;">Cambia la descripci├│n del premio del sorteo que se muestra en la tienda (ej. 341 Diamantes, Pase Booyah, 500 Robux).</p>
                     <div style="display: flex; gap: 10px; align-items: center; max-width: 500px; flex-wrap: wrap;">
                         <input type="text" id="admin-sorteo-premio-input-settings" placeholder="Ej. 341 Diamantes" style="padding: 10px 15px; font-size: 1rem; color: #FFD700; font-weight: 700; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,215,0,0.4); border-radius: 8px;">
                         <button onclick="saveAdminSorteoPremio('admin-sorteo-premio-input-settings')" class="btn-main" style="width: auto; padding: 10px 20px; font-size: 0.9rem; background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; font-weight: 800;">
@@ -712,22 +663,22 @@
                 </div>
 
                 <hr style="opacity:0.1; margin: 30px 0;">
-                <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-credit-card" style="color: #25D366;"></i> Métodos de Pago</h3>
+                <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-credit-card" style="color: #25D366;"></i> M├®todos de Pago</h3>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
-                    <!-- Pago Móvil -->
+                    <!-- Pago M├│vil -->
                     <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
-                        <h4 style="margin-bottom: 15px; color: var(--secondary); font-size: 1.1rem;"><i class="fa-solid fa-mobile-screen"></i> Pago Móvil</h4>
+                        <h4 style="margin-bottom: 15px; color: var(--secondary); font-size: 1.1rem;"><i class="fa-solid fa-mobile-screen"></i> Pago M├│vil</h4>
                         <div class="form-group">
                             <label>Banco:</label>
                             <input type="text" id="pm-banco" placeholder="Ej: Mercantil (0105)">
                         </div>
                         <div class="form-group">
-                            <label>Teléfono:</label>
+                            <label>Tel├®fono:</label>
                             <input type="text" id="pm-telefono" placeholder="Ej: 04121234567">
                         </div>
                         <div class="form-group">
-                            <label>Cédula/RIF:</label>
+                            <label>C├®dula/RIF:</label>
                             <input type="text" id="pm-cedula" placeholder="Ej: V-12345678">
                         </div>
                     </div>
@@ -748,13 +699,9 @@
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enlaces de WhatsApp</h3>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: left;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
                     <div class="form-group">
-                        <label>Número Bot (Consultas):</label>
-                        <input type="text" id="wa-bot" placeholder="584123491068">
-                    </div>
-                    <div class="form-group">
-                        <label>Número de Soporte:</label>
+                        <label>N├║mero de Soporte (Ej: 584125322412):</label>
                         <input type="text" id="wa-soporte" placeholder="584125322412">
                     </div>
                     <div class="form-group">
@@ -767,22 +714,22 @@
                     <div class="form-group">
                         <label>Modo de Notificaciones WhatsApp:</label>
                         <select id="wa-modo" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; font-weight: bold; outline: none;">
-                            <option value="activo" style="background:#140a23;">Activo (Enviar automático - Riesgo de bloqueo)</option>
-                            <option value="seguro" style="background:#140a23;">🔒 Modo Seguro (Interactivos/Manual - Evita bloqueos)</option>
+                            <option value="activo" style="background:#140a23;">Activo (Enviar autom├ítico - Riesgo de bloqueo)</option>
+                            <option value="seguro" style="background:#140a23;">­ƒöÆ Modo Seguro (Interactivos/Manual - Evita bloqueos)</option>
                         </select>
                     </div>
                     <div style="display: flex; align-items: center; padding-top: 10px; font-size: 0.82rem; color: #aaa; line-height: 1.3;">
-                        <span>🔒 <strong>Modo Seguro:</strong> El bot no enviará mensajes automáticos a los clientes (previniendo que reporten spam). Los clientes podrán pedir su ticket/PIN enviando su código de referencia por chat. Las alertas de nuevos pedidos a administradores seguirán activas.</span>
+                        <span>­ƒöÆ <strong>Modo Seguro:</strong> El bot no enviar├í mensajes autom├íticos a los clientes (previniendo que reporten spam). Los clientes podr├ín pedir su ticket/PIN enviando su c├│digo de referencia por chat. Las alertas de nuevos pedidos a administradores seguir├ín activas.</span>
                     </div>
                 </div>
 
                 <hr style="opacity:0.1; margin: 30px 0;">
                 <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-rectangle-ad" style="color: var(--secondary);"></i> Banners Publicitarios (Inicio)</h3>
                 <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">
-                    Agrega o edita imágenes publicitarias que aparecerán rotando en la parte superior de la página web. <strong>Recomendado:</strong> Banners horizontales (ej. 800x320px).
+                    Agrega o edita im├ígenes publicitarias que aparecer├ín rotando en la parte superior de la p├ígina web. <strong>Recomendado:</strong> Banners horizontales (ej. 800x320px).
                 </p>
                 <div id="ads-admin-list" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; text-align: left;">
-                    <!-- Se cargará dinámicamente -->
+                    <!-- Se cargar├í din├ímicamente -->
                 </div>
                 <div style="text-align: left; margin-bottom: 20px;">
                     <button type="button" onclick="addAdRow()" class="btn-main" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--secondary); color: var(--secondary); width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; cursor: pointer; border-radius: 8px;">
@@ -798,8 +745,8 @@
                         <input type="text" id="admin-user">
                     </div>
                     <div class="form-group">
-                        <label>Nueva Contraseña:</label>
-                        <input type="password" id="admin-pass" placeholder="••••••••">
+                        <label>Nueva Contrase├▒a:</label>
+                        <input type="password" id="admin-pass" placeholder="ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó">
                     </div>
                 </div>
 
@@ -808,10 +755,10 @@
                 </button>
                 
                 <hr style="opacity:0.1; margin: 30px 0;">
-                <h3 style="margin-bottom: 10px; color: var(--danger);"><i class="fa-solid fa-power-off"></i> Cierre de Sesión Global</h3>
-                <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">Esto invalidará de inmediato el token actual del servidor, forzando a todos los dispositivos (incluido este) a iniciar sesión nuevamente.</p>
+                <h3 style="margin-bottom: 10px; color: var(--danger);"><i class="fa-solid fa-power-off"></i> Cierre de Sesi├│n Global</h3>
+                <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">Esto invalidar├í de inmediato el token actual del servidor, forzando a todos los dispositivos (incluido este) a iniciar sesi├│n nuevamente.</p>
                 <button onclick="logoutAll()" class="btn-main" style="background: rgba(255, 75, 43, 0.2); border: 1px solid var(--danger); color: var(--danger); box-shadow: none; margin-bottom: 10px;">
-                    <i class="fa-solid fa-user-slash"></i> Cerrar Sesión en Todos los Dispositivos
+                    <i class="fa-solid fa-user-slash"></i> Cerrar Sesi├│n en Todos los Dispositivos
                 </button>
             </div>
         </div>
@@ -829,39 +776,39 @@
                     <i class="fa-solid fa-trash-can"></i> Vaciar Cola de Mensajes
                 </button>
                 <button onclick="restartWa()" class="btn-main" style="margin-top: 10px; background: rgba(0, 240, 255, 0.1); border: 1px solid var(--secondary); color: var(--secondary); box-shadow: none;">
-                    <i class="fa-solid fa-arrows-rotate"></i> Reiniciar Conexión Bot
+                    <i class="fa-solid fa-arrows-rotate"></i> Reiniciar Conexi├│n Bot
                 </button>
-                <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 10px;">Usa esto si el bot aparece desconectado pero el script sigue ejecutándose.</p>
+                <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 10px;">Usa esto si el bot aparece desconectado pero el script sigue ejecut├índose.</p>
 
                 <hr style="opacity:0.1; margin: 20px 0;">
-                <h3 style="margin-bottom: 8px; color: #FFC107;"><i class="fa-solid fa-mobile-screen-button"></i> Cambiar Número de WhatsApp</h3>
+                <h3 style="margin-bottom: 8px; color: #FFC107;"><i class="fa-solid fa-mobile-screen-button"></i> Cambiar N├║mero de WhatsApp</h3>
                 <p style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 15px;">
-                    Usa este botón si quieres vincular un número diferente al bot. Se borrará la sesión actual y se generará un nuevo código QR para escanear con el nuevo número.
+                    Usa este bot├│n si quieres vincular un n├║mero diferente al bot. Se borrar├í la sesi├│n actual y se generar├í un nuevo c├│digo QR para escanear con el nuevo n├║mero.
                 </p>
                 <button onclick="changeWaNumber()" class="btn-main" style="background: rgba(255, 193, 7, 0.15); border: 1px solid #FFC107; color: #FFC107; box-shadow: none;">
-                    <i class="fa-solid fa-sim-card"></i> Cambiar Número (Nueva Sesión QR)
+                    <i class="fa-solid fa-sim-card"></i> Cambiar N├║mero (Nueva Sesi├│n QR)
                 </button>
-                <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 8px;">⚠️ El bot se desconectará brevemente mientras genera el nuevo QR.</p>
+                <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 8px;">ÔÜá´©Å El bot se desconectar├í brevemente mientras genera el nuevo QR.</p>
             </div>
 
 
-            <!-- 🏦 BDV AUTO-PAGO TOGGLE -->
+            <!-- ­ƒÅª BDV AUTO-PAGO TOGGLE -->
             <div class="action-card" style="margin-top: 20px; border: 1px solid rgba(157, 0, 255, 0.25);">
                 <h2 style="justify-content: flex-start; gap: 12px;">
                     <i class="fa-solid fa-building-columns" style="color: #9D00FF;"></i>
-                    Auto-Aprobación BDV
+                    Auto-Aprobaci├│n BDV
                 </h2>
                 <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">
-                    Activa para que el bot verifique automáticamente los pagos por Pago Móvil en el Banco de Venezuela cada 60 segundos.
-                    <br><strong style="color: #FFC107;">⚠️ Los pagos manuales seguirán funcionando igual, independientemente de este toggle.</strong>
+                    Activa para que el bot verifique autom├íticamente los pagos por Pago M├│vil en el Banco de Venezuela cada 60 segundos.
+                    <br><strong style="color: #FFC107;">ÔÜá´©Å Los pagos manuales seguir├ín funcionando igual, independientemente de este toggle.</strong>
                 </p>
 
                 <!-- Estado actual -->
                 <div style="display: flex; align-items: center; gap: 20px; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
                     <div style="flex: 1;">
                         <div style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 4px;">Estado del bot BDV</div>
-                        <div id="bdv-toggle-status" style="font-size: 1.1rem; font-weight: 800; color: #ff4b2b;">🔴 DESACTIVADO</div>
-                        <div id="bdv-session-info" style="font-size: 0.75rem; color: var(--text-gray); margin-top: 4px;">Sesión: Inactiva</div>
+                        <div id="bdv-toggle-status" style="font-size: 1.1rem; font-weight: 800; color: #ff4b2b;">­ƒö┤ DESACTIVADO</div>
+                        <div id="bdv-session-info" style="font-size: 0.75rem; color: var(--text-gray); margin-top: 4px;">Sesi├│n: Inactiva</div>
                     </div>
 
                     <!-- Toggle Switch estilo iOS -->
@@ -882,7 +829,7 @@
 
                 <div id="bdv-login-status" style="display: none; padding: 12px; background: rgba(157,0,255,0.1); border: 1px solid rgba(157,0,255,0.3); border-radius: 10px; font-size: 0.85rem; margin-bottom: 15px;">
                     <i class="fa-solid fa-circle-notch fa-spin" style="color: #9D00FF; margin-right: 6px;"></i>
-                    <span>Iniciando sesión en BDV en línea... (puede tardar ~15 seg)</span>
+                    <span>Iniciando sesi├│n en BDV en l├¡nea... (puede tardar ~15 seg)</span>
                 </div>
 
                 <button onclick="loadBDVStatus(true)" class="btn-main" style="background: rgba(157,0,255,0.1); border: 1px solid var(--primary); color: var(--primary); box-shadow: none; font-size: 0.85rem; padding: 10px 20px;">
@@ -893,24 +840,24 @@
 
             <div class="action-card" style="margin-top: 20px;">
                 <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Enviar Mensaje WhatsApp</h2>
-                <p style="color: var(--text-gray); margin-bottom: 20px;">Envía mensajes de WhatsApp a través del bot a tus usuarios.</p>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Env├¡a mensajes de WhatsApp a trav├®s del bot a tus usuarios.</p>
                 
                 <div class="form-group">
                     <label>Destinatario:</label>
                     <select id="wa-broadcast-target" onchange="toggleWaBroadcastTarget(this.value)">
-                        <option value="all">Todos los usuarios registrados (con teléfono)</option>
-                        <option value="single">Número de teléfono específico</option>
+                        <option value="all">Todos los usuarios registrados (con tel├®fono)</option>
+                        <option value="single">N├║mero de tel├®fono espec├¡fico</option>
                     </select>
                 </div>
 
                 <div id="wa-broadcast-phone-group" class="form-group" style="display: none;">
-                    <label>Número(s) de teléfono (con código de área, separados por coma):</label>
+                    <label>N├║mero(s) de tel├®fono (con c├│digo de ├írea, separados por coma):</label>
                     <input type="text" id="wa-broadcast-phone" placeholder="Ej. 584121234567, 584141234567">
                 </div>
 
                 <div class="form-group">
                     <label>Mensaje a enviar:</label>
-                    <textarea id="wa-broadcast-message" rows="5" placeholder="Escribe tu mensaje aquí... Puedes usar *negritas*, _cursivas_ y emojis." style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
+                    <textarea id="wa-broadcast-message" rows="5" placeholder="Escribe tu mensaje aqu├¡... Puedes usar *negritas*, _cursivas_ y emojis." style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
                 </div>
 
                 <button onclick="sendWaBroadcast()" class="btn-main" style="background: linear-gradient(135deg, #25D366, #128C7E); box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);">
@@ -933,12 +880,12 @@
                 </div>
                 <!-- Nuevos Hoy -->
                 <div class="stat-card" style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(0, 240, 255, 0.02)); border-color: rgba(0, 240, 255, 0.15);">
-                    <span class="label" style="color: #00f0ff;">⚡ Nuevos Hoy</span>
+                    <span class="label" style="color: #00f0ff;">ÔÜí Nuevos Hoy</span>
                     <span class="value" id="ref-registered-today" style="color: #00f0ff;">-</span>
                 </div>
                 <!-- Nuevos este Mes -->
                 <div class="stat-card" style="background: linear-gradient(135deg, rgba(162, 89, 255, 0.08), rgba(162, 89, 255, 0.02)); border-color: rgba(162, 89, 255, 0.15);">
-                    <span class="label" style="color: #a259ff;">📅 Nuevos este Mes</span>
+                    <span class="label" style="color: #a259ff;">­ƒôà Nuevos este Mes</span>
                     <span class="value" id="ref-registered-month" style="color: #a259ff;">-</span>
                 </div>
                 <div class="stat-card success">
@@ -960,14 +907,14 @@
                         Top 3 Referidores (Podio de Influencers)
                     </h3>
                     <div id="ref-leaderboard-podium" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <!-- Renderizado dinámico desde JS -->
+                        <!-- Renderizado din├ímico desde JS -->
                     </div>
                 </div>
             </div>
 
-            <!-- 🎟️ CONFIGURACIÓN DEL SORTEO SEMANAL -->
+            <!-- ­ƒÄƒ´©Å CONFIGURACI├ôN DEL SORTEO SEMANAL -->
             <div class="action-card" style="border: 1px solid rgba(255, 215, 0, 0.3); background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(157, 0, 255, 0.05)); margin-bottom: 20px;">
-                <h2><i class="fa-solid fa-ticket" style="color: #FFD700;"></i> Configuración del Sorteo Semanal</h2>
+                <h2><i class="fa-solid fa-ticket" style="color: #FFD700;"></i> Configuraci├│n del Sorteo Semanal</h2>
                 <p style="color: var(--text-gray); margin-bottom: 15px; font-size: 0.9rem;">
                     Cambia el premio del sorteo que se muestra en la tienda para los usuarios que inviten referidos.
                 </p>
@@ -978,24 +925,12 @@
                     </button>
                 </div>
             </div>
-            <!-- 🏆 GANADOR DEL ÚLTIMO SORTEO SEMANAL -->
-            <div id="admin-sorteo-last-winner-box" style="display:none; border: 1px solid rgba(255, 215, 0, 0.4); background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(157, 0, 255, 0.12)); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div>
-                        <div style="font-size:0.75rem; color:#FFD700; font-weight:800; text-transform:uppercase; letter-spacing:1px;"><i class="fa-solid fa-trophy"></i> ÚLTIMO GANADOR DEL SORTEO SEMANAL</div>
-                        <div style="font-size:1.3rem; font-weight:900; color:#fff; margin-top:3px;" id="admin-winner-name-display">Cargando...</div>
-                        <div style="font-size:0.9rem; color:#00FF94; font-weight:700; margin-top:2px;" id="admin-winner-prize-display">Premio: -</div>
-                    </div>
-                    <div style="display:flex; gap:8px;" id="admin-winner-actions-container">
-                    </div>
-                </div>
-            </div>
 
             <div class="action-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                     <h2 style="margin:0;"><i class="fa-solid fa-share-nodes" style="color:var(--secondary);"></i> Programa de Referidos</h2>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <input type="text" id="ref-search" placeholder="🔍 Buscar por ID o nombre..." oninput="filterReferidos()" style="padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); width:220px; font-size:0.85rem;">
+                        <input type="text" id="ref-search" placeholder="­ƒöì Buscar por ID o nombre..." oninput="filterReferidos()" style="padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); width:220px; font-size:0.85rem;">
                         <button onclick="loadReferidos()" class="btn-main" style="width:auto; padding:8px 16px; font-size:0.85rem;">
                             <i class="fa-solid fa-rotate"></i> Actualizar
                         </button>
@@ -1011,8 +946,8 @@
                                 <th>Referidor (ID)</th>
                                 <th>Nombre</th>
                                 <th>Total Referidos</th>
-                                <th>✅ Comisión Cobrada</th>
-                                <th>⏳ Pendientes</th>
+                                <th>Ô£à Comisi├│n Cobrada</th>
+                                <th>ÔÅ│ Pendientes</th>
                                 <th>USDT Ganado</th>
                                 <th>Saldo Total</th>
                                 <th>Detalle</th>
@@ -1025,10 +960,10 @@
                 </div>
             </div>
 
-            <!-- 🎰 HISTORIAL DE RULETA POST-RECARGA (PREMIOS ENTREGADOS) -->
+            <!-- ­ƒÄ░ HISTORIAL DE RULETA POST-RECARGA (PREMIOS ENTREGADOS) -->
             <div class="action-card" style="margin-top: 25px; border: 1px solid rgba(0, 240, 255, 0.2); background: linear-gradient(135deg, rgba(7, 3, 13, 0.9), rgba(20, 10, 35, 0.9));">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                    <h2 style="margin:0;"><i class="fa-solid fa-gift" style="color: #00FF94;"></i> 🎰 Historial de Ruleta (Premios Entregados)</h2>
+                    <h2 style="margin:0;"><i class="fa-solid fa-gift" style="color: #00FF94;"></i> ­ƒÄ░ Historial de Ruleta (Premios Entregados)</h2>
                     <button onclick="loadRuletaHistoryAdmin()" class="btn-main" style="width:auto; padding:8px 16px; font-size:0.85rem;">
                         <i class="fa-solid fa-rotate"></i> Actualizar Historial
                     </button>
@@ -1059,14 +994,14 @@
         <!-- PUSH TAB -->
         <div id="push-tab" class="tab-content">
             <div class="action-card">
-                <h2><i class="fa-solid fa-bell" style="color: var(--secondary);"></i> Enviar Notificación Push</h2>
-                <p style="color: var(--text-gray); margin-bottom: 20px;">Envía alertas push directamente a los navegadores o aplicaciones Android instaladas de tus clientes.</p>
+                <h2><i class="fa-solid fa-bell" style="color: var(--secondary);"></i> Enviar Notificaci├│n Push</h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Env├¡a alertas push directamente a los navegadores o aplicaciones Android instaladas de tus clientes.</p>
                 
                 <div class="form-group">
                     <label>Destinatario:</label>
                     <select id="push-target" onchange="togglePushTarget(this.value)">
                         <option value="all">Todos los usuarios suscritos</option>
-                        <option value="single">Usuario específico (Player ID)</option>
+                        <option value="single">Usuario espec├¡fico (Player ID)</option>
                     </select>
                 </div>
 
@@ -1076,23 +1011,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Título de la Notificación:</label>
-                    <input type="text" id="push-title" placeholder="Ej. ¡Nueva Oferta! 🔥">
+                    <label>T├¡tulo de la Notificaci├│n:</label>
+                    <input type="text" id="push-title" placeholder="Ej. ┬íNueva Oferta! ­ƒöÑ">
                 </div>
 
                 <div class="form-group">
                     <label>Mensaje / Cuerpo:</label>
-                    <textarea id="push-body" rows="4" placeholder="Escribe el mensaje aquí..."></textarea>
+                    <textarea id="push-body" rows="4" placeholder="Escribe el mensaje aqu├¡..."></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>URL de Destino (Opcional):</label>
                     <input type="text" id="push-url" placeholder="Ej. /historial o /canjear.html">
-                    <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 5px;">Ruta a la que se redirigirá al cliente cuando toque la notificación.</p>
+                    <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 5px;">Ruta a la que se redirigir├í al cliente cuando toque la notificaci├│n.</p>
                 </div>
 
                 <button onclick="sendPushNotification()" class="btn-main">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar Notificación
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Notificaci├│n
                 </button>
             </div>
         </div>
@@ -1101,7 +1036,7 @@
         <div id="block-payment-tab" class="tab-content">
             <div class="action-card">
                 <h2><i class="fa-solid fa-ban" style="color: #ff4b2b;"></i> Bloquear Referencias de Pago</h2>
-                <p style="color: var(--text-gray); margin-bottom: 20px;">Registra y bloquea referencias de pago manualmente para evitar que los clientes puedan reportarlas de manera duplicada. El sistema rechazará inmediatamente cualquier intento de notificar estas referencias.</p>
+                <p style="color: var(--text-gray); margin-bottom: 20px;">Registra y bloquea referencias de pago manualmente para evitar que los clientes puedan reportarlas de manera duplicada. El sistema rechazar├í inmediatamente cualquier intento de notificar estas referencias.</p>
                 
                 <div class="form-group">
                     <label>Referencia de Pago a Bloquear:</label>
@@ -1127,7 +1062,7 @@
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
 
-        // Helper para inyectar token de sesión en las peticiones
+        // Helper para inyectar token de sesi├│n en las peticiones
         async function adminFetch(url, options = {}) {
             const token = localStorage.getItem('admin_token');
             options.headers = options.headers || {};
@@ -1180,18 +1115,18 @@
                     Swal.fire('Error', data.message || 'Credenciales incorrectas', 'error');
                 }
             } catch (err) {
-                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                Swal.fire('Error de Conexi├│n', 'No se pudo comunicar con el servidor.', 'error');
             }
         }
 
         async function logoutAll() {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Cerrar todas las sesiones?',
-                text: "Se cerrarán todas las secciones abiertas de administración en cualquier dispositivo (incluyendo este).",
+                title: '┬┐Cerrar todas las sesiones?',
+                text: "Se cerrar├ín todas las secciones abiertas de administraci├│n en cualquier dispositivo (incluyendo este).",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4b2b',
-                confirmButtonText: 'Sí, cerrar todas',
+                confirmButtonText: 'S├¡, cerrar todas',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff'
             });
@@ -1203,7 +1138,7 @@
             try {
                 await adminFetch(`${SERVER_URL}/api/admin/logout_all`, { method: 'POST' });
                 localStorage.removeItem('admin_token');
-                Swal.fire('¡Completado!', 'Todas las sesiones activas han sido cerradas.', 'success').then(() => {
+                Swal.fire('┬íCompletado!', 'Todas las sesiones activas han sido cerradas.', 'success').then(() => {
                     showLoginOverlay();
                 });
             } catch (e) {
@@ -1230,15 +1165,15 @@
             const urlPath = document.getElementById('push-url').value.trim();
 
             if (!title || !body) {
-                return Swal.fire('Error', 'El título y el mensaje son obligatorios.', 'error');
+                return Swal.fire('Error', 'El t├¡tulo y el mensaje son obligatorios.', 'error');
             }
 
             if (target === 'single' && !uid) {
-                return Swal.fire('Error', 'Debes ingresar el Player ID para enviar una notificación individual.', 'error');
+                return Swal.fire('Error', 'Debes ingresar el Player ID para enviar una notificaci├│n individual.', 'error');
             }
 
             Swal.fire({
-                title: 'Enviando notificación...',
+                title: 'Enviando notificaci├│n...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -1254,7 +1189,7 @@
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Enviada!',
+                        title: '┬íEnviada!',
                         text: data.message,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
@@ -1265,10 +1200,10 @@
                     document.getElementById('push-url').value = '';
                     document.getElementById('push-uid').value = '';
                 } else {
-                    Swal.fire('Error', data.message || 'No se pudo enviar la notificación.', 'error');
+                    Swal.fire('Error', data.message || 'No se pudo enviar la notificaci├│n.', 'error');
                 }
             } catch (err) {
-                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
+                Swal.fire('Error de Conexi├│n', err.message || 'No se pudo comunicar con el servidor.', 'error');
             }
         }
 
@@ -1297,7 +1232,7 @@
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Bloqueada!',
+                        title: '┬íBloqueada!',
                         text: data.message,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
@@ -1309,11 +1244,11 @@
                     Swal.fire('Error', data.message || 'No se pudo bloquear la referencia.', 'error');
                 }
             } catch (err) {
-                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
+                Swal.fire('Error de Conexi├│n', err.message || 'No se pudo comunicar con el servidor.', 'error');
             }
         }
 
-        // --- Ejecutar al cargar la página ---
+        // --- Ejecutar al cargar la p├ígina ---
         document.addEventListener('DOMContentLoaded', () => {
             const token = localStorage.getItem('admin_token');
             if (!token) {
@@ -1343,7 +1278,7 @@
             if (tabId === 'wa-contacts-tab') loadWaContacts();
         }
 
-        // ─── REFERIDOS ─────────────────────────────────────────────────────
+        // ÔöÇÔöÇÔöÇ REFERIDOS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         let _refData = [];
 
         async function loadReferidos() {
@@ -1424,7 +1359,7 @@
                         const total_referidos = row.total_referidos;
                         const usdt_earned = row.usdt_earned;
 
-                        let badge = '🥇';
+                        let badge = '­ƒÑç';
                         let label = '1er Lugar';
                         let bg = 'rgba(255, 215, 0, 0.06)';
                         let border = 'rgba(255, 215, 0, 0.35)';
@@ -1432,14 +1367,14 @@
                         let shadow = 'box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);';
 
                         if (index === 1) {
-                            badge = '🥈';
+                            badge = '­ƒÑê';
                             label = '2do Lugar';
                             bg = 'rgba(192, 192, 192, 0.06)';
                             border = 'rgba(192, 192, 192, 0.25)';
                             color = '#d0d0d0';
                             shadow = '';
                         } else if (index === 2) {
-                            badge = '🥉';
+                            badge = '­ƒÑë';
                             label = '3er Lugar';
                             bg = 'rgba(205, 127, 50, 0.06)';
                             border = 'rgba(205, 127, 50, 0.2)';
@@ -1454,8 +1389,8 @@
                                 <div style="font-weight: 700; margin: 5px 0; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</div>
                                 <div style="font-size: 0.72rem; color: var(--text-gray); font-family: monospace;">${uid}</div>
                                 <div style="margin-top: 8px; display: flex; justify-content: space-around; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                                    <div>👥 <strong>${total_referidos}</strong> ref.</div>
-                                    <div style="color: #00FF94;">💰 <strong>$${usdt_earned}</strong></div>
+                                    <div>­ƒæÑ <strong>${total_referidos}</strong> ref.</div>
+                                    <div style="color: #00FF94;">­ƒÆ░ <strong>$${usdt_earned}</strong></div>
                                 </div>
                             </div>
                         `;
@@ -1482,27 +1417,8 @@
                 const res = await adminFetch(`${SERVER_URL}/admin/ruleta-history`);
                 const data = await res.json();
                 
-                if (data.lastWinner) {
-                    const winnerBox = document.getElementById('admin-sorteo-last-winner-box');
-                    const winnerName = document.getElementById('admin-winner-name-display');
-                    const winnerPrize = document.getElementById('admin-winner-prize-display');
-                    const actionsBox = document.getElementById('admin-winner-actions-container');
-
-                    if (winnerBox && winnerName && winnerPrize) {
-                        winnerBox.style.display = 'block';
-                        winnerName.innerHTML = `<strong>${winnerEsc(data.lastWinner.name || 'Ganador')}</strong> — ID / UID: <code style="color:#00f0ff; font-size:1.15rem; font-family:monospace; font-weight:800;">${data.lastWinner.uid || '-'}</code>`;
-                        winnerPrize.innerHTML = `🎁 Premio Ganado: <strong style="color:#00FF94;">${data.lastWinner.premio || 'Premio Semanal'}</strong>`;
-                        
-                        if (actionsBox) {
-                            actionsBox.innerHTML = `
-                                <button onclick="navigator.clipboard.writeText('${data.lastWinner.uid}'); Swal.fire({toast:true, position:'top-end', icon:'success', title:'ID ${data.lastWinner.uid} Copiado', timer:2000, showConfirmButton:false});" style="background:#00f0ff; color:#07030D; border:none; border-radius:8px; padding:8px 14px; font-weight:800; font-size:0.82rem; cursor:pointer;"><i class="fa-solid fa-copy"></i> Copiar ID</button>
-                            `;
-                        }
-                    }
-                }
-
                 if (!data.success || !data.history || data.history.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-gray);">Aún no hay reclamos de ruleta registrados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-gray);">A├║n no hay reclamos de ruleta registrados.</td></tr>';
                     return;
                 }
 
@@ -1530,7 +1446,7 @@
             const input = document.getElementById(idToUse) || document.getElementById('admin-sorteo-premio-input') || document.getElementById('admin-sorteo-premio-input-settings');
             const premio = input ? input.value.trim() : '';
             if (!premio) {
-                return Swal.fire('Error', 'Ingresa una descripción para el premio (ej. 341 Diamantes).', 'error');
+                return Swal.fire('Error', 'Ingresa una descripci├│n para el premio (ej. 341 Diamantes).', 'error');
             }
 
             Swal.fire({ title: 'Guardando premio...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -1548,8 +1464,8 @@
                     if (p2) p2.value = data.premio;
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Premio Actualizado!',
-                        text: `El premio del sorteo ahora es: "${data.premio}". Se mostrará inmediatamente en la tienda.`,
+                        title: '┬íPremio Actualizado!',
+                        text: `El premio del sorteo ahora es: "${data.premio}". Se mostrar├í inmediatamente en la tienda.`,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
@@ -1565,15 +1481,15 @@
         function renderReferidosTable(data) {
             const tbody = document.getElementById('ref-table-body');
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-gray);padding:40px;">No hay datos de referidos aún.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-gray);padding:40px;">No hay datos de referidos a├║n.</td></tr>';
                 return;
             }
             tbody.innerHTML = data.map((row, i) => {
                 const detailId = `ref-detail-${i}`;
                 const referidosHtml = row.referidos.map(r => {
                     const badge = r.claimed
-                        ? `<span class="status-badge status-approved">✅ Cobrado</span>`
-                        : `<span class="status-badge status-pending">⏳ Pendiente</span>`;
+                        ? `<span class="status-badge status-approved">Ô£à Cobrado</span>`
+                        : `<span class="status-badge status-pending">ÔÅ│ Pendiente</span>`;
                     const fecha = r.registered ? new Date(r.registered).toLocaleDateString('es-VE') : 'N/D';
                     return `<tr style="background:rgba(0,240,255,0.03);">
                         <td style="padding-left:30px; font-size:0.8rem;"><i class="fa-solid fa-arrow-right" style="color:var(--secondary);margin-right:6px;"></i>${r.uid}</td>
@@ -1608,7 +1524,7 @@
                                     <th style="padding-left:30px;">ID Referido</th>
                                     <th>Nombre</th>
                                     <th>Fecha Registro</th>
-                                    <th colspan="5">Estado Comisión</th>
+                                    <th colspan="5">Estado Comisi├│n</th>
                                 </tr>
                             </thead>
                             <tbody>${referidosHtml}</tbody>
@@ -1641,7 +1557,7 @@
             renderReferidosTable(filtered);
         }
 
-        // ─── CONTACTOS WHATSAPP ──────────────────────────────────────────────
+        // ÔöÇÔöÇÔöÇ CONTACTOS WHATSAPP ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         let _waContactsData = [];
 
         async function loadWaContacts() {
@@ -1664,21 +1580,21 @@
             const tbody = document.getElementById('wa-contacts-table-body');
             if (!tbody) return;
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-gray);padding:30px;">No hay contactos de WhatsApp registrados aún.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-gray);padding:30px;">No hay contactos de WhatsApp registrados a├║n.</td></tr>';
                 return;
             }
             let html = '';
             data.forEach((c, idx) => {
-                const phone = c.phone || '—';
+                const phone = c.phone || 'ÔÇö';
                 const name = c.name || 'Cliente';
-                const uid = c.uid || '—';
+                const uid = c.uid || 'ÔÇö';
                 const sourceMap = {
                     'web_order': '<span class="status-badge status-approved" style="font-size:0.65rem;">Compra Web</span>',
                     'web_user': '<span class="status-badge" style="background:rgba(0,123,255,0.2);color:#007bff;border:1px solid #007bff;font-size:0.65rem;">Registro Web</span>',
                     'wa_bot': '<span class="status-badge" style="background:rgba(37,211,102,0.2);color:#25D366;border:1px solid #25D366;font-size:0.65rem;">Chat WhatsApp</span>'
                 };
                 const srcBadge = sourceMap[c.source] || `<span class="status-badge">${c.source || 'Web'}</span>`;
-                const lastSeen = c.last_seen ? new Date(c.last_seen).toLocaleString('es-VE') : '—';
+                const lastSeen = c.last_seen ? new Date(c.last_seen).toLocaleString('es-VE') : 'ÔÇö';
                 const waLink = `https://wa.me/${phone}`;
 
                 html += `
@@ -1719,7 +1635,7 @@
         function exportWaContactsCSV() {
             window.open(`${SERVER_URL}/admin/wa_contacts/export`, '_blank');
         }
-        // ───────────────────────────────────────────────────────────────────
+        // ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
         async function loadDashboardStats() {
             try {
@@ -1849,7 +1765,7 @@
                 html += `</div>`;
 
                 Swal.fire({
-                    title: '<span style="font-family:\'Montserrat\',sans-serif; font-weight:800; font-size:1.3rem;">📋 Lista de Precios actuales</span>',
+                    title: '<span style="font-family:\'Montserrat\',sans-serif; font-weight:800; font-size:1.3rem;">­ƒôï Lista de Precios actuales</span>',
                     html: html,
                     confirmButtonText: 'Cerrar',
                     confirmButtonColor: 'var(--primary)',
@@ -1871,7 +1787,7 @@
         }
 
 
-        // ─── RESUMEN FINANCIERO ──────────────────────────────────────────────
+        // ÔöÇÔöÇÔöÇ RESUMEN FINANCIERO ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         let _financialData = null;
         let _currentFinancialPeriod = 'today';
 
@@ -1910,36 +1826,30 @@
             document.getElementById('financial-cards').innerHTML = `
                 <!-- Ingresos USDT -->
                 <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(253,203,110,0.08),rgba(253,203,110,0.02)); border-color:rgba(253,203,110,0.2);">
-                    <span class="label" style="font-size:0.58rem; color:#FFD93D;">💵 INGRESOS USDT</span>
+                    <span class="label" style="font-size:0.58rem; color:#FFD93D;">­ƒÆÁ INGRESOS USDT</span>
                     <span class="value" style="font-size:1.6rem; color:#FFD93D;">$${d.revenueUsdt.toFixed(2)}</span>
                     <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.totalOrders} venta${d.totalOrders !== 1 ? 's' : ''} aprobada${d.totalOrders !== 1 ? 's' : ''}</div>
                 </div>
 
                 <!-- Ingresos Bs -->
                 <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,240,255,0.02)); border-color:rgba(0,240,255,0.2);">
-                    <span class="label" style="font-size:0.58rem; color:var(--secondary);">🇻🇪 INGRESOS Bs</span>
+                    <span class="label" style="font-size:0.58rem; color:var(--secondary);">­ƒç╗­ƒç¬ INGRESOS Bs</span>
                     <span class="value" style="font-size:1.6rem; color:var(--secondary);">${d.revenueBs.toLocaleString('es-VE', {minimumFractionDigits:0, maximumFractionDigits:0})}</span>
                     <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">Tasa: ${tasa} Bs/$</div>
                 </div>
 
                 <!-- Costo Jadh -->
                 <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(255,61,113,0.08),rgba(255,61,113,0.02)); border-color:rgba(255,61,113,0.2);">
-                    <span class="label" style="font-size:0.58rem; color:#FF3D71;">🏪 COSTO JADH</span>
+                    <span class="label" style="font-size:0.58rem; color:#FF3D71;">­ƒÅ¬ COSTO JADH</span>
                     <span class="value" style="font-size:1.6rem; color:#FF3D71;">$${d.costUsdt.toFixed(2)}</span>
                     <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.costBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
                 </div>
 
-                <!-- Ganancia Neta (Botón Interactivo) -->
-                <div class="stat-card" onclick="showSimpleProfitBreakdownModal()" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.14),rgba(0,255,148,0.03)); border:1px solid rgba(0,255,148,0.4); cursor:pointer; position:relative; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,255,148,0.12);" title="Toca para ver la lista de ganancia por producto">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
-                        <span style="font-size:0.62rem; background:rgba(0,255,148,0.25); color:#00FF94; padding:2px 7px; border-radius:4px; font-weight:800; border:1px solid rgba(0,255,148,0.4);"><i class="fa-solid fa-list-ul"></i> Ver Lista</span>
-                    </div>
+                <!-- Ganancia Neta -->
+                <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.1),rgba(0,255,148,0.02)); border-color:rgba(0,255,148,0.25);">
+                    <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
                     <span class="value" style="font-size:1.6rem; color:${profitColor};">$${d.profitUsdt.toFixed(2)}</span>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                        <span style="font-size:0.65rem; color:var(--text-gray);">${d.profitBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</span>
-                        <span style="font-size:0.62rem; color:#00FF94; font-weight:700;">Toca para ver detalle 📊</span>
-                    </div>
+                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.profitBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
                 </div>
             `;
 
@@ -1957,72 +1867,19 @@
             document.getElementById('fin-count-bin').textContent = d.countBin;
             document.getElementById('fin-tasa').textContent      = tasa;
         }
-
-        function showSimpleProfitBreakdownModal() {
-            const periodData = _financialData ? _financialData[_currentFinancialPeriod] : null;
-            if (!periodData || !periodData.sales || periodData.sales.length === 0) {
-                return Swal.fire({
-                    icon: 'info',
-                    title: '📊 Sin Ventas Aprobadas',
-                    text: 'No hay ventas aprobadas registradas para el período seleccionado.',
-                    background: 'rgba(20, 10, 35, 0.98)',
-                    color: '#fff',
-                    confirmButtonColor: '#9D00FF'
-                });
-            }
-
-            const periodNames = { today: 'Hoy', yesterday: 'Ayer', week: 'Esta Semana', month: 'Este Mes' };
-            const periodName = periodNames[_currentFinancialPeriod] || 'Hoy';
-
-            let listHtml = `
-                <div style="margin-bottom:12px; font-size:0.8rem; color:#aaa; text-align:left;">
-                    Ganancia Neta Total: <strong style="color:#00FF94; font-size:1.05rem;">$${periodData.profitUsdt.toFixed(2)} USDT</strong>
-                    &nbsp;·&nbsp; ${periodData.totalOrders} venta${periodData.totalOrders !== 1 ? 's' : ''}
-                </div>
-                <div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">`;
-
-            periodData.sales.forEach(s => {
-                const isPos = s.profitUsdt >= 0;
-                const color = isPos ? '#00FF94' : '#FF3D71';
-                const sign = isPos ? '+' : '-';
-                listHtml += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; margin-bottom:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.07); text-align:left;">
-                        <div>
-                            <strong style="color:#fff; font-size:0.88rem; display:block;">${s.product}</strong>
-                            <span style="font-size:0.7rem; color:#888;">Ref: <code style="color:var(--secondary);">${s.ref}</code> ${s.time ? `· ${s.time}` : ''}</span>
-                        </div>
-                        <div style="text-align:right;">
-                            <span style="color:${color}; font-weight:800; font-size:0.95rem; display:block;">${sign}$${Math.abs(s.profitUsdt).toFixed(2)} USDT</span>
-                            <span style="font-size:0.68rem; color:#aaa;">${sign}${Math.abs(s.profitBs).toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</span>
-                        </div>
-                    </div>`;
-            });
-
-            listHtml += '</div>';
-
-            Swal.fire({
-                title: `<i class="fa-solid fa-chart-line" style="color:#00FF94;"></i> Ganancias (${periodName})`,
-                html: listHtml,
-                background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff',
-                confirmButtonText: 'Cerrar',
-                confirmButtonColor: '#9D00FF',
-                width: '420px'
-            });
-        }
-        // ────────────────────────────────────────────────────────────────────
+        // ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 
 
         async function retryRecharge(ref, uid, pack) {
             const result = await Swal.fire({
-                title: '↻ ¿Reintentar Recarga?',
-                html: `¿Estás seguro de que quieres reintentar la recarga en <strong>Jadh.shop</strong> para este pedido?<br><br>
-                       <small style="color:#FF9600;"><strong>⚠️ PRECAUCIÓN:</strong> Solo usa esto si el cliente NO recibió sus diamantes. Si ya los recibió, se duplicará la recarga.</small><br><br>
+                title: 'Ôå╗ ┬┐Reintentar Recarga?',
+                html: `┬┐Est├ís seguro de que quieres reintentar la recarga en <strong>Jadh.shop</strong> para este pedido?<br><br>
+                       <small style="color:#FF9600;"><strong>ÔÜá´©Å PRECAUCI├ôN:</strong> Solo usa esto si el cliente NO recibi├│ sus diamantes. Si ya los recibi├│, se duplicar├í la recarga.</small><br><br>
                        <code style="font-size:0.8rem">Ref: ${ref} | ID: ${uid} | Pack: ${pack}</code>`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: '↻ Sí, Reintentar',
+                confirmButtonText: 'Ôå╗ S├¡, Reintentar',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#FF9600',
                 background: 'rgba(20, 10, 35, 0.98)',
@@ -2046,8 +1903,8 @@
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: '✅ ¡Recarga Exitosa!',
-                        html: `<b>${data.message}</b>${data.pin ? `<br><br>🔑 PIN: <code style="font-size:1.2rem;color:#00F0FF">${data.pin}</code>` : ''}`,
+                        title: 'Ô£à ┬íRecarga Exitosa!',
+                        html: `<b>${data.message}</b>${data.pin ? `<br><br>­ƒöæ PIN: <code style="font-size:1.2rem;color:#00F0FF">${data.pin}</code>` : ''}`,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#9D00FF'
@@ -2056,15 +1913,15 @@
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: '❌ Reintento Fallido',
-                        html: `<b>No se pudo realizar la recarga:</b><br>${data.message}<br><br><small style="color:#FFD93D">⚠️ Revisa el saldo en jadh.shop o intenta de nuevo más tarde.</small>`,
+                        title: 'ÔØî Reintento Fallido',
+                        html: `<b>No se pudo realizar la recarga:</b><br>${data.message}<br><br><small style="color:#FFD93D">ÔÜá´©Å Revisa el saldo en jadh.shop o intenta de nuevo m├ís tarde.</small>`,
                         background: 'rgba(20, 10, 35, 0.98)',
                         color: '#fff',
                         confirmButtonColor: '#FF3D71'
                     });
                 }
             } catch (err) {
-                Swal.fire('Error de Conexión', err.message || 'No se pudo comunicar con el servidor.', 'error');
+                Swal.fire('Error de Conexi├│n', err.message || 'No se pudo comunicar con el servidor.', 'error');
             }
         }
 
@@ -2076,7 +1933,7 @@
                 if (result.success) {
                     allTransactions = result.orders;
                     
-                    // Conservar el filtro de búsqueda si el administrador ha escrito una consulta
+                    // Conservar el filtro de b├║squeda si el administrador ha escrito una consulta
                     const queryInput = document.getElementById('ventas-search');
                     if (queryInput && queryInput.value.trim() !== '') {
                         filterVentas();
@@ -2094,7 +1951,7 @@
             tbody.innerHTML = '';
             
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; opacity:0.5;">No hay ventas registradas aún.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; opacity:0.5;">No hay ventas registradas a├║n.</td></tr>';
                 return;
             }
 
@@ -2117,7 +1974,7 @@
                     <td>
                         <span style="color:#25D366; font-weight:700; font-size:0.78rem;">${order.price || 'N/A'}</span><br>
                         <code style="font-size:0.75rem;">${order.ref}</code><br>
-                        <small style="color:var(--text-gray); font-size:0.72rem;">${order.method === 'pagomovil' ? 'Pago Móvil' : (order.method === 'canje' ? '🎁 Canje de Puntos' : 'Binance')}</small>
+                        <small style="color:var(--text-gray); font-size:0.72rem;">${order.method === 'pagomovil' ? 'Pago M├│vil' : 'Binance'}</small>
                     </td>
                     <td>
                         <div style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.name || ''}">${order.name || '-'}</div>
@@ -2146,7 +2003,7 @@
                             <code style="color:var(--secondary); font-size:0.75rem;">${order.pin || '-'}</code>
                         </div>
                     </td>
-                    <td><span style="font-family:monospace; font-size:0.75rem; ${order.ip_address ? 'background:rgba(0,240,255,0.08); color:#00F0FF; border:1px solid rgba(0,240,255,0.2);' : 'color:rgba(255,255,255,0.25);'} padding:2px 4px; border-radius:4px;">${order.ip_address || '—'}</span></td>
+                    <td><span style="font-family:monospace; font-size:0.75rem; ${order.ip_address ? 'background:rgba(0,240,255,0.08); color:#00F0FF; border:1px solid rgba(0,240,255,0.2);' : 'color:rgba(255,255,255,0.25);'} padding:2px 4px; border-radius:4px;">${order.ip_address || 'ÔÇö'}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -2177,17 +2034,17 @@
                 const result = await res.json();
                 if (result.success) {
                     new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(e => {});
-                    Swal.fire('¡Éxito!', result.message || 'Pedido aprobado.', 'success');
+                    Swal.fire('┬í├ëxito!', result.message || 'Pedido aprobado.', 'success');
                     loadAllTransactions();
                 } else {
                     Swal.fire('Error', result.message, 'error');
                 }
-            } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+            } catch (e) { Swal.fire('Error', 'Conexi├│n fallida', 'error'); }
         }
 
         async function rejectOrder(ref) {
             const { value: reason, isConfirmed } = await Swal.fire({
-                title: '¿Rechazar pedido?',
+                title: '┬┐Rechazar pedido?',
                 input: 'text',
                 inputLabel: 'Escribe el motivo del rechazo:',
                 inputPlaceholder: 'Ej: Referencia incorrecta, Pago no recibido, Captura falsa...',
@@ -2198,7 +2055,7 @@
                 color: '#fff',
                 inputValidator: (value) => {
                     if (!value) {
-                        return '¡Debes ingresar un motivo para el rechazo!'
+                        return '┬íDebes ingresar un motivo para el rechazo!'
                     }
                 }
             });
@@ -2243,7 +2100,7 @@
                     allUsedPines = usedPines;
                     renderUsedPines(allUsedPines);
                 }
-            } catch (e) { console.error('Error cargando estadísticas de pines:', e); }
+            } catch (e) { console.error('Error cargando estad├¡sticas de pines:', e); }
         }
 
         let allUsedPines = [];
@@ -2251,7 +2108,7 @@
             const usedTbody = document.getElementById('used-pines-table-body');
             usedTbody.innerHTML = '';
             if (!Array.isArray(list) || list.length === 0) {
-                usedTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; opacity:0.5;">No hay pines entregados aún.</td></tr>';
+                usedTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; opacity:0.5;">No hay pines entregados a├║n.</td></tr>';
                 return;
             }
             list.forEach(p => {
@@ -2347,18 +2204,18 @@
                     } else {
                         Swal.fire('Error', data.message || 'No se pudo actualizar', 'error');
                     }
-                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+                } catch (e) { Swal.fire('Error', 'Conexi├│n fallida', 'error'); }
             }
         }
 
         async function deletePin(id) {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Eliminar PIN?',
-                text: 'Esta acción eliminará el PIN del inventario permanentemente.',
+                title: '┬┐Eliminar PIN?',
+                text: 'Esta acci├│n eliminar├í el PIN del inventario permanentemente.',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4b2b',
-                confirmButtonText: 'Sí, eliminar',
+                confirmButtonText: 'S├¡, eliminar',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff'
             });
@@ -2376,7 +2233,7 @@
                         loadAvailablePines();
                         loadPinStats();
                     }
-                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+                } catch (e) { Swal.fire('Error', 'Conexi├│n fallida', 'error'); }
             }
         }
 
@@ -2386,7 +2243,7 @@
             const codes = codesVal.split('\n').map(c => c.trim()).filter(c => c.length > 0);
             
             if (codes.length === 0) {
-                return Swal.fire('Atención', 'Por favor, ingresa al menos un código.', 'warning');
+                return Swal.fire('Atenci├│n', 'Por favor, ingresa al menos un c├│digo.', 'warning');
             }
 
             const btn = document.querySelector('#pines .btn-main');
@@ -2404,7 +2261,7 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    await Swal.fire('¡Listo!', `${codes.length} pines cargados correctamente.`, 'success');
+                    await Swal.fire('┬íListo!', `${codes.length} pines cargados correctamente.`, 'success');
                     document.getElementById('pin-codes').value = '';
                     loadPinStats();
                 } else {
@@ -2412,7 +2269,7 @@
                 }
             } catch (e) { 
                 console.error(e);
-                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor en la nube. Revisa tu conexión o refresca la página.', 'error');
+                Swal.fire('Error de Conexi├│n', 'No se pudo comunicar con el servidor en la nube. Revisa tu conexi├│n o refresca la p├ígina.', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
@@ -2425,7 +2282,7 @@
                 const res = await adminFetch(`${SERVER_URL}/admin/usuarios`);
                 allUsers = await res.json();
                 
-                // Conservar el filtro de búsqueda si el administrador ha escrito una consulta
+                // Conservar el filtro de b├║squeda si el administrador ha escrito una consulta
                 const queryInput = document.getElementById('user-search');
                 if (queryInput && queryInput.value.trim() !== '') {
                     filterUsers();
@@ -2439,7 +2296,7 @@
             const tbody = document.getElementById('users-table-body');
             tbody.innerHTML = '';
             
-            // Ordenar por fecha de registro (más nuevos arriba, más antiguos abajo)
+            // Ordenar por fecha de registro (m├ís nuevos arriba, m├ís antiguos abajo)
             const sortedUsers = Object.entries(usersMap).sort((a, b) => {
                 const dateA = new Date(a[1].registered || 0).getTime();
                 const dateB = new Date(b[1].registered || 0).getTime();
@@ -2482,7 +2339,7 @@
                     </td>
                     <td>
                         <button onclick="editPoints('${uid}', ${data.points})" class="btn-action" style="background:#333;" title="Editar $"><i class="fa-solid fa-edit"></i></button>
-                        <button onclick="editPassword('${uid}')" class="btn-action" style="background:#1a0a2e;" title="Cambiar Contraseña"><i class="fa-solid fa-key"></i></button>
+                        <button onclick="editPassword('${uid}')" class="btn-action" style="background:#1a0a2e;" title="Cambiar Contrase├▒a"><i class="fa-solid fa-key"></i></button>
                         <button onclick="deleteUser('${uid}')" class="btn-action" style="background:rgba(255, 75, 43, 0.2); color:#ff4b2b; border:1px solid #ff4b2b;" title="Eliminar Usuario"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
@@ -2530,10 +2387,10 @@
 
         async function editPassword(uid) {
             const { value: newPass } = await Swal.fire({
-                title: '🔑 Cambiar Contraseña',
+                title: '­ƒöæ Cambiar Contrase├▒a',
                 html: `
-                    <p style="font-size:0.85rem;color:#aaa;margin-bottom:15px;">ID: <code>${uid}</code><br>Deja vacío para <strong>eliminar</strong> la contraseña.</p>
-                    <input id="swal-new-pass" type="text" class="swal2-input" placeholder="Nueva contraseña (o vacío para quitar)">
+                    <p style="font-size:0.85rem;color:#aaa;margin-bottom:15px;">ID: <code>${uid}</code><br>Deja vac├¡o para <strong>eliminar</strong> la contrase├▒a.</p>
+                    <input id="swal-new-pass" type="text" class="swal2-input" placeholder="Nueva contrase├▒a (o vac├¡o para quitar)">
                 `,
                 showCancelButton: true,
                 confirmButtonText: 'Guardar',
@@ -2552,7 +2409,7 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        Swal.fire({ icon: 'success', title: newPass ? 'Contraseña establecida' : 'Contraseña eliminada', timer: 1500, showConfirmButton: false });
+                        Swal.fire({ icon: 'success', title: newPass ? 'Contrase├▒a establecida' : 'Contrase├▒a eliminada', timer: 1500, showConfirmButton: false });
                         loadUsers();
                     }
                 } catch (e) { Swal.fire('Error', 'No se pudo actualizar.', 'error'); }
@@ -2561,13 +2418,13 @@
 
         async function deleteUser(uid) {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Eliminar usuario?',
-                text: `Vas a borrar al usuario con ID: ${uid}. Esta acción no se puede deshacer y perderá sus $.`,
+                title: '┬┐Eliminar usuario?',
+                text: `Vas a borrar al usuario con ID: ${uid}. Esta acci├│n no se puede deshacer y perder├í sus $.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4b2b',
                 cancelButtonColor: '#333',
-                confirmButtonText: 'Sí, eliminar',
+                confirmButtonText: 'S├¡, eliminar',
                 cancelButtonText: 'Cancelar',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff'
@@ -2587,7 +2444,7 @@
                     } else {
                         Swal.fire('Error', data.message || 'No se pudo eliminar', 'error');
                     }
-                } catch (e) { Swal.fire('Error', 'Conexión fallida', 'error'); }
+                } catch (e) { Swal.fire('Error', 'Conexi├│n fallida', 'error'); }
             }
         }
 
@@ -2600,7 +2457,7 @@
                 document.getElementById('setting-marquee').value = allSettings.barra_informativa;
                 document.getElementById('admin-user').value = allSettings.admin.username;
 
-                // Cargar métodos de pago
+                // Cargar m├®todos de pago
                 if (allSettings.metodos_pago) {
                     document.getElementById('pm-banco').value = allSettings.metodos_pago.pagomovil.banco;
                     document.getElementById('pm-telefono').value = allSettings.metodos_pago.pagomovil.telefono;
@@ -2611,7 +2468,6 @@
 
                 // Cargar WhatsApp
                 if (allSettings.whatsapp) {
-                    if (document.getElementById('wa-bot')) document.getElementById('wa-bot').value = allSettings.whatsapp.bot || '584123491068';
                     document.getElementById('wa-soporte').value = allSettings.whatsapp.soporte;
                     document.getElementById('wa-canal').value = allSettings.whatsapp.canal;
                     document.getElementById('wa-modo').value = allSettings.whatsapp.modo || 'activo';
@@ -2633,7 +2489,7 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- Gestión dinámica de Banners Publicitarios ---
+        // --- Gesti├│n din├ímica de Banners Publicitarios ---
         function renderAdsAdmin(ads) {
             const listEl = document.getElementById('ads-admin-list');
             if (!listEl) return;
@@ -2660,8 +2516,8 @@
                             <input type="text" class="ad-image-input" value="${ad.imagen || ''}" placeholder="Ej: https://imgur.com/anuncio.png o img/tarjeta_semanal.png" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
                         </div>
                         <div class="form-group" style="margin: 0; padding: 0;">
-                            <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">Enlace de Redirección (Opcional):</label>
-                            <input type="text" class="ad-link-input" value="${ad.link || ''}" placeholder="Ej: https://whatsapp.com/channel/... o dejar vacío" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
+                            <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">Enlace de Redirecci├│n (Opcional):</label>
+                            <input type="text" class="ad-link-input" value="${ad.link || ''}" placeholder="Ej: https://whatsapp.com/channel/... o dejar vac├¡o" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
                         </div>
                     </div>
                 `;
@@ -2703,7 +2559,7 @@
         }
 
         async function saveSettings() {
-            const { isConfirmed } = await Swal.fire({ title: '¿Guardar cambios?', text: "Se actualizará la tasa y los precios para todos los usuarios.", icon: 'question', showCancelButton: true });
+            const { isConfirmed } = await Swal.fire({ title: '┬┐Guardar cambios?', text: "Se actualizar├í la tasa y los precios para todos los usuarios.", icon: 'question', showCancelButton: true });
             if (!isConfirmed) return;
 
             Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -2729,7 +2585,6 @@
                     }
                 },
                 whatsapp: {
-                    bot: document.getElementById('wa-bot') ? document.getElementById('wa-bot').value : '584123491068',
                     soporte: document.getElementById('wa-soporte').value,
                     canal: document.getElementById('wa-canal').value,
                     modo: document.getElementById('wa-modo').value,
@@ -2747,7 +2602,7 @@
                     body: JSON.stringify(newSettings)
                 });
                 if ((await res.json()).success) {
-                    Swal.fire('¡Éxito!', 'Configuración actualizada.', 'success');
+                    Swal.fire('┬í├ëxito!', 'Configuraci├│n actualizada.', 'success');
                     document.getElementById('admin-pass').value = '';
                     loadSettings();
                 }
@@ -2781,16 +2636,16 @@
             const message = document.getElementById('wa-broadcast-message').value.trim();
 
             if (!message) return Swal.fire('Error', 'Debes escribir un mensaje.', 'error');
-            if (targetType === 'single' && !targetPhone) return Swal.fire('Error', 'Ingresa un número de teléfono válido.', 'error');
+            if (targetType === 'single' && !targetPhone) return Swal.fire('Error', 'Ingresa un n├║mero de tel├®fono v├ílido.', 'error');
 
             const confirm = await Swal.fire({
-                title: '¿Confirmar envío?',
+                title: '┬┐Confirmar env├¡o?',
                 text: targetType === 'all' 
-                      ? 'Esto añadirá el mensaje a la cola para TODOS los usuarios con teléfono registrado.' 
-                      : `Se enviará el mensaje al número ${targetPhone}.`,
+                      ? 'Esto a├▒adir├í el mensaje a la cola para TODOS los usuarios con tel├®fono registrado.' 
+                      : `Se enviar├í el mensaje al n├║mero ${targetPhone}.`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, enviar',
+                confirmButtonText: 'S├¡, enviar',
                 cancelButtonText: 'Cancelar'
             });
 
@@ -2805,61 +2660,61 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('¡Éxito!', `${data.enqueued} mensaje(s) añadido(s) a la cola de envío.`, 'success');
-                    // No vaciar el textarea automáticamente para que el mensaje no se borre
+                    Swal.fire('┬í├ëxito!', `${data.enqueued} mensaje(s) a├▒adido(s) a la cola de env├¡o.`, 'success');
+                    // No vaciar el textarea autom├íticamente para que el mensaje no se borre
                 } else {
                     Swal.fire('Error', data.message || 'Error al enviar.', 'error');
                 }
             } catch (err) {
-                Swal.fire('Error', 'Error de conexión con el servidor.', 'error');
+                Swal.fire('Error', 'Error de conexi├│n con el servidor.', 'error');
             }
         }
 
         async function clearWaQueue() {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Vaciar cola?',
-                text: "Esto borrará todos los mensajes pendientes de envío.",
+                title: '┬┐Vaciar cola?',
+                text: "Esto borrar├í todos los mensajes pendientes de env├¡o.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4b2b',
-                confirmButtonText: 'Sí, vaciar'
+                confirmButtonText: 'S├¡, vaciar'
             });
             if (!isConfirmed) return;
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/clear-wa-queue`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('¡Vaciada!', 'La cola de WhatsApp ha sido borrada.', 'success');
+                    Swal.fire('┬íVaciada!', 'La cola de WhatsApp ha sido borrada.', 'success');
                 }
             } catch (e) { Swal.fire('Error', 'No se pudo vaciar la cola.', 'error'); }
         }
 
         async function restartWa() {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Reiniciar Bot?',
-                text: "Se enviará una señal al bot para que intente reconectarse.",
+                title: '┬┐Reiniciar Bot?',
+                text: "Se enviar├í una se├▒al al bot para que intente reconectarse.",
                 icon: 'info',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, reiniciar'
+                confirmButtonText: 'S├¡, reiniciar'
             });
             if (!isConfirmed) return;
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/restart-wa`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('Solicitado', 'El bot recibirá la orden de reinicio en unos segundos.', 'success');
+                    Swal.fire('Solicitado', 'El bot recibir├í la orden de reinicio en unos segundos.', 'success');
                 }
             } catch (e) { Swal.fire('Error', 'No se pudo enviar la orden.', 'error'); }
         }
 
         async function changeWaNumber() {
             const { isConfirmed } = await Swal.fire({
-                title: '¿Cambiar número de WhatsApp?',
-                html: `<p>Esto <strong>borrará la sesión actual</strong> del bot y generará un nuevo código QR.</p>
-                       <p style="margin-top:10px; color:#FFC107;">⚠️ Deberás escanear el QR con el <strong>nuevo número</strong> desde la pestaña de WhatsApp del panel.</p>`,
+                title: '┬┐Cambiar n├║mero de WhatsApp?',
+                html: `<p>Esto <strong>borrar├í la sesi├│n actual</strong> del bot y generar├í un nuevo c├│digo QR.</p>
+                       <p style="margin-top:10px; color:#FFC107;">ÔÜá´©Å Deber├ís escanear el QR con el <strong>nuevo n├║mero</strong> desde la pesta├▒a de WhatsApp del panel.</p>`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, cambiar número',
+                confirmButtonText: 'S├¡, cambiar n├║mero',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#FFC107'
             });
@@ -2869,21 +2724,21 @@
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire({
-                        title: '✅ Sesión borrada',
-                        html: `<p>La sesión anterior fue eliminada. El bot está generando un nuevo código QR.</p>
+                        title: 'Ô£à Sesi├│n borrada',
+                        html: `<p>La sesi├│n anterior fue eliminada. El bot est├í generando un nuevo c├│digo QR.</p>
                                <p style="margin-top:10px; color:#25D366;">Espera unos segundos y refresca el estado de WhatsApp para ver el nuevo QR.</p>`,
                         icon: 'success'
                     });
                     setTimeout(() => checkWaStatus(), 5000);
                 } else {
-                    Swal.fire('Error', data.error || 'No se pudo resetear la sesión.', 'error');
+                    Swal.fire('Error', data.error || 'No se pudo resetear la sesi├│n.', 'error');
                 }
             } catch (e) { Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error'); }
         }
 
 
         // =====================================================
-        // 🏦 BDV AUTO-PAGO — Funciones del Toggle
+        // ­ƒÅª BDV AUTO-PAGO ÔÇö Funciones del Toggle
         // =====================================================
         async function loadBDVStatus(showToast = false) {
             const btn = document.querySelector('button[onclick^="loadBDVStatus"]');
@@ -2906,25 +2761,25 @@
 
                 // Actualizar apariencia del toggle
                 if (data.enabled) {
-                    statusEl.innerHTML = '🟢 <span style="color:#25D366;">ACTIVADO</span>';
+                    statusEl.innerHTML = '­ƒƒó <span style="color:#25D366;">ACTIVADO</span>';
                     toggleBg.style.background = '#9D00FF';
                     toggleKnob.style.transform = 'translateX(30px)';
                 } else {
-                    statusEl.innerHTML = '🔴 <span style="color:#ff4b2b;">DESACTIVADO</span>';
+                    statusEl.innerHTML = '­ƒö┤ <span style="color:#ff4b2b;">DESACTIVADO</span>';
                     toggleBg.style.background = '#333';
                     toggleKnob.style.transform = 'translateX(0px)';
                 }
 
-                // Info de sesión BDV
+                // Info de sesi├│n BDV
                 if (data.bdvStatus) {
                     const s = data.bdvStatus;
                     if (s.sessionActive && s.lastLogin) {
                         const loginDate = new Date(s.lastLogin).toLocaleTimeString('es-VE');
-                        sessionEl.textContent = `Sesión: ✅ Activa · Último login: ${loginDate}`;
+                        sessionEl.textContent = `Sesi├│n: Ô£à Activa ┬À ├Ültimo login: ${loginDate}`;
                     } else if (s.browserActive) {
-                        sessionEl.textContent = 'Sesión: ⚠️ Navegador activo, sin login';
+                        sessionEl.textContent = 'Sesi├│n: ÔÜá´©Å Navegador activo, sin login';
                     } else {
-                        sessionEl.textContent = 'Sesión: Inactiva';
+                        sessionEl.textContent = 'Sesi├│n: Inactiva';
                     }
                 }
 
@@ -2957,12 +2812,12 @@
             if (checked) {
                 toggleBg.style.background = '#9D00FF';
                 toggleKnob.style.transform = 'translateX(30px)';
-                statusEl.innerHTML = '⏳ <span style="color:#FFC107;">ACTIVANDO...</span>';
+                statusEl.innerHTML = 'ÔÅ│ <span style="color:#FFC107;">ACTIVANDO...</span>';
                 loginStatusEl.style.display = 'block';
             } else {
                 toggleBg.style.background = '#333';
                 toggleKnob.style.transform = 'translateX(0px)';
-                statusEl.innerHTML = '⏳ <span style="color:#aaa;">DESACTIVANDO...</span>';
+                statusEl.innerHTML = 'ÔÅ│ <span style="color:#aaa;">DESACTIVANDO...</span>';
                 loginStatusEl.style.display = 'none';
             }
 
@@ -2992,7 +2847,7 @@
                 }
             } catch (e) {
                 loginStatusEl.style.display = 'none';
-                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                Swal.fire('Error de Conexi├│n', 'No se pudo comunicar con el servidor.', 'error');
                 toggle.checked = !checked; // Revertir
             }
         }
@@ -3009,7 +2864,7 @@
                 badge.innerText = count;
                 badge.style.display = 'block';
                 
-                // Si el número aumentó, notificar
+                // Si el n├║mero aument├│, notificar
                 if (lastPendingCount !== -1 && count > lastPendingCount) {
                     notifyNewOrder();
                 }
@@ -3020,136 +2875,17 @@
             lastPendingCount = count;
         }
 
-        // --- ALMACÉN Y STOCK STREAMING ---
-        async function loadStreamingStockAdmin() {
-            try {
-                const res = await adminFetch(`${SERVER_URL}/admin/streaming-stock`);
-                const data = await res.json();
-                if (!data.success) return;
-
-                const stock = data.stock || {};
-                const services = [
-                    { id: 'netflix', name: 'Netflix', icon: 'fa-film', color: '#E50914' },
-                    { id: 'disney', name: 'Disney+', icon: 'fa-clapperboard', color: '#00D2FF' },
-                    { id: 'max', name: 'Max HBO', icon: 'fa-play', color: '#002BE7' },
-                    { id: 'vix', name: 'ViX', icon: 'fa-tv', color: '#FF5000' },
-                    { id: 'canva', name: 'Canva Pro', icon: 'fa-paintbrush', color: '#00C4CC' },
-                    { id: 'spotify', name: 'Spotify', icon: 'fa-spotify', color: '#1DB954' },
-                    { id: 'prime', name: 'Prime Video', icon: 'fa-video', color: '#00A8E1' },
-                    { id: 'crunchyroll', name: 'Crunchyroll', icon: 'fa-masks-theater', color: '#F47521' }
-                ];
-
-                const summaryGrid = document.getElementById('streaming-stock-summary-grid');
-                const detailContainer = document.getElementById('streaming-accounts-detail');
-
-                if (summaryGrid) {
-                    summaryGrid.innerHTML = '';
-                    services.forEach(s => {
-                        const count = (stock[s.id] && Array.isArray(stock[s.id])) ? stock[s.id].length : 0;
-                        const isLow = count < 3;
-                        const isEmpty = count === 0;
-
-                        summaryGrid.innerHTML += `
-                            <div style="background: rgba(255,255,255,0.04); border: 1px solid ${s.color}40; padding: 10px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 1.2rem; margin-bottom: 4px;"><i class="fa-solid ${s.icon}" style="color:${s.color}"></i></div>
-                                <div style="font-size: 0.72rem; color: #aaa; font-weight: 700;">${s.name}</div>
-                                <div style="font-size: 1.3rem; font-weight: 900; color: ${isEmpty ? '#ff3d71' : (isLow ? '#ffd93d' : '#00ff94')}; margin-top: 2px;">
-                                    ${count}
-                                </div>
-                                <div style="font-size: 0.6rem; color: ${isEmpty ? '#ff3d71' : '#00ff94'}; font-weight: 800;">
-                                    ${isEmpty ? 'SIN STOCK' : 'DISPONIBLES'}
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-
-                if (detailContainer) {
-                    detailContainer.innerHTML = '';
-                    let totalCount = 0;
-                    services.forEach(s => {
-                        const accList = stock[s.id] || [];
-                        if (accList.length > 0) {
-                            totalCount += accList.length;
-                            detailContainer.innerHTML += `<div style="color:${s.color}; font-weight:800; margin-top:8px; margin-bottom:4px; font-size:0.82rem;"><i class="fa-solid ${s.icon}"></i> ${s.name} (${accList.length}):</div>`;
-                            accList.forEach((acc, idx) => {
-                                const escapedAcc = acc.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                                detailContainer.innerHTML += `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; margin-bottom:4px; border:1px solid rgba(255,255,255,0.05);">
-                                        <span style="color:#eee; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.78rem; font-family:monospace;">${idx+1}. ${acc}</span>
-                                        <div style="display:flex; gap:4px; margin-left:8px;">
-                                            <button onclick="editStreamingAccountAdmin('${s.id}', ${idx}, '${escapedAcc}')" style="background:rgba(157,0,255,0.25); border:1px solid #9D00FF; color:#c084fc; border-radius:5px; padding:3px 8px; font-size:0.7rem; cursor:pointer;" title="Editar cuenta">✏️ Editar</button>
-                                            <button onclick="deleteStreamingAccountAdmin('${s.id}', ${idx})" style="background:rgba(255,0,0,0.25); border:1px solid #ff4b2b; color:#ff4b2b; border-radius:5px; padding:3px 8px; font-size:0.7rem; cursor:pointer;" title="Eliminar cuenta">🗑️</button>
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                        }
-                    });
-
-                    if (totalCount === 0) {
-                        detailContainer.innerHTML = `<p style="opacity:0.5; text-align:center; margin:20px 0;">No hay cuentas de streaming cargadas aún.</p>`;
-                    }
-                }
-            } catch (e) { console.error('Error cargando almacén streaming:', e); }
-        }
-
-        async function addStreamingAccountsAdmin() {
-            const service = document.getElementById('streaming-service-select').value;
-            const text = document.getElementById('streaming-accounts-input').value;
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-            if (!lines || lines.length === 0) {
-                return Swal.fire('Atención', 'Ingresa al menos 1 cuenta o acceso.', 'warning');
-            }
-
-            Swal.fire({ title: 'Guardando cuentas...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            try {
-                const res = await adminFetch(`${SERVER_URL}/admin/add-streaming-stock`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service, accounts: lines })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('¡Éxito!', `Se agregaron ${data.countAdded} cuentas a ${service.toUpperCase()}. Total en almacén: ${data.totalStock}`, 'success');
-                    document.getElementById('streaming-accounts-input').value = '';
-                    loadStreamingStockAdmin();
-                } else {
-                    Swal.fire('Error', data.message, 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', 'Fallo de conexión al servidor.', 'error');
-            }
-        }
-
-        async function deleteStreamingAccountAdmin(service, index) {
-            try {
-                const res = await adminFetch(`${SERVER_URL}/admin/delete-streaming-stock`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service, index })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    loadStreamingStockAdmin();
-                }
-            } catch (e) {}
-        }
-
         function notifyNewOrder() {
-            // Sonido de notificación
+            // Sonido de notificaci├│n
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3');
             audio.play().catch(e => console.log('Audio blocked'));
             
-            // Flash en el título de la pestaña
+            // Flash en el t├¡tulo de la pesta├▒a
             startTitleFlash();
             
             // Alerta visual
             Swal.fire({
-                title: '¡NUEVO PEDIDO!',
+                title: '┬íNUEVO PEDIDO!',
                 text: 'Hay un nuevo pedido pendiente por aprobar.',
                 icon: 'warning',
                 toast: true,
@@ -3166,11 +2902,11 @@
             const originalTitle = document.title;
             let isFlash = false;
             titleFlashInterval = setInterval(() => {
-                document.title = isFlash ? '🚨 NUEVO PEDIDO 🚨' : originalTitle;
+                document.title = isFlash ? '­ƒÜ¿ NUEVO PEDIDO ­ƒÜ¿' : originalTitle;
                 isFlash = !isFlash;
             }, 1000);
             
-            // Detener el flash al hacer clic en cualquier parte de la página
+            // Detener el flash al hacer clic en cualquier parte de la p├ígina
             window.addEventListener('click', stopTitleFlash, { once: true });
         }
 
@@ -3182,18 +2918,18 @@
             }
         }
 
-        // Init se maneja a través del event listener DOMContentLoaded arriba
+        // Init se maneja a trav├®s del event listener DOMContentLoaded arriba
         
-        // Refresco automático de datos (cada 5 segundos)
+        // Refresco autom├ítico de datos (cada 5 segundos)
         setInterval(() => {
-            if (!localStorage.getItem('admin_token')) return; // No refrescar si no hay sesión
+            if (!localStorage.getItem('admin_token')) return; // No refrescar si no hay sesi├│n
             
             const activeTabBtn = document.querySelector('.tab-btn.active');
             const activeTabText = activeTabBtn ? activeTabBtn.innerText.trim() : '';
             
             if (activeTabText.includes('Dashboard')) loadDashboardStats();
             if (activeTabText.includes('Ventas')) loadAllTransactions();
-            if (activeTabText.includes('Almacén') || activeTabText.includes('Pines')) loadPinStats();
+            if (activeTabText.includes('Almac├®n') || activeTabText.includes('Pines')) loadPinStats();
             if (activeTabText.includes('Usuarios')) loadUsers();
             
             // Siempre actualizar el badge de pendientes, sin importar el tab
@@ -3259,7 +2995,7 @@
         }
 
         // =============================================
-        // GESTIÓN DE JUEGOS
+        // GESTI├ôN DE JUEGOS
         // =============================================
         let juegosData = {};
 
@@ -3279,7 +3015,7 @@
             if (!juegosData || Object.keys(juegosData).length === 0) {
                 list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-gray);">
                     <i class="fa-solid fa-gamepad" style="font-size:3rem;display:block;margin-bottom:15px;"></i>
-                    No hay juegos configurados. Haz clic en "Añadir Juego".
+                    No hay juegos configurados. Haz clic en "A├▒adir Juego".
                 </div>`;
                 return;
             }
@@ -3328,12 +3064,12 @@
 
         function showAddGameModal() {
             Swal.fire({
-                title: '<span style="color:#fff;font-family:Montserrat">🎮 Nuevo Juego</span>',
+                title: '<span style="color:#fff;font-family:Montserrat">­ƒÄ« Nuevo Juego</span>',
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 html: `
                     <div style="text-align:left;display:grid;gap:12px;">
-                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">ID único (sin espacios, ej: freefire)</label>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">ID ├║nico (sin espacios, ej: freefire)</label>
                         <input id="swal-game-id" class="swal2-input" placeholder="ej: freefire" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Nombre para mostrar</label>
                         <input id="swal-game-nombre" class="swal2-input" placeholder="ej: Free Fire" style="margin:0;width:100%;"></div>
@@ -3341,7 +3077,7 @@
                         <input id="swal-game-label" class="swal2-input" placeholder="ej: ID de Jugador" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Placeholder (texto de ejemplo)</label>
                         <input id="swal-game-placeholder" class="swal2-input" placeholder="ej: Ej: 123456789" style="margin:0;width:100%;"></div>
-                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Ícono Font Awesome (ej: fa-fire)</label>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">├ìcono Font Awesome (ej: fa-fire)</label>
                         <input id="swal-game-icono" class="swal2-input" placeholder="fa-fire" style="margin:0;width:100%;"></div>
                     </div>`,
                 confirmButtonText: '<i class="fa-solid fa-plus"></i> Crear Juego',
@@ -3373,7 +3109,7 @@
         function editGame(key) {
             const j = juegosData[key];
             Swal.fire({
-                title: `<span style="color:#fff;font-family:Montserrat">✏️ Editar: ${j.nombre}</span>`,
+                title: `<span style="color:#fff;font-family:Montserrat">Ô£Å´©Å Editar: ${j.nombre}</span>`,
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 html: `
@@ -3384,7 +3120,7 @@
                         <input id="swal-edit-label" class="swal2-input" value="${j.inputLabel || ''}" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Placeholder</label>
                         <input id="swal-edit-placeholder" class="swal2-input" value="${j.inputPlaceholder || ''}" style="margin:0;width:100%;"></div>
-                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Ícono Font Awesome (ej: fa-fire)</label>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">├ìcono Font Awesome (ej: fa-fire)</label>
                         <input id="swal-edit-icono" class="swal2-input" value="${j.icono || 'fa-gamepad'}" style="margin:0;width:100%;"></div>
                     </div>`,
                 confirmButtonText: '<i class="fa-solid fa-save"></i> Guardar',
@@ -3406,7 +3142,7 @@
 
         function addPackage(gameKey) {
             Swal.fire({
-                title: `<span style="color:#fff;font-family:Montserrat">💎 Nuevo Paquete</span>`,
+                title: `<span style="color:#fff;font-family:Montserrat">­ƒÆÄ Nuevo Paquete</span>`,
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 html: `
@@ -3441,7 +3177,7 @@
         function editPackage(gameKey, pkId) {
             const pk = juegosData[gameKey].paquetes[pkId];
             Swal.fire({
-                title: `<span style="color:#fff;font-family:Montserrat">💎 Editar Paquete</span>`,
+                title: `<span style="color:#fff;font-family:Montserrat">­ƒÆÄ Editar Paquete</span>`,
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 html: `
@@ -3471,13 +3207,13 @@
         async function deletePackage(gameKey, pkId) {
             const pk = juegosData[gameKey].paquetes[pkId];
             const result = await Swal.fire({
-                title: '¿Eliminar paquete?',
-                text: `Esto eliminará el paquete "${pk.label}" de la tienda.`,
+                title: '┬┐Eliminar paquete?',
+                text: `Esto eliminar├í el paquete "${pk.label}" de la tienda.`,
                 icon: 'warning',
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, eliminar',
+                confirmButtonText: 'S├¡, eliminar',
                 confirmButtonColor: '#FF3D71',
                 cancelButtonText: 'Cancelar'
             });
@@ -3488,13 +3224,13 @@
 
         async function deleteGame(key) {
             const result = await Swal.fire({
-                title: '¿Eliminar juego?',
-                text: `Esto eliminará "${juegosData[key].nombre}" y todos sus paquetes de la tienda.`,
+                title: '┬┐Eliminar juego?',
+                text: `Esto eliminar├í "${juegosData[key].nombre}" y todos sus paquetes de la tienda.`,
                 icon: 'warning',
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, eliminar',
+                confirmButtonText: 'S├¡, eliminar',
                 confirmButtonColor: '#FF3D71',
                 cancelButtonText: 'Cancelar'
             });
@@ -3511,7 +3247,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Los juegos se actualizaron correctamente.', timer: 1800, showConfirmButton: false, background: 'rgba(20,10,35,0.98)', color: '#fff' });
+                    Swal.fire({ icon: 'success', title: '┬íGuardado!', text: 'Los juegos se actualizaron correctamente.', timer: 1800, showConfirmButton: false, background: 'rgba(20,10,35,0.98)', color: '#fff' });
                     renderJuegos();
                 } else {
                     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar.', background: 'rgba(20,10,35,0.98)', color: '#fff' });
@@ -3540,7 +3276,7 @@
             }
 
             const { value: formValues } = await Swal.fire({
-                title: '⚡ Simular Pago Binance',
+                title: 'ÔÜí Simular Pago Binance',
                 background: 'rgba(20, 10, 35, 0.98)',
                 color: '#fff',
                 html: htmlOptions +
@@ -3555,7 +3291,7 @@
                 preConfirm: () => {
                     const amount = document.getElementById('swal-sim-amount').value.trim();
                     if (!amount || parseFloat(amount) <= 0) {
-                        Swal.showValidationMessage('Ingresa un monto válido mayor a 0');
+                        Swal.showValidationMessage('Ingresa un monto v├ílido mayor a 0');
                         return false;
                     }
                     return { amount };
@@ -3584,398 +3320,11 @@
                         Swal.fire('Error', data.message, 'error');
                     }
                 } catch (err) {
-                    Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                    Swal.fire('Error de Conexi├│n', 'No se pudo comunicar con el servidor.', 'error');
                 }
             }
         }
     </script>
-
-    <!-- ====================================================
-         INFLUENCERS ADMIN TAB
-    ==================================================== -->
-    <div id="influencers-tab" class="tab-content">
-
-        <!-- SUB-TABS -->
-        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-            <button id="inf-subtab-solicitudes" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;" onclick="showInfluencerSubtab('solicitudes')"><i class="fa-solid fa-user-check"></i> Solicitudes</button>
-            <button id="inf-subtab-videos" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('videos')"><i class="fa-solid fa-video"></i> Videos</button>
-            <button id="inf-subtab-tarifas" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('tarifas')"><i class="fa-solid fa-gem"></i> Tarifas</button>
-        </div>
-
-        <!-- SOLICITUDES -->
-        <div id="inf-panel-solicitudes" class="action-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-                <h2><i class="fa-brands fa-tiktok" style="color:#ff0050"></i> Influencers Registrados</h2>
-                <button onclick="loadInfluencersAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
-                <select id="inf-filter-status" onchange="loadInfluencersAdmin()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;">
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendientes</option>
-                    <option value="approved">Aprobados</option>
-                    <option value="rejected">Rechazados</option>
-                </select>
-                <input type="text" id="inf-search" placeholder="Buscar usuario o TikTok..." onkeyup="renderInfluencersTable()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;min-width:240px;">
-            </div>
-            <div class="table-container">
-                <table><thead><tr>
-                    <th>Usuario / TikTok</th><th>UID Free Fire</th><th>Seguidores</th><th>Estado</th><th>Saldo Wallet</th><th>Total Ganado</th><th>Registro</th><th>Acciones</th>
-                </tr></thead>
-                <tbody id="influencers-table-body"><tr><td colspan="8" style="text-align:center;padding:30px;color:#b0a8c0;">Cargando...</td></tr></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- VIDEOS -->
-        <div id="inf-panel-videos" class="action-card" style="display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-                <h2><i class="fa-solid fa-video" style="color:var(--secondary)"></i> Videos Enviados</h2>
-                <button onclick="loadSubmissionsAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:15px;">
-                <select id="sub-filter-status" onchange="loadSubmissionsAdmin()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.9rem;">
-                    <option value="all">Todos</option><option value="pending">Pendientes</option><option value="approved">Aprobados</option><option value="paid">Pagados</option><option value="rejected">Rechazados</option>
-                </select>
-            </div>
-            <div id="submissions-admin-list" style="display:flex;flex-direction:column;gap:14px;"><div style="text-align:center;padding:40px;color:#b0a8c0;">Cargando...</div></div>
-        </div>
-
-        <!-- TARIFAS -->
-        <div id="inf-panel-tarifas" class="action-card" style="display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-                <h2><i class="fa-solid fa-dollar-sign" style="color:#00FF94"></i> Tabla de Tarifas ($ USD)</h2>
-                <button onclick="loadRatesAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
-            </div>
-            <p style="color:var(--text-gray);margin-bottom:20px;font-size:0.9rem;">Define el monto en $ USD (saldo de billetera) que se paga según las visualizaciones del video.</p>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:20px;margin-bottom:24px;">
-                <h4 style="margin-bottom:14px;color:var(--secondary);"><i class="fa-solid fa-plus"></i> Agregar Tarifa</h4>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Nombre</label><input type="text" id="rate-label" placeholder="Ej: Viral" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;"></div>
-                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Min. Vistas</label><input type="number" id="rate-min" placeholder="10000" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:120px;"></div>
-                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Max. Vistas</label><input type="number" id="rate-max" placeholder="Sin limite" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:120px;"></div>
-                    <div><label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Monto ($ USD)</label><input type="number" step="0.5" id="rate-diamonds" placeholder="5.00" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100px;"></div>
-                    <button onclick="addRateAdmin()" class="btn-main" style="width:auto;padding:10px 18px;font-size:0.85rem;"><i class="fa-solid fa-plus"></i> Agregar</button>
-                </div>
-            </div>
-            <div class="table-container">
-                <table><thead><tr><th>Nombre</th><th>Min Vistas</th><th>Max Vistas</th><th>Pago ($ USD)</th><th>Activa</th><th>Eliminar</th></tr></thead>
-                <tbody id="rates-admin-table-body"><tr><td colspan="6" style="text-align:center;padding:20px;color:#b0a8c0;">Cargando...</td></tr></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- MODALS: Review y Edit Rate -->
-        <div id="review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
-            <div style="background:#0d0d1f;border:1px solid rgba(108,61,232,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
-                <button onclick="closeReviewModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
-                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-dollar-sign" style="color:#00FF94"></i> Revisar y Pagar Video</h3>
-                <input type="hidden" id="review-sub-id">
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Vistas verificadas</label><input type="number" id="review-views" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Monto a pagar ($ USD) <span id="review-suggestion" style="color:#00FF94;margin-left:8px;"></span></label><input type="number" step="0.01" id="review-diamonds" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Notas para el influencer</label><input type="text" id="review-notes" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div style="display:flex;gap:10px;">
-                    <button onclick="submitReview('paid')" class="btn-main" style="flex:1;background:linear-gradient(135deg,#059669,#34d399);"><i class="fa-solid fa-dollar-sign"></i> Pagar a Billetera</button>
-                    <button onclick="submitReview('rejected')" class="btn-main" style="flex:1;background:rgba(220,38,38,0.3);"><i class="fa-solid fa-times"></i> Rechazar</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="edit-rate-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
-            <div style="background:#0d0d1f;border:1px solid rgba(108,61,232,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
-                <button onclick="closeEditRateModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
-                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-pen-to-square" style="color:var(--secondary)"></i> Editar Tarifa</h3>
-                <input type="hidden" id="edit-rate-id">
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Nombre de la Tarifa</label><input type="text" id="edit-rate-label" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Mínimo Vistas</label><input type="number" id="edit-rate-min" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Máximo Vistas (vacío = sin límite)</label><input type="number" id="edit-rate-max" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Pago en $ USD</label><input type="number" step="0.01" id="edit-rate-dollars" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <button onclick="saveRateEdit()" class="btn-main" style="width:100%;background:linear-gradient(135deg,#6c3de8,#8b5cf6);"><i class="fa-solid fa-save"></i> Guardar Cambios</button>
-            </div>
-        </div>
-        <div id="diamonds-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
-            <div style="background:#0d0d1f;border:1px solid rgba(245,158,11,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
-                <button onclick="closeDiamondsModal()" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">X</button>
-                <h3 style="margin-bottom:20px;"><i class="fa-solid fa-gem" style="color:#FFD93D"></i> Ajustar Diamantes</h3>
-                <p id="diamonds-modal-name" style="color:#b0a8c0;font-size:0.9rem;margin-bottom:16px;"></p>
-                <input type="hidden" id="diamonds-modal-inf-id">
-                <div class="form-group" style="margin-bottom:14px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Monto (+ agregar, - restar)</label><input type="number" id="diamonds-amount" placeholder="Ej: 500 o -100" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <div class="form-group" style="margin-bottom:20px;"><label style="font-size:0.8rem;color:#b0a8c0;display:block;margin-bottom:5px;">Nota</label><input type="text" id="diamonds-note" placeholder="Ej: Bono especial" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:100%;"></div>
-                <button onclick="submitDiamonds()" class="btn-main" style="width:100%;background:linear-gradient(135deg,#b45309,#f59e0b);"><i class="fa-solid fa-gem"></i> Aplicar Ajuste</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- INFLUENCER ADMIN SCRIPTS -->
-    <script>
-    let allInfluencers = [];
-    let allRates = [];
-    let currentSubId = null;
-
-    function showInfluencerSubtab(tab) {
-        ['solicitudes','videos','tarifas'].forEach(t => {
-            document.getElementById('inf-panel-' + t).style.display = (t === tab) ? '' : 'none';
-            const btn = document.getElementById('inf-subtab-' + t);
-            if (btn) { btn.style.background = (t === tab) ? '' : 'rgba(255,255,255,0.1)'; btn.style.color = (t === tab) ? '' : '#b0a8c0'; }
-        });
-        if (tab === 'solicitudes') loadInfluencersAdmin();
-        if (tab === 'videos') loadSubmissionsAdmin();
-        if (tab === 'tarifas') loadRatesAdmin();
-    }
-
-    // Helper fetch con Bearer token usando adminFetch del script principal
-    async function infFetch(url, options = {}) {
-        const token = localStorage.getItem('admin_token') || '';
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = 'Bearer ' + token;
-        if (!options.headers['Content-Type'] && options.method && options.method !== 'GET') {
-            options.headers['Content-Type'] = 'application/json';
-        }
-        return fetch(url, options);
-    }
-
-    async function loadInfluencersAdmin() {
-        try {
-            const res = await infFetch('/api/admin/influencers');
-            const data = await res.json();
-            if (!data.success) { console.error('Influencers error:', data.message); return; }
-            allInfluencers = data.influencers || [];
-            const pending = allInfluencers.filter(i => i.status === 'pending').length;
-            const badge = document.getElementById('influencers-pending-badge');
-            if (badge) badge.textContent = pending;
-            renderInfluencersTable();
-        } catch(e) {
-            const tbody = document.getElementById('influencers-table-body');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff3d71;">Error: ' + e.message + '</td></tr>';
-        }
-    }
-
-    function renderInfluencersTable() {
-        const tbody = document.getElementById('influencers-table-body');
-        const filter = document.getElementById('inf-filter-status')?.value || 'all';
-        const search = (document.getElementById('inf-search')?.value || '').toLowerCase();
-        let list = allInfluencers;
-        if (filter !== 'all') list = list.filter(i => i.status === filter);
-        if (search) list = list.filter(i => (i.username||'').toLowerCase().includes(search) || (i.tiktok_handle||'').toLowerCase().includes(search) || (i.ff_uid||'').includes(search));
-        if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#b0a8c0;">No hay influencers registrados</td></tr>'; return; }
-        const sc = { pending:'#FFD93D', approved:'#00FF94', rejected:'#FF3D71', suspended:'#b0a8c0' };
-        const sl = { pending:'Pendiente', approved:'Aprobado', rejected:'Rechazado', suspended:'Suspendido' };
-        tbody.innerHTML = list.map(inf => `<tr>
-            <td><strong style="color:var(--secondary);">${escInf(inf.username)}</strong><br><small style="color:#b0a8c0;">@${escInf(inf.tiktok_handle)}</small><br><small style="color:#b0a8c0;">${escInf(inf.email)}</small></td>
-            <td><span style="font-weight:700;color:#ff9100;"><i class="fa-solid fa-gamepad"></i> ${escInf(inf.ff_uid || 'No indicado')}</span></td>
-            <td>${Number(inf.followers_count||0).toLocaleString()}</td>
-            <td><span style="color:${sc[inf.status]||'#fff'};font-weight:700;">${sl[inf.status]||inf.status}</span></td>
-            <td style="color:#00FF94;font-weight:800;">$${Number(inf.dollars_balance||0).toFixed(2)} USDT</td>
-            <td style="color:#b0a8c0;">$${Number(inf.total_dollars_earned||0).toFixed(2)} USDT</td>
-            <td style="font-size:0.8rem;color:#b0a8c0;">${inf.created_at ? new Date(inf.created_at).toLocaleDateString('es-VE') : '-'}</td>
-            <td><div style="display:flex;flex-wrap:wrap;gap:4px;">
-                ${inf.status!=='approved'?`<button onclick="changeInfluencerStatus(${inf.id},'approved')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#059669;color:#fff;cursor:pointer;">Aprobar</button>`:''}
-                ${inf.status!=='rejected'?`<button onclick="changeInfluencerStatus(${inf.id},'rejected')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#dc2626;color:#fff;cursor:pointer;">Rechazar</button>`:''}
-            </div></td>
-        </tr>`).join('');
-    }
-
-    async function changeInfluencerStatus(id, status) {
-        try {
-            const res = await infFetch('/api/admin/influencers/' + id + '/status', { method: 'PUT', body: JSON.stringify({ status }) });
-            const data = await res.json();
-            if (data.success) loadInfluencersAdmin();
-            else alert('Error: ' + (data.message || data.error));
-        } catch(e) { alert('Error: ' + e.message); }
-    }
-
-    async function loadSubmissionsAdmin() {
-        const statusFilter = document.getElementById('sub-filter-status')?.value || 'all';
-        const container = document.getElementById('submissions-admin-list');
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:#b0a8c0;">Cargando...</div>';
-        try {
-            const res = await infFetch('/api/admin/influencer-submissions?status=' + statusFilter);
-            const data = await res.json();
-            if (!data.success) { container.innerHTML = '<div style="color:#FF3D71;padding:20px;">Error: ' + (data.message||'Sin acceso') + '</div>'; return; }
-            const subs = data.submissions || [];
-            if (!subs.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#b0a8c0;">No hay videos</div>'; return; }
-            const sc = { pending:'#FFD93D', approved:'#00b2ff', rejected:'#FF3D71', paid:'#00FF94' };
-            const sl = { pending:'Pendiente', approved:'Aprobado', rejected:'Rechazado', paid:'Pagado' };
-            container.innerHTML = subs.map(s => {
-                const inf = s.ff_influencers || {};
-                const date = s.submitted_at ? new Date(s.submitted_at).toLocaleDateString('es-VE') : '-';
-                const paidVal = s.dollars_awarded || s.diamonds_awarded || 0;
-                return `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
-                        <div style="flex:1;">
-                            <span style="color:${sc[s.status]||'#fff'};font-weight:700;font-size:0.85rem;">${sl[s.status]||s.status}</span> <span style="font-size:0.75rem;color:#b0a8c0;">#${s.id} - ${date}</span><br>
-                            <strong>@${escInf(inf.tiktok_handle||'?')}</strong> - ${escInf(inf.username||'?')} ${inf.ff_uid ? `<span style="color:#ff9100;font-size:0.8rem;">(UID FF: ${inf.ff_uid})</span>` : ''}<br>
-                            <a href="${escInf(s.tiktok_url||'')}" target="_blank" style="color:var(--secondary);font-size:0.85rem;">Ver video</a><br>
-                            <span style="font-size:0.85rem;color:#b0a8c0;">Vistas reportadas: <strong style="color:#fff;">${Number(s.views_submitted||0).toLocaleString()}</strong></span>
-                            ${paidVal ? ` | Pagados: <strong style="color:#00FF94;">$${Number(paidVal).toFixed(2)} USDT</strong>` : ''}
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:6px;">
-                            ${s.status === 'pending' || s.status === 'approved' ? `<button onclick="openReviewModal(${s.id},${s.views_submitted||0})" style="padding:7px 12px;font-size:0.8rem;border-radius:8px;border:none;background:linear-gradient(135deg,#059669,#34d399);color:#fff;cursor:pointer;font-weight:700;">Revisar y Pagar</button>` : ''}
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-        } catch(e) { container.innerHTML = '<div style="color:#FF3D71;padding:20px;">Error: ' + e.message + '</div>'; }
-    }
-
-    function openReviewModal(subId, views) {
-        currentSubId = subId;
-        document.getElementById('review-sub-id').value = subId;
-        document.getElementById('review-views').value = views || '';
-        document.getElementById('review-diamonds').value = '';
-        document.getElementById('review-notes').value = '';
-        const s = getSuggestedDiamonds(parseInt(views)||0);
-        document.getElementById('review-suggestion').textContent = s ? '$' + s + ' USD sugerido' : '';
-        if (s) document.getElementById('review-diamonds').value = s;
-        document.getElementById('review-modal').style.display = 'flex';
-    }
-    function closeReviewModal() { document.getElementById('review-modal').style.display = 'none'; }
-
-    function getSuggestedDiamonds(views) {
-        const match = allRates.filter(r => r.is_active).find(r => views >= r.min_views && (r.max_views == null || views <= r.max_views));
-        return match ? (match.dollars_reward || match.diamonds_reward) : null;
-    }
-
-    async function submitReview(status) {
-        const subId = parseInt(document.getElementById('review-sub-id').value);
-        const views = parseInt(document.getElementById('review-views').value) || 0;
-        const dollars = parseFloat(document.getElementById('review-diamonds').value) || 0;
-        const notes = document.getElementById('review-notes').value;
-        try {
-            const res = await infFetch('/api/admin/influencer-submissions/' + subId + '/review', { method: 'PUT', body: JSON.stringify({ status, views_verified: views, dollars_awarded: dollars, admin_notes: notes }) });
-            const data = await res.json();
-            if (data.success) { closeReviewModal(); loadSubmissionsAdmin(); if (status==='paid') Swal.fire({ icon:'success', title:'¡Pagado!', text: '$' + dollars.toFixed(2) + ' USDT acreditados a la billetera del usuario.', background:'#0d0d1f', color:'#fff' }); }
-            else alert('Error: ' + (data.message||data.error));
-        } catch(e) { alert('Error: ' + e.message); }
-    }
-
-    async function loadRatesAdmin() {
-        try {
-            const res = await infFetch('/api/admin/influencer-rates');
-            const data = await res.json();
-            if (!data.success) return;
-            allRates = data.rates || [];
-            renderRatesTable();
-        } catch(e) {}
-    }
-
-    function renderRatesTable() {
-        const tbody = document.getElementById('rates-admin-table-body');
-        if (!allRates.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#b0a8c0;">No hay tarifas configuradas</td></tr>'; return; }
-        tbody.innerHTML = allRates.map(r => `<tr>
-            <td><strong>${escInf(r.label)}</strong></td>
-            <td>${Number(r.min_views).toLocaleString()}</td>
-            <td>${r.max_views ? Number(r.max_views).toLocaleString() : 'Sin límite'}</td>
-            <td style="color:#00FF94;font-weight:800;">$${Number(r.dollars_reward || r.diamonds_reward || 0).toFixed(2)} USD</td>
-            <td><input type="checkbox" ${r.is_active?'checked':''} onchange="toggleRate(${r.id},this.checked)" style="width:16px;height:16px;"> ${r.is_active ? '<span style="color:#00FF94;">Activa</span>' : '<span style="color:#b0a8c0;">Inactiva</span>'}</td>
-            <td>
-                <button onclick="openEditRateModal(${r.id})" style="padding:5px 10px;border-radius:6px;border:none;background:linear-gradient(135deg,#6c3de8,#8b5cf6);color:#fff;cursor:pointer;margin-right:4px;">✏️ Editar</button>
-                <button onclick="deleteRate(${r.id})" style="padding:5px 10px;border-radius:6px;border:none;background:rgba(239,68,68,0.2);color:#fca5a5;cursor:pointer;">Eliminar</button>
-            </td>
-        </tr>`).join('');
-    }
-
-    async function addRateAdmin() {
-        const label = document.getElementById('rate-label').value.trim();
-        const min = parseInt(document.getElementById('rate-min').value);
-        const max = document.getElementById('rate-max').value ? parseInt(document.getElementById('rate-max').value) : null;
-        const dollars = parseFloat(document.getElementById('rate-diamonds').value);
-        if (!label || isNaN(min) || isNaN(dollars)) { alert('Completa Nombre, Mínimo y Monto ($).'); return; }
-        try {
-            const res = await infFetch('/api/admin/influencer-rates', { method: 'POST', body: JSON.stringify({ label, min_views: min, max_views: max, dollars_reward: dollars, diamonds_reward: dollars }) });
-            const data = await res.json();
-            if (data.success) { document.getElementById('rate-label').value=''; document.getElementById('rate-min').value=''; document.getElementById('rate-max').value=''; document.getElementById('rate-diamonds').value=''; loadRatesAdmin(); }
-            else alert('Error: ' + (data.error||data.message));
-        } catch(e) { alert('Error: ' + e.message); }
-    }
-
-    async function toggleRate(id, active) {
-        try { await infFetch('/api/admin/influencer-rates/' + id, { method: 'PUT', body: JSON.stringify({ is_active: active }) }); loadRatesAdmin(); } catch(e) {}
-    }
-
-    function openEditRateModal(id) {
-        const rate = allRates.find(r => r.id === id);
-        if (!rate) return;
-        document.getElementById('edit-rate-id').value = rate.id;
-        document.getElementById('edit-rate-label').value = rate.label || '';
-        document.getElementById('edit-rate-min').value = rate.min_views || 0;
-        document.getElementById('edit-rate-max').value = rate.max_views !== null ? rate.max_views : '';
-        document.getElementById('edit-rate-dollars').value = rate.dollars_reward || rate.diamonds_reward || 0;
-        document.getElementById('edit-rate-modal').style.display = 'flex';
-    }
-
-    function closeEditRateModal() {
-        document.getElementById('edit-rate-modal').style.display = 'none';
-    }
-
-    async function saveRateEdit() {
-        const id = parseInt(document.getElementById('edit-rate-id').value);
-        const label = document.getElementById('edit-rate-label').value.trim();
-        const min_views = parseInt(document.getElementById('edit-rate-min').value);
-        const maxVal = document.getElementById('edit-rate-max').value;
-        const max_views = maxVal !== '' ? parseInt(maxVal) : null;
-        const dollars = parseFloat(document.getElementById('edit-rate-dollars').value);
-
-        if (!label || isNaN(min_views) || isNaN(dollars)) {
-            alert('Por favor completa todos los campos correctamente.');
-            return;
-        }
-
-        try {
-            const res = await infFetch('/api/admin/influencer-rates/' + id, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    label,
-                    min_views,
-                    max_views,
-                    dollars_reward: dollars,
-                    diamonds_reward: dollars
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                closeEditRateModal();
-                loadRatesAdmin();
-                Swal.fire({ icon:'success', title:'Tarifa actualizada', text:'Los cambios han sido guardados.', background:'#0d0d1f', color:'#fff' });
-            } else {
-                alert('Error: ' + (data.message || data.error));
-            }
-        } catch(e) {
-            alert('Error: ' + e.message);
-        }
-    }
-
-    async function deleteRate(id) {
-        if (!confirm('Eliminar esta tarifa?')) return;
-        try { await infFetch('/api/admin/influencer-rates/' + id, { method: 'DELETE' }); loadRatesAdmin(); } catch(e) {}
-    }
-
-    function openDiamondsModal(id, username, currentBalance) {
-        document.getElementById('diamonds-modal-inf-id').value = id;
-        document.getElementById('diamonds-modal-name').textContent = '@' + username + ' - Saldo: ' + Number(currentBalance).toLocaleString() + ' 💎';
-        document.getElementById('diamonds-amount').value = '';
-        document.getElementById('diamonds-note').value = '';
-        document.getElementById('diamonds-modal').style.display = 'flex';
-    }
-    function closeDiamondsModal() { document.getElementById('diamonds-modal').style.display = 'none'; }
-
-    async function submitDiamonds() {
-        const id = parseInt(document.getElementById('diamonds-modal-inf-id').value);
-        const amount = parseInt(document.getElementById('diamonds-amount').value);
-        const note = document.getElementById('diamonds-note').value;
-        if (isNaN(amount)) { alert('Ingresa un monto valido.'); return; }
-        try {
-            const res = await infFetch('/api/admin/influencers/' + id + '/diamonds', { method: 'PUT', body: JSON.stringify({ amount, note }) });
-            const data = await res.json();
-            if (data.success) { closeDiamondsModal(); loadInfluencersAdmin(); Swal.fire({ icon:'success', title:'Ajuste aplicado', text:'Nuevo saldo: ' + Number(data.new_balance).toLocaleString() + ' 💎', background:'#0d0d1f', color:'#fff' }); }
-            else alert('Error: ' + (data.message||data.error));
-        } catch(e) { alert('Error: ' + e.message); }
-    }
-
-    function escInf(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-    document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { loadRatesAdmin(); }, 3000); });
-    </script>
-
 </body>
 </html>
 

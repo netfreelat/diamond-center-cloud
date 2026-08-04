@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Influencers - RecargasNey FF</title>
+  <meta name="description" content="Únete al programa de Mini Influencers de RecargasNey FF. Crea contenido en TikTok sobre Free Fire y gana Diamantes semanalmente.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  /* ==============================
+     VARIABLES & RESET
+  ============================== */
+  :root {
+    --primary: #6c3de8;
+    --primary-light: #8b5cf6;
+    --primary-glow: rgba(108,61,232,0.4);
+    --accent: #f59e0b;
+    --accent-glow: rgba(245,158,11,0.3);
+    --diamond: #22d3ee;
+    --diamond-glow: rgba(34,211,238,0.35);
+    --tiktok: #ff0050;
+    --tiktok-glow: rgba(255,0,80,0.3);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --bg-deep: #06060f;
+    --bg-dark: #0d0d1f;
+    --bg-card: rgba(255,255,255,0.04);
+    --bg-card-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --border-active: rgba(108,61,232,0.6);
+    --text-primary: #f0eeff;
+    --text-secondary: rgba(240,238,255,0.55);
+    --text-muted: rgba(240,238,255,0.3);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow-card: 0 8px 40px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 40px var(--primary-glow);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(108,61,232,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(34,211,238,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(255,0,80,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgPulse 12s ease-in-out infinite alternate;
+  }
+
+  @keyframes bgPulse {
+    0% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.05); }
+  }
+
+  /* ==============================
+     LAYOUT
+  ============================== */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  /* ==============================
+     NAVBAR
+  ============================== */
+  .navbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: rgba(6,6,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+    transition: all 0.3s ease;
+  }
+
+  .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .nav-logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 20px var(--primary-glow);
+  }
+
+  .nav-logo-text {
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--text-primary);
+  }
+
+  .nav-logo-text span { color: var(--primary-light); }
+
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+  .btn-nav {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-nav-outline {
+    background: transparent;
+    border: 1px solid var(--border-active);
+    color: var(--primary-light);
+  }
+
+  .btn-nav-outline:hover { background: var(--primary-glow); transform: translateY(-1px); }
+
+  .btn-nav-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    box-shadow: 0 4px 20px var(--primary-glow);
+  }
+
+  .btn-nav-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ==============================
+     HERO SECTION
+  ============================== */
+  .hero {
+    padding: 140px 0 100px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,0,80,0.12);
+    border: 1px solid rgba(255,0,80,0.3);
+    border-radius: 50px;
+    padding: 6px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ff6b9d;
+    margin-bottom: 28px;
+    animation: fadeInDown 0.6s ease both;
+  }
+
+  .tiktok-dot {
+    width: 8px; height: 8px;
+    background: var(--tiktok);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--tiktok);
+    animation: pulseDot 1.5s infinite;
+  }
+
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  .hero-title {
+    font-size: clamp(38px, 6vw, 68px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 22px;
+    animation: fadeInDown 0.7s ease 0.1s both;
+  }
+
+  .hero-title .highlight {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--diamond) 60%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-title .diamond-word {
+    background: linear-gradient(135deg, var(--accent) 0%, #fde68a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto 44px;
+    line-height: 1.6;
+    font-weight: 400;
+    animation: fadeInDown 0.7s ease 0.2s both;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeInDown 0.7s ease 0.3s both;
+  }
+
+  .btn {
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    box-shadow: 0 6px 30px var(--primary-glow);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px var(--primary-glow);
+  }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    transform: translateY(-2px);
+  }
+
+  .btn-tiktok {
+    background: linear-gradient(135deg, #ff0050 0%, #ff3068 100%);
+    color: white;
+    box-shadow: 0 6px 30px var(--tiktok-glow);
+  }
+
+  .btn-tiktok:hover { transform: translateY(-3px); box-shadow: 0 12px 40px var(--tiktok-glow); }
+
+  .btn-success {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    box-shadow: 0 6px 20px rgba(16,185,129,0.35);
+  }
+
+  .btn-success:hover { transform: translateY(-2px); }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: white;
+  }
+
+  .btn-danger:hover { transform: translateY(-2px); }
+
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  /* ==============================
+     HOW IT WORKS
+  ============================== */
+  .section { padding: 80px 0; position: relative; z-index: 1; }
+
+  .section-title {
+    text-align: center;
+    font-size: clamp(26px, 4vw, 40px);
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  .section-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin-bottom: 56px;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+  }
+
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .step-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--primary-glow), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .step-card:hover::before { opacity: 1; }
+  .step-card:hover { border-color: var(--border-active); transform: translateY(-5px); box-shadow: var(--shadow-card); }
+
+  .step-number {
+    font-size: 48px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--primary-light), var(--diamond));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .step-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 16px;
+  }
+
+  .step-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .step-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ==============================
+     RATES TABLE
+  ============================== */
+  .rates-table {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .rates-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .rates-table th {
+    background: rgba(108,61,232,0.15);
+    color: var(--primary-light);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rates-table td {
+    padding: 14px 20px;
+    font-size: 15px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+
+  .rates-table tr:last-child td { border-bottom: none; }
+  .rates-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+  .diamond-amount {
+    font-weight: 800;
+    font-size: 17px;
+    background: linear-gradient(135deg, var(--accent), #fde68a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ==============================
+     AUTH PANELS
+  ============================== */
+  .auth-section {
+    padding: 80px 0 100px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 28px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    max-width: 360px;
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 10px 20px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .auth-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    box-shadow: 0 4px 16px var(--primary-glow);
+  }
+
+  .auth-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+    max-width: 520px;
+    box-shadow: var(--shadow-card);
+  }
+
+  @media (max-width: 580px) { .auth-panel { padding: 24px 20px; } }
+
+  .form-group { margin-bottom: 20px; }
+
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .form-control {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    padding: 12px 16px;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .form-control::placeholder { color: var(--text-muted); }
+
+  .form-control:focus {
+    border-color: var(--border-active);
+    background: rgba(108,61,232,0.08);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+  }
+
+  .form-control.input-error { border-color: var(--danger); }
+
+  .input-prefix {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .input-prefix:focus-within {
+    border-color: var(--border-active);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+  }
+
+  .prefix-icon {
+    padding: 12px 14px;
+    color: var(--tiktok);
+    font-size: 16px;
+    border-right: 1px solid var(--border);
+    background: rgba(255,0,80,0.08);
+    flex-shrink: 0;
+  }
+
+  .input-prefix .form-control {
+    border: none;
+    border-radius: 0;
+    box-shadow: none !important;
+  }
+
+  .input-prefix .form-control:focus { box-shadow: none !important; }
+
+  .alert {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .alert.show { display: flex; }
+  .alert-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+  .alert-success { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+  .alert-warning { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+
+  /* ==============================
+     DASHBOARD (logged-in view)
+  ============================== */
+  .dashboard { padding: 100px 0 60px; position: relative; z-index: 1; }
+
+  .dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .influencer-greeting { font-size: 22px; font-weight: 700; }
+  .influencer-greeting span { color: var(--primary-light); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-pending { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); color: #fcd34d; }
+  .status-approved { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #6ee7b7; }
+  .status-rejected { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; }
+  .status-suspended { background: rgba(107,114,128,0.15); border: 1px solid rgba(107,114,128,0.4); color: #9ca3af; }
+  .status-paid { background: rgba(34,211,238,0.15); border: 1px solid rgba(34,211,238,0.4); color: #67e8f9; }
+
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-pending { background: var(--warning); }
+  .dot-approved { background: var(--success); }
+  .dot-rejected { background: var(--danger); }
+  .dot-paid { background: var(--diamond); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s ease;
+  }
+
+  .stat-card:hover { border-color: var(--border-active); transform: translateY(-2px); }
+
+  .stat-icon {
+    width: 50px; height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .icon-purple { background: rgba(108,61,232,0.2); color: var(--primary-light); }
+  .icon-amber { background: rgba(245,158,11,0.2); color: var(--accent); }
+  .icon-cyan { background: rgba(34,211,238,0.2); color: var(--diamond); }
+  .icon-green { background: rgba(16,185,129,0.2); color: var(--success); }
+  .icon-tiktok { background: rgba(255,0,80,0.15); color: var(--tiktok); }
+
+  .stat-info p { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .stat-info h3 { font-size: 24px; font-weight: 800; }
+
+  /* ==============================
+     CARD (common)
+  ============================== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .card-title {
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-body { padding: 24px; }
+
+  /* ==============================
+     SUBMIT FORM
+  ============================== */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 36px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--border-active);
+    background: rgba(108,61,232,0.05);
+  }
+
+  .upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .upload-icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-area p { color: var(--text-secondary); font-size: 14px; }
+  .upload-area p strong { color: var(--primary-light); }
+
+  .upload-preview {
+    display: none;
+    margin-top: 12px;
+  }
+
+  .upload-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+  }
+
+  /* ==============================
+     SUBMISSIONS TABLE
+  ============================== */
+  .submissions-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .submission-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .submission-item:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); }
+
+  .submission-info h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .submission-meta { font-size: 13px; color: var(--text-secondary); display: flex; gap: 16px; flex-wrap: wrap; }
+  .submission-meta span { display: flex; align-items: center; gap: 5px; }
+
+  .submission-right { text-align: right; }
+  .submission-diamonds { font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 6px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+  .empty-state p { font-size: 15px; }
+
+  /* ==============================
+     PENDING APPROVAL BANNER
+  ============================== */
+  .pending-banner {
+    background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.05));
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .pending-banner i { font-size: 40px; color: var(--warning); margin-bottom: 12px; }
+  .pending-banner h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .pending-banner p { color: var(--text-secondary); font-size: 15px; }
+
+  /* ==============================
+     FOOTER
+  ============================== */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer a { color: var(--primary-light); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* ==============================
+     ANIMATIONS
+  ============================== */
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+
+  /* ==============================
+     RESPONSIVE
+  ============================== */
+  @media (max-width: 768px) {
+    .hero { padding: 110px 0 70px; }
+    .section { padding: 60px 0; }
+    .auth-section { padding: 60px 0 80px; }
+    .dashboard { padding: 90px 0 50px; }
+    .rates-table { overflow-x: auto; }
+    .submission-item { grid-template-columns: 1fr; }
+    .submission-right { text-align: left; }
+    .dashboard-header { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-dark); }
+  ::-webkit-scrollbar-thumb { background: rgba(108,61,232,0.4); border-radius: 4px; }
+
+  /* Hidden utility */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ==============================
+     NAVBAR
+============================== -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">💎</div>
+      <span class="nav-logo-text">Recargas<span>Ney</span></span>
+    </a>
+    <div class="nav-actions" id="navActions">
+      <button class="btn-nav btn-nav-outline" id="btnShowLogin" onclick="showAuthSection('login')">
+        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+      </button>
+      <button class="btn-nav btn-nav-primary" id="btnShowRegister" onclick="showAuthSection('register')">
+        <i class="fas fa-star"></i> Únete
+      </button>
+    </div>
+    <div class="nav-actions hidden" id="navActionsLogged">
+      <span id="navUsername" style="font-size:14px;color:var(--text-secondary);font-weight:600;"></span>
+      <button class="btn-nav btn-nav-outline" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Salir
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ==============================
+     HERO SECTION (landing view)
+============================== -->
+<section class="hero hidden" id="heroSection">
+  <div class="container">
+    <div class="hero-badge">
+      <div class="tiktok-dot"></div>
+      <i class="fab fa-tiktok"></i> Programa Exclusivo de Creadores
+    </div>
+    <h1 class="hero-title">
+      Crea contenido en TikTok<br>y gana
+      <span class="diamond-word">Diamantes 💎</span>
+    </h1>
+    <p class="hero-subtitle">
+      Haz videos sobre Free Fire, comparte el link y captura de pantalla, y recibe pagos semanales en diamantes según las visualizaciones de tu contenido.
+    </p>
+    <div class="hero-buttons">
+      <button class="btn btn-tiktok" onclick="showAuthSection('register')">
+        <i class="fab fa-tiktok"></i> Registrarme como Influencer
+      </button>
+      <button class="btn btn-secondary" onclick="showAuthSection('login')">
+        <i class="fas fa-sign-in-alt"></i> Ya tengo cuenta
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     HOW IT WORKS (landing view)
+============================== -->
+<section class="section hidden" id="howSection">
+  <div class="container">
+    <h2 class="section-title">¿Cómo funciona? 🚀</h2>
+    <p class="section-subtitle">En 4 simples pasos empieza a ganar diamantes</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon icon-tiktok"><i class="fab fa-tiktok"></i></div>
+        <div class="step-number">01</div>
+        <h3>Regístrate</h3>
+        <p>Crea tu cuenta de influencer con tu usuario de TikTok y espera la aprobación del admin.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon icon-purple"><i class="fas fa-video"></i></div>
+        <div class="step-number">02</div>
+        <h3>Crea Contenido</h3>
+        <p>Haz videos de Free Fire en TikTok. Cada semana puedes enviar tus mejores videos.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon icon-cyan"><i class="fas fa-image"></i></div>
+        <div class="step-number">03</div>
+        <h3>Envía Evidencia</h3>
+        <p>Pega el link de tu video y sube una captura de pantalla con las visualizaciones.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon icon-amber"><i class="fas fa-gem"></i></div>
+        <div class="step-number">04</div>
+        <h3>Cobra Diamantes</h3>
+        <p>El admin revisa y paga semanalmente los diamantes a tu billetera según tus vistas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     RATES TABLE (landing view)
+============================== -->
+<section class="section hidden" id="ratesSection" style="padding-top:0;">
+  <div class="container">
+    <h2 class="section-title">💰 Tabla de Pagos</h2>
+    <p class="section-subtitle">Cuánto saldo ($ USDT) ganas según las visualizaciones de tu video</p>
+    <div class="rates-table" id="ratesTableContainer">
+      <table>
+        <thead>
+          <tr>
+            <th>Nivel</th>
+            <th>Visualizaciones</th>
+            <th>Pago ($ USDT)</th>
+          </tr>
+        </thead>
+        <tbody id="ratesTableBody">
+          <tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px;">Cargando tarifas...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     AUTH SECTION
+============================== -->
+<section class="auth-section hidden" id="authSection">
+  <div class="container">
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Iniciar Sesión</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Registrarme</button>
+    </div>
+
+    <!-- LOGIN PANEL -->
+    <div class="auth-panel" id="loginPanel">
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">Bienvenido de vuelta 👋</h2>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Accede a tu panel de influencer</p>
+
+      <div class="alert alert-danger" id="loginError">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="loginErrorMsg"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="loginEmail" placeholder="tucorreo@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="loginPassword" placeholder="••••••••">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;" id="btnLogin" onclick="doLogin()">
+        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+      </button>
+
+      <p style="text-align:center;margin-top:20px;font-size:14px;color:var(--text-secondary);">
+        ¿No tienes cuenta? <button style="background:none;border:none;color:var(--primary-light);font-weight:600;cursor:pointer;font-size:14px;" onclick="switchAuthTab('register')">Regístrate</button>
+      </p>
+    </div>
+
+    <!-- REGISTER PANEL -->
+    <div class="auth-panel hidden" id="registerPanel">
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">Únete al programa 🎬</h2>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;">Tu solicitud será revisada por el equipo</p>
+
+      <div class="alert alert-danger" id="registerError">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="registerErrorMsg"></span>
+      </div>
+      <div class="alert alert-success" id="registerSuccess">
+        <i class="fas fa-check-circle"></i>
+        <span id="registerSuccessMsg"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nombre de usuario</label>
+        <input type="text" class="form-control" id="regUsername" placeholder="Ej: GamerPro_FF">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="regEmail" placeholder="tucorreo@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="regPassword" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><i class="fab fa-tiktok" style="color:var(--tiktok)"></i> Usuario de TikTok</label>
+        <div class="input-prefix">
+          <div class="prefix-icon"><i class="fas fa-at"></i></div>
+          <input type="text" class="form-control" id="regTiktok" placeholder="tususuario_tiktok">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número aproximado de seguidores</label>
+        <input type="number" class="form-control" id="regFollowers" placeholder="Ej: 5000" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">🎮 ID de Jugador de Free Fire (UID)</label>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tu UID de FF es donde recibirás los pagos en tu billetera de RecargasNey. Encuéntralo en tu perfil del juego.</p>
+        <input type="text" class="form-control" id="regFFUID" placeholder="Ej: 123456789" inputmode="numeric" pattern="[0-9]+">
+      </div>
+
+      <button class="btn btn-tiktok" style="width:100%;justify-content:center;margin-top:8px;" id="btnRegister" onclick="doRegister()">
+        <i class="fab fa-tiktok"></i> Enviar Solicitud
+      </button>
+
+      <p style="text-align:center;margin-top:20px;font-size:14px;color:var(--text-secondary);">
+        ¿Ya tienes cuenta? <button style="background:none;border:none;color:var(--primary-light);font-weight:600;cursor:pointer;font-size:14px;" onclick="switchAuthTab('login')">Iniciar Sesión</button>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     DASHBOARD (logged-in)
+============================== -->
+<section class="dashboard hidden" id="dashboardSection">
+  <div class="container">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div>
+        <p style="color:var(--text-muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Panel de Influencer</p>
+        <div class="influencer-greeting">Hola, <span id="dashUsername">Influencer</span> 👋</div>
+      </div>
+      <div id="dashStatusBadge"></div>
+    </div>
+
+    <!-- Pending Approval Banner -->
+    <div class="pending-banner hidden" id="pendingBanner">
+      <i class="fas fa-clock"></i>
+      <h3>Solicitud en Revisión</h3>
+      <p>Tu cuenta está siendo revisada por nuestro equipo. Te notificaremos por correo cuando sea aprobada. El proceso puede tomar 24-48 horas.</p>
+    </div>
+
+    <!-- Rejected Banner -->
+    <div class="pending-banner hidden" id="rejectedBanner" style="background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(239,68,68,0.05));border-color:rgba(239,68,68,0.3);">
+      <i class="fas fa-times-circle" style="color:var(--danger)"></i>
+      <h3>Solicitud No Aprobada</h3>
+      <p id="rejectedNote">Tu solicitud no fue aprobada en esta ocasión. Para más información contacta al soporte.</p>
+    </div>
+
+    <!-- Stats Grid (solo si está aprobado) -->
+    <div class="stats-grid hidden" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-icon icon-amber"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-info">
+          <p>Saldo RecargasNey</p>
+          <h3 id="statBalance">$0.00 USDT</h3>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-purple"><i class="fas fa-trophy"></i></div>
+        <div class="stat-info">
+          <p>Total Ganado</p>
+          <h3 id="statTotal">$0.00 USDT</h3>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-cyan"><i class="fas fa-video"></i></div>
+        <div class="stat-info">
+          <p>Videos Enviados</p>
+          <h3 id="statSubmissions">0</h3>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-tiktok"><i class="fab fa-tiktok"></i></div>
+        <div class="stat-info">
+          <p>TikTok</p>
+          <h3 id="statTiktok" style="font-size:16px;">@—</h3>
+        </div>
+      </div>
+      <div class="stat-card" id="statFFCard" style="display:none;">
+        <div class="stat-icon" style="background:linear-gradient(135deg,#ff6b00,#ff9100);"><i class="fas fa-gamepad"></i></div>
+        <div class="stat-info">
+          <p>UID Free Fire</p>
+          <h3 id="statFFUID" style="font-size:15px;">—</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Video Card (solo si está aprobado) -->
+    <div class="card hidden" id="submitCard">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-plus-circle" style="color:var(--primary-light)"></i> Enviar Nuevo Video</div>
+        <div style="font-size:12px;color:var(--text-muted)">Ciclo semanal</div>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-danger" id="submitError">
+          <i class="fas fa-exclamation-circle"></i>
+          <span id="submitErrorMsg"></span>
+        </div>
+        <div class="alert alert-success" id="submitSuccess">
+          <i class="fas fa-check-circle"></i>
+          <span id="submitSuccessMsg"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fab fa-tiktok" style="color:var(--tiktok)"></i> Link del Video de TikTok</label>
+          <div class="input-prefix">
+            <div class="prefix-icon"><i class="fab fa-tiktok"></i></div>
+            <input type="url" class="form-control" id="videoUrl" placeholder="https://www.tiktok.com/@usuario/video/...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Título del video (opcional)</label>
+          <input type="text" class="form-control" id="videoTitle" placeholder="Ej: ¡Gané 20 kills con AWM! 🔥">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Visualizaciones actuales (aprox.)</label>
+          <input type="number" class="form-control" id="videoViews" placeholder="Ej: 15000" min="0">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📸 Captura de pantalla del video (con vistas visibles)</label>
+          <div class="upload-area" id="uploadArea">
+            <input type="file" id="screenshotInput" accept="image/*" onchange="handleScreenshot(this)">
+            <div id="uploadPrompt">
+              <div class="upload-icon">🖼️</div>
+              <p><strong>Haz click o arrastra</strong> tu captura aquí</p>
+              <p style="margin-top:6px;font-size:12px;color:var(--text-muted)">PNG, JPG, WEBP — Máximo 5MB</p>
+            </div>
+            <div class="upload-preview" id="uploadPreview">
+              <img id="previewImg" src="" alt="Captura">
+              <p style="margin-top:8px;font-size:13px;color:var(--success);font-weight:600;"><i class="fas fa-check-circle"></i> <span id="previewFilename"></span></p>
+              <button type="button" onclick="clearScreenshot()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;margin-top:4px;"><i class="fas fa-trash"></i> Quitar imagen</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-tiktok" id="btnSubmitVideo" onclick="submitVideo()" style="width:100%;justify-content:center;">
+          <i class="fas fa-paper-plane"></i> Enviar Video para Revisión
+        </button>
+      </div>
+    </div>
+
+    <!-- Submissions History -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-history" style="color:var(--primary-light)"></i> Mis Videos Enviados</div>
+        <button onclick="loadSubmissions()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;">
+          <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="submissions-list" id="submissionsList">
+          <div class="empty-state">
+            <i class="fas fa-video"></i>
+            <p>Aún no has enviado ningún video</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments History -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-gem" style="color:var(--accent)"></i> Historial de Pagos</div>
+      </div>
+      <div class="card-body">
+        <div class="submissions-list" id="paymentsList">
+          <div class="empty-state">
+            <i class="fas fa-gem"></i>
+            <p>Aún no has recibido pagos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==============================
+     FOOTER
+============================== -->
+<footer class="footer">
+  <div class="container">
+    <p>💎 <a href="/">RecargasNey FF</a> · Programa de Mini Influencers TikTok</p>
+    <p style="margin-top:8px;"><a href="/terminos-condiciones.html">Términos y Condiciones</a> · <a href="/politica-privacidad.html">Privacidad</a></p>
+  </div>
+</footer>
+
+<!-- ==============================
+     JAVASCRIPT
+============================== -->
+<script>
+// ==============================
+// STATE
+// ==============================
+let currentInfluencer = null;
+let screenshotBase64 = null;
+let screenshotFilename = null;
+
+const SESSION_KEY = 'inf_session';
+
+// ==============================
+// INIT
+// ==============================
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadRates();
+
+  const saved = localStorage.getItem(SESSION_KEY);
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data && data.id && data.email) {
+        // Revalidar con el servidor
+        const res = await fetch(`/api/influencers/profile?id=${data.id}&email=${encodeURIComponent(data.email)}`);
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile.success) {
+            currentInfluencer = profile.influencer;
+            showDashboard();
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+    localStorage.removeItem(SESSION_KEY);
+  }
+
+  showLanding();
+});
+
+// ==============================
+// NAVIGATION
+// ==============================
+function showLanding() {
+  document.getElementById('heroSection').classList.remove('hidden');
+  document.getElementById('howSection').classList.remove('hidden');
+  document.getElementById('ratesSection').classList.remove('hidden');
+  document.getElementById('authSection').classList.add('hidden');
+  document.getElementById('dashboardSection').classList.add('hidden');
+  document.getElementById('navActions').classList.remove('hidden');
+  document.getElementById('navActionsLogged').classList.add('hidden');
+}
+
+function showAuthSection(tab = 'login') {
+  document.getElementById('heroSection').classList.add('hidden');
+  document.getElementById('howSection').classList.add('hidden');
+  document.getElementById('ratesSection').classList.add('hidden');
+  document.getElementById('authSection').classList.remove('hidden');
+  document.getElementById('dashboardSection').classList.add('hidden');
+  switchAuthTab(tab);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('loginPanel').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerPanel').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+}
+
+function showDashboard() {
+  document.getElementById('heroSection').classList.add('hidden');
+  document.getElementById('howSection').classList.add('hidden');
+  document.getElementById('ratesSection').classList.add('hidden');
+  document.getElementById('authSection').classList.add('hidden');
+  document.getElementById('dashboardSection').classList.remove('hidden');
+  document.getElementById('navActions').classList.add('hidden');
+  document.getElementById('navActionsLogged').classList.remove('hidden');
+
+  updateDashboard();
+  loadSubmissions();
+  loadPayments();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateDashboard() {
+  if (!currentInfluencer) return;
+  const inf = currentInfluencer;
+
+  document.getElementById('dashUsername').textContent = inf.username;
+  document.getElementById('navUsername').textContent = `@${inf.tiktok_handle}`;
+
+  // Status badge
+  const statusMap = {
+    pending: '<div class="status-badge status-pending"><div class="stat-dot dot-pending"></div> Pendiente</div>',
+    approved: '<div class="status-badge status-approved"><div class="stat-dot dot-approved"></div> Aprobado ✓</div>',
+    rejected: '<div class="status-badge status-rejected"><div class="stat-dot dot-rejected"></div> Rechazado</div>',
+    suspended: '<div class="status-badge status-rejected"><div class="stat-dot dot-rejected"></div> Suspendido</div>',
+  };
+  document.getElementById('dashStatusBadge').innerHTML = statusMap[inf.status] || '';
+
+  // Banners / stats
+  document.getElementById('pendingBanner').classList.toggle('hidden', inf.status !== 'pending');
+  document.getElementById('rejectedBanner').classList.toggle('hidden', !['rejected','suspended'].includes(inf.status));
+  document.getElementById('statsGrid').classList.toggle('hidden', inf.status !== 'approved');
+  document.getElementById('submitCard').classList.toggle('hidden', inf.status !== 'approved');
+
+  if (inf.status === 'rejected' && inf.admin_notes) {
+    document.getElementById('rejectedNote').textContent = inf.admin_notes;
+  }
+
+  if (inf.status === 'approved') {
+    // Mostrar saldo en $ USDT (1 punto = $0.003)
+    const balanceUsdt = ((inf.dollars_balance || 0)).toFixed(2);
+    const totalUsdt = ((inf.total_dollars_earned || 0)).toFixed(2);
+    document.getElementById('statBalance').textContent = '$' + balanceUsdt + ' USDT';
+    document.getElementById('statTotal').textContent = '$' + totalUsdt + ' USDT';
+    document.getElementById('statTiktok').textContent = '@' + inf.tiktok_handle;
+
+    // Mostrar UID de FF si está configurado
+    if (inf.ff_uid) {
+      document.getElementById('statFFCard').style.display = '';
+      document.getElementById('statFFUID').textContent = inf.ff_uid;
+    }
+  }
+}
+
+function logout() {
+  currentInfluencer = null;
+  localStorage.removeItem(SESSION_KEY);
+  screenshotBase64 = null;
+  showLanding();
+}
+
+// ==============================
+// RATES
+// ==============================
+async function loadRates() {
+  try {
+    const res = await fetch('/api/influencers/rates');
+    const data = await res.json();
+    const tbody = document.getElementById('ratesTableBody');
+    if (!data.success || !data.rates || data.rates.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px;">No hay tarifas configuradas aún</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.rates.map(r => `
+      <tr>
+        <td><strong>${escHtml(r.label)}</strong></td>
+        <td>${Number(r.min_views).toLocaleString()} ${r.max_views ? '— ' + Number(r.max_views).toLocaleString() : '+'} vistas</td>
+        <td><span class="diamond-amount" style="color:#00FF94;font-weight:700;">$${Number(r.dollars_reward || r.diamonds_reward || 0).toFixed(2)} USDT</span></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('ratesTableBody').innerHTML =
+      '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Error al cargar tarifas</td></tr>';
+  }
+}
+
+// ==============================
+// AUTH - LOGIN
+// ==============================
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  const errMsg = document.getElementById('loginErrorMsg');
+  const btn = document.getElementById('btnLogin');
+
+  hideAlert('loginError');
+
+  if (!email || !password) {
+    showAlert('loginError', 'Por favor completa todos los campos.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Ingresando...';
+
+  try {
+    const res = await fetch('/api/influencers/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      showAlert('loginError', data.message || 'Credenciales incorrectas.');
+    } else {
+      currentInfluencer = data.influencer;
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.influencer.id, email: data.influencer.email }));
+      showDashboard();
+    }
+  } catch(e) {
+    showAlert('loginError', 'Error de conexión. Intenta de nuevo.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+  }
+}
+
+// ==============================
+// AUTH - REGISTER
+// ==============================
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const tiktok = document.getElementById('regTiktok').value.trim().replace('@','');
+  const followers = parseInt(document.getElementById('regFollowers').value) || 0;
+  const ff_uid = document.getElementById('regFFUID').value.trim();
+  const btn = document.getElementById('btnRegister');
+
+  hideAlert('registerError');
+  hideAlert('registerSuccess');
+
+  if (!username || !email || !password || !tiktok) {
+    showAlert('registerError', 'Por favor completa todos los campos obligatorios.');
+    return;
+  }
+  if (password.length < 6) {
+    showAlert('registerError', 'La contraseña debe tener al menos 6 caracteres.');
+    return;
+  }
+  if (!email.includes('@')) {
+    showAlert('registerError', 'Ingresa un correo electrónico válido.');
+    return;
+  }
+  if (!ff_uid || !/^[0-9]{6,12}$/.test(ff_uid)) {
+    showAlert('registerError', 'Ingresa tu UID de Free Fire (solo números, entre 6 y 12 dígitos).');
+    document.getElementById('regFFUID').focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+  try {
+    const res = await fetch('/api/influencers/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password, tiktok_handle: tiktok, followers_count: followers, ff_uid })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      showAlert('registerError', data.message || 'Error al registrar.');
+    } else {
+      document.getElementById('regUsername').value = '';
+      document.getElementById('regEmail').value = '';
+      document.getElementById('regPassword').value = '';
+      document.getElementById('regTiktok').value = '';
+      document.getElementById('regFollowers').value = '';
+      document.getElementById('regFFUID').value = '';
+      showAlert('registerSuccess', '✅ ¡Solicitud enviada! Te notificaremos cuando tu cuenta sea aprobada.');
+    }
+  } catch(e) {
+    showAlert('registerError', 'Error de conexión. Intenta de nuevo.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fab fa-tiktok"></i> Enviar Solicitud';
+  }
+}
+
+// ==============================
+// SCREENSHOT HANDLING
+// ==============================
+function handleScreenshot(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert('La imagen es demasiado grande. Máximo 5MB.');
+    input.value = '';
+    return;
+  }
+
+  screenshotFilename = file.name;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    screenshotBase64 = e.target.result;
+    document.getElementById('previewImg').src = screenshotBase64;
+    document.getElementById('previewFilename').textContent = file.name;
+    document.getElementById('uploadPrompt').style.display = 'none';
+    document.getElementById('uploadPreview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearScreenshot() {
+  screenshotBase64 = null;
+  screenshotFilename = null;
+  document.getElementById('screenshotInput').value = '';
+  document.getElementById('uploadPrompt').style.display = 'block';
+  document.getElementById('uploadPreview').style.display = 'none';
+}
+
+// Drag & drop
+document.addEventListener('DOMContentLoaded', () => {
+  const area = document.getElementById('uploadArea');
+  if (!area) return;
+  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag-over'); });
+  area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) {
+      document.getElementById('screenshotInput').files = e.dataTransfer.files;
+      handleScreenshot(document.getElementById('screenshotInput'));
+    }
+  });
+});
+
+// ==============================
+// SUBMIT VIDEO
+// ==============================
+async function submitVideo() {
+  const urlEl = document.getElementById('videoUrl');
+  const titleEl = document.getElementById('videoTitle');
+  const viewsEl = document.getElementById('videoViews');
+  const btn = document.getElementById('btnSubmitVideo');
+
+  const url = urlEl ? urlEl.value.trim() : '';
+  const title = titleEl ? titleEl.value.trim() : '';
+  const views = parseInt(viewsEl ? viewsEl.value : '0') || 0;
+
+  hideAlert('submitError');
+  hideAlert('submitSuccess');
+
+  if (!currentInfluencer) {
+    showAlert('submitError', 'Debes iniciar sesión para enviar un video.');
+    return;
+  }
+  if (!url) {
+    showAlert('submitError', 'Por favor ingresa el enlace de tu video de TikTok.');
+    if (urlEl) urlEl.focus();
+    return;
+  }
+  if (!url.toLowerCase().includes('tiktok.com')) {
+    showAlert('submitError', 'Ingresa un enlace válido de TikTok (debe incluir tiktok.com).');
+    if (urlEl) urlEl.focus();
+    return;
+  }
+  if (views <= 0) {
+    showAlert('submitError', 'Ingresa la cantidad aproximada de visualizaciones del video.');
+    if (viewsEl) viewsEl.focus();
+    return;
+  }
+  if (!screenshotBase64) {
+    showAlert('submitError', 'Por favor sube la captura de pantalla de las visualizaciones del video.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+  try {
+    const res = await fetch('/api/influencers/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        influencer_id: currentInfluencer.id,
+        email: currentInfluencer.email,
+        tiktok_url: url,
+        title,
+        views_submitted: views,
+        screenshot_data: screenshotBase64,
+        screenshot_filename: screenshotFilename
+      })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      showAlert('submitError', data.message || 'Error al enviar el video.');
+    } else {
+      showAlert('submitSuccess', '✅ ¡Video enviado correctamente! El administrador lo revisará pronto.');
+      if (urlEl) urlEl.value = '';
+      if (titleEl) titleEl.value = '';
+      if (viewsEl) viewsEl.value = '';
+      clearScreenshot();
+      loadSubmissions();
+    }
+  } catch(e) {
+    showAlert('submitError', 'Error de conexión. Intenta nuevamente.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Video para Revisión';
+  }
+}
+
+// ==============================
+// LOAD SUBMISSIONS
+// ==============================
+async function loadSubmissions() {
+  if (!currentInfluencer) return;
+  const container = document.getElementById('submissionsList');
+
+  try {
+    const res = await fetch(`/api/influencers/submissions?id=${currentInfluencer.id}&email=${encodeURIComponent(currentInfluencer.email)}`);
+    const data = await res.json();
+    const list = document.getElementById('submissionsList');
+    const countEl = document.getElementById('statSubmissions');
+
+    if (!data.success || !data.submissions || data.submissions.length === 0) {
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-video"></i><p>Aún no has enviado ningún video</p></div>';
+      if (countEl) countEl.textContent = '0';
+      return;
+    }
+
+    if (countEl) countEl.textContent = data.submissions.length;
+
+    list.innerHTML = data.submissions.map(s => {
+      const statusMap = {
+        pending: '<span class="status-badge status-pending" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-pending" style="width:6px;height:6px;"></div> Pendiente</span>',
+        approved: '<span class="status-badge status-approved" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-approved" style="width:6px;height:6px;"></div> Aprobado</span>',
+        rejected: '<span class="status-badge status-rejected" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-rejected" style="width:6px;height:6px;"></div> Rechazado</span>',
+        paid: '<span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-paid" style="width:6px;height:6px;"></div> Pagado 💎</span>',
+      };
+      const date = new Date(s.submitted_at).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
+      const url = escHtml(s.tiktok_url || '');
+      const shortUrl = url.length > 45 ? url.slice(0, 45) + '...' : url;
+
+      return `
+      <div class="submission-item">
+        <div class="submission-info">
+          <h4>${s.title ? escHtml(s.title) : 'Video sin título'}</h4>
+          <div class="submission-meta">
+            <span><i class="fab fa-tiktok"></i> <a href="${url}" target="_blank" style="color:var(--primary-light);text-decoration:none;" title="${url}">${shortUrl}</a></span>
+            <span><i class="fas fa-eye"></i> ${Number(s.views_submitted || 0).toLocaleString()} vistas reportadas</span>
+            <span><i class="fas fa-calendar"></i> ${date}</span>
+          </div>
+          ${s.admin_notes ? `<p style="font-size:12px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-comment"></i> ${escHtml(s.admin_notes)}</p>` : ''}
+        </div>
+        <div class="submission-right">
+          ${s.diamonds_awarded ? `<div class="submission-diamonds">+${Number(s.diamonds_awarded).toLocaleString()} 💎</div>` : ''}
+          ${statusMap[s.status] || ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('submissionsList').innerHTML =
+      '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Error al cargar los videos</p></div>';
+  }
+}
+
+// ==============================
+// LOAD PAYMENTS
+// ==============================
+async function loadPayments() {
+  if (!currentInfluencer) return;
+
+  try {
+    const res = await fetch(`/api/influencers/payments?id=${currentInfluencer.id}&email=${encodeURIComponent(currentInfluencer.email)}`);
+    const data = await res.json();
+    const list = document.getElementById('paymentsList');
+
+    if (!data.success || !data.payments || data.payments.length === 0) {
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-gem"></i><p>Aún no has recibido pagos</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.payments.map(p => {
+      const date = new Date(p.paid_at).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
+      return `
+      <div class="submission-item">
+        <div class="submission-info">
+          <h4>${p.week_label ? escHtml(p.week_label) : 'Pago de Diamantes'}</h4>
+          <div class="submission-meta">
+            <span><i class="fas fa-calendar-check"></i> ${date}</span>
+            ${p.note ? `<span><i class="fas fa-comment"></i> ${escHtml(p.note)}</span>` : ''}
+          </div>
+        </div>
+        <div class="submission-right">
+          <div class="submission-diamonds">+${Number(p.diamonds_amount).toLocaleString()} 💎</div>
+          <span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;">Pagado</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('paymentsList').innerHTML =
+      '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Error al cargar pagos</p></div>';
+  }
+}
+
+// ==============================
+// UTILITIES
+// ==============================
+function showAlert(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const msgEl = el.querySelector('span') || el;
+  if (msgEl !== el) msgEl.textContent = msg;
+  el.classList.add('show');
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+}
+
+function hideAlert(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
