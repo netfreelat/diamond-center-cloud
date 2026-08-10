@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recargasney-v47';
+const CACHE_NAME = 'recargasney-v61';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',

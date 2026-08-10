@@ -683,6 +683,27 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CONFIGURAR PRECIOS STREAMING (USDT) -->
+            <div class="card" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <h3 style="font-size: 1.05rem; color: #00FF94; margin: 0;"><i class="fa-solid fa-tags"></i> Precios y Catálogo de Servicios Streaming (USDT)</h3>
+                        <p style="color: var(--text-gray); font-size: 0.82rem; margin: 4px 0 0 0;">Agrega nuevos servicios de streaming o modifica precios en USDT. En la tienda los clientes verán los precios actualizados automáticamente.</p>
+                    </div>
+                    <button onclick="addStreamingProductModalAdmin()" class="btn-primary" style="background: linear-gradient(135deg, #9D00FF, #7928CA); color: #fff; font-weight: 800; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
+                        <i class="fa-solid fa-plus-circle"></i> Agregar Nuevo Producto Streaming
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px;" id="streaming-prices-grid">
+                    <p style="opacity: 0.5; color: #aaa;">Cargando catálogo de streaming...</p>
+                </div>
+
+                <button onclick="saveStreamingPricesAdmin()" class="btn-primary" style="margin-top: 15px; width: 100%; background: linear-gradient(135deg, #00FF94, #00C4CC); color: #07030D; font-weight: 800; cursor: pointer;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Precios y Catálogo de Streaming
+                </button>
+            </div>
         </div>
 
         <!-- SETTINGS TAB -->
@@ -2750,6 +2771,11 @@
                     Swal.fire('¡Éxito!', 'Configuración actualizada.', 'success');
                     document.getElementById('admin-pass').value = '';
                     loadSettings();
+                    try {
+                        const bc = new BroadcastChannel('recargasney_store_updates');
+                        bc.postMessage({ type: 'PRICES_UPDATED' });
+                        bc.close();
+                    } catch(e) {}
                 }
             } catch (e) { Swal.fire('Error', 'No se pudo guardar.', 'error'); }
         }
@@ -3021,6 +3047,8 @@
         }
 
         // --- ALMACÉN Y STOCK STREAMING ---
+        let currentStreamingCatalog = [];
+
         async function loadStreamingStockAdmin() {
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/streaming-stock`);
@@ -3028,30 +3056,44 @@
                 if (!data.success) return;
 
                 const stock = data.stock || {};
-                const services = [
-                    { id: 'netflix', name: 'Netflix', icon: 'fa-film', color: '#E50914' },
-                    { id: 'disney', name: 'Disney+', icon: 'fa-clapperboard', color: '#00D2FF' },
-                    { id: 'max', name: 'Max HBO', icon: 'fa-play', color: '#002BE7' },
-                    { id: 'vix', name: 'ViX', icon: 'fa-tv', color: '#FF5000' },
-                    { id: 'canva', name: 'Canva Pro', icon: 'fa-paintbrush', color: '#00C4CC' },
-                    { id: 'spotify', name: 'Spotify', icon: 'fa-spotify', color: '#1DB954' },
-                    { id: 'prime', name: 'Prime Video', icon: 'fa-video', color: '#00A8E1' },
-                    { id: 'crunchyroll', name: 'Crunchyroll', icon: 'fa-masks-theater', color: '#F47521' }
+                currentStreamingCatalog = data.catalog || [
+                    { id: 'netflix', name: 'Netflix', icon: 'fa-solid fa-film', color: '#E50914', price: 3.50, desc: 'Perfil o Cuenta completa' },
+                    { id: 'disney', name: 'Disney+', icon: 'fa-solid fa-clapperboard', color: '#00D2FF', price: 3.00, desc: 'Películas, series y ESPN' },
+                    { id: 'max', name: 'Max HBO', icon: 'fa-solid fa-play', color: '#002BE7', price: 2.80, desc: 'Plan Estándar' },
+                    { id: 'vix', name: 'ViX', icon: 'fa-solid fa-tv', color: '#FF5000', price: 2.50, desc: 'Fútbol en vivo y series' },
+                    { id: 'canva', name: 'Canva Pro', icon: 'fa-solid fa-paintbrush', color: '#00C4CC', price: 2.00, desc: 'Licencia Pro' },
+                    { id: 'spotify', name: 'Spotify', icon: 'fa-brands fa-spotify', color: '#1DB954', price: 2.50, desc: 'Música sin anuncios' },
+                    { id: 'prime', name: 'Prime Video', icon: 'fa-solid fa-video', color: '#00A8E1', price: 2.50, desc: 'Series y Películas' },
+                    { id: 'crunchyroll', name: 'Crunchyroll', icon: 'fa-solid fa-masks-theater', color: '#F47521', price: 2.50, desc: 'Anime HD' }
                 ];
+
+                // Actualizar Select de Agregar Cuentas
+                const selectEl = document.getElementById('streaming-service-select');
+                if (selectEl) {
+                    const currentVal = selectEl.value;
+                    selectEl.innerHTML = '';
+                    currentStreamingCatalog.forEach(c => {
+                        selectEl.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                    });
+                    if (currentVal && currentStreamingCatalog.some(c => c.id === currentVal)) {
+                        selectEl.value = currentVal;
+                    }
+                }
 
                 const summaryGrid = document.getElementById('streaming-stock-summary-grid');
                 const detailContainer = document.getElementById('streaming-accounts-detail');
+                const pricesGrid = document.getElementById('streaming-prices-grid');
 
                 if (summaryGrid) {
                     summaryGrid.innerHTML = '';
-                    services.forEach(s => {
+                    currentStreamingCatalog.forEach(s => {
                         const count = (stock[s.id] && Array.isArray(stock[s.id])) ? stock[s.id].length : 0;
                         const isLow = count < 3;
                         const isEmpty = count === 0;
 
                         summaryGrid.innerHTML += `
-                            <div style="background: rgba(255,255,255,0.04); border: 1px solid ${s.color}40; padding: 10px; border-radius: 10px; text-align: center;">
-                                <div style="font-size: 1.2rem; margin-bottom: 4px;"><i class="fa-solid ${s.icon}" style="color:${s.color}"></i></div>
+                            <div style="background: rgba(255,255,255,0.04); border: 1px solid ${(s.color || '#9D00FF')}40; padding: 10px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 1.2rem; margin-bottom: 4px;"><i class="${s.icon || 'fa-solid fa-tv'}" style="color:${s.color || '#9D00FF'}"></i></div>
                                 <div style="font-size: 0.72rem; color: #aaa; font-weight: 700;">${s.name}</div>
                                 <div style="font-size: 1.3rem; font-weight: 900; color: ${isEmpty ? '#ff3d71' : (isLow ? '#ffd93d' : '#00ff94')}; margin-top: 2px;">
                                     ${count}
@@ -3067,15 +3109,15 @@
                 if (detailContainer) {
                     detailContainer.innerHTML = '';
                     let totalCount = 0;
-                    services.forEach(s => {
+                    currentStreamingCatalog.forEach(s => {
                         const accList = stock[s.id] || [];
                         if (accList.length > 0) {
                             totalCount += accList.length;
-                            detailContainer.innerHTML += `<div style="color:${s.color}; font-weight:800; margin-top:8px; margin-bottom:4px; font-size:0.82rem;"><i class="fa-solid ${s.icon}"></i> ${s.name} (${accList.length}):</div>`;
+                            detailContainer.innerHTML += `<div style="color:${s.color || '#9D00FF'}; font-weight:800; margin-top:8px; margin-bottom:4px; font-size:0.82rem;"><i class="${s.icon || 'fa-solid fa-tv'}"></i> ${s.name} (${accList.length}):</div>`;
                             accList.forEach((acc, idx) => {
                                 const escapedAcc = acc.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                                 detailContainer.innerHTML += `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; margin-bottom:4px; border:1px solid rgba(255,255,255,0.05);">
+                                    <div style="display:flex; justify-space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; margin-bottom:4px; border:1px solid rgba(255,255,255,0.05);">
                                         <span style="color:#eee; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.78rem; font-family:monospace;">${idx+1}. ${acc}</span>
                                         <div style="display:flex; gap:4px; margin-left:8px;">
                                             <button onclick="editStreamingAccountAdmin('${s.id}', ${idx}, '${escapedAcc}')" style="background:rgba(157,0,255,0.25); border:1px solid #9D00FF; color:#c084fc; border-radius:5px; padding:3px 8px; font-size:0.7rem; cursor:pointer;" title="Editar cuenta">✏️ Editar</button>
@@ -3091,7 +3133,183 @@
                         detailContainer.innerHTML = `<p style="opacity:0.5; text-align:center; margin:20px 0;">No hay cuentas de streaming cargadas aún.</p>`;
                     }
                 }
+
+                // Renderizar Tarjetas de Precios y Catálogo
+                if (pricesGrid) {
+                    pricesGrid.innerHTML = '';
+                    currentStreamingCatalog.forEach(item => {
+                        const escapedName = (item.name || '').replace(/'/g, "\\'");
+                        pricesGrid.innerHTML += `
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid ${(item.color || '#9D00FF')}40; padding: 12px; border-radius: 10px; position: relative;">
+                                <button onclick="deleteStreamingProductAdmin('${item.id}', '${escapedName}')" style="position:absolute; top:8px; right:8px; background:rgba(255,0,0,0.2); border:1px solid #ff4b2b; color:#ff4b2b; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Eliminar servicio del catálogo">🗑️ Eliminar</button>
+                                <label style="font-size: 0.78rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 6px; padding-right: 50px;">
+                                    <i class="${item.icon || 'fa-solid fa-tv'}" style="color:${item.color || '#9D00FF'};"></i> ${item.name}
+                                </label>
+                                <div style="font-size:0.68rem; color:#aaa; margin-top:2px; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.desc || ''}</div>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:0.78rem; color:#00FF94; font-weight:800;">USDT ($):</span>
+                                    <input type="number" id="price-streaming-${item.id}" step="0.01" value="${parseFloat(item.price || 2.50).toFixed(2)}" style="flex:1; padding:6px; border-radius:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); color:#00FF94; font-weight:800; font-size:0.95rem;">
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
             } catch (e) { console.error('Error cargando almacén streaming:', e); }
+        }
+
+        async function saveStreamingPricesAdmin() {
+            if (!currentStreamingCatalog || currentStreamingCatalog.length === 0) return;
+
+            currentStreamingCatalog.forEach(item => {
+                const el = document.getElementById(`price-streaming-${item.id}`);
+                if (el) {
+                    item.price = parseFloat(el.value) || 2.50;
+                }
+            });
+
+            Swal.fire({ title: 'Guardando catálogo y precios...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/save-streaming-catalog`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ catalog: currentStreamingCatalog })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('¡Éxito!', 'Catálogo y precios de servicios de streaming actualizados correctamente.', 'success');
+                    loadStreamingStockAdmin();
+                    try {
+                        const bc = new BroadcastChannel('recargasney_store_updates');
+                        bc.postMessage({ type: 'PRICES_UPDATED' });
+                        bc.close();
+                    } catch(e) {}
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo guardar el catálogo.', 'error');
+                }
+            } catch (e) {
+                console.error('Error guardando catálogo de streaming:', e);
+                Swal.fire('Error', e.message || 'Fallo de conexión al servidor.', 'error');
+            }
+        }
+
+        async function addStreamingProductModalAdmin() {
+            const { value: formValues } = await Swal.fire({
+                title: '➕ Nuevo Producto Streaming',
+                html: `
+                    <div style="text-align:left; font-size:0.85rem; display:flex; flex-direction:column; gap:10px;">
+                        <div>
+                            <label style="color:#aaa; font-weight:700;">Nombre del Servicio:</label>
+                            <input id="swal-prod-name" class="swal2-input" placeholder="Ej: YouTube Premium 1 Mes" style="margin:4px 0; width:100%; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="color:#aaa; font-weight:700;">Descripción corta:</label>
+                            <input id="swal-prod-desc" class="swal2-input" placeholder="Ej: Sin anuncios y reproducción en 2do plano" style="margin:4px 0; width:100%; box-sizing:border-box;">
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="color:#aaa; font-weight:700;">Precio en USDT ($):</label>
+                                <input id="swal-prod-price" type="number" step="0.01" value="3.00" class="swal2-input" style="margin:4px 0; width:100%; box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="color:#aaa; font-weight:700;">Etiqueta (Opcional):</label>
+                                <input id="swal-prod-badge" class="swal2-input" placeholder="Ej: NUEVO o POPULAR" style="margin:4px 0; width:100%; box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="color:#aaa; font-weight:700;">Clase Ícono (FontAwesome):</label>
+                                <input id="swal-prod-icon" class="swal2-input" value="fa-solid fa-tv" style="margin:4px 0; width:100%; box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="color:#aaa; font-weight:700;">Color Distintivo:</label>
+                                <input id="swal-prod-color" type="color" value="#9D00FF" class="swal2-input" style="margin:4px 0; width:100%; box-sizing:border-box; height:40px; padding:0;">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Producto',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff',
+                preConfirm: () => {
+                    const name = document.getElementById('swal-prod-name').value;
+                    const desc = document.getElementById('swal-prod-desc').value;
+                    const price = document.getElementById('swal-prod-price').value;
+                    const badge = document.getElementById('swal-prod-badge').value;
+                    const icon = document.getElementById('swal-prod-icon').value;
+                    const color = document.getElementById('swal-prod-color').value;
+                    if (!name || !price) {
+                        Swal.showValidationMessage('Ingresa el nombre y precio del servicio');
+                        return false;
+                    }
+                    return { name, desc, price, badge, icon, color };
+                }
+            });
+
+            if (formValues) {
+                Swal.fire({ title: 'Agregando producto...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await adminFetch(`${SERVER_URL}/admin/add-streaming-product`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formValues)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire('¡Éxito!', `Producto '${formValues.name}' agregado correctamente al catálogo.`, 'success');
+                        loadStreamingStockAdmin();
+                        try {
+                            const bc = new BroadcastChannel('recargasney_store_updates');
+                            bc.postMessage({ type: 'PRICES_UPDATED' });
+                            bc.close();
+                        } catch(e) {}
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo agregar.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', e.message, 'error');
+                }
+            }
+        }
+
+        async function deleteStreamingProductAdmin(id, name) {
+            const confirm = await Swal.fire({
+                title: `¿Eliminar '${name}'?`,
+                text: 'El servicio se removerá del catálogo del almacén y de la tienda.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff3d71',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff'
+            });
+
+            if (confirm.isConfirmed) {
+                try {
+                    const res = await adminFetch(`${SERVER_URL}/admin/delete-streaming-product`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire('Eliminado', 'Producto eliminado del catálogo.', 'success');
+                        loadStreamingStockAdmin();
+                        try {
+                            const bc = new BroadcastChannel('recargasney_store_updates');
+                            bc.postMessage({ type: 'PRICES_UPDATED' });
+                            bc.close();
+                        } catch(e) {}
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo eliminar.', 'error');
+                    }
+                } catch(e) { Swal.fire('Error', e.message, 'error'); }
+            }
         }
 
         async function addStreamingAccountsAdmin() {
@@ -3507,14 +3725,20 @@
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/settings`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ juegos: juegosData })
                 });
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Los juegos se actualizaron correctamente.', timer: 1800, showConfirmButton: false, background: 'rgba(20,10,35,0.98)', color: '#fff' });
                     renderJuegos();
+                    try {
+                        const bc = new BroadcastChannel('recargasney_store_updates');
+                        bc.postMessage({ type: 'PRICES_UPDATED' });
+                        bc.close();
+                    } catch(e) {}
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar.', background: 'rgba(20,10,35,0.98)', color: '#fff' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error || 'No se pudo guardar.', background: 'rgba(20,10,35,0.98)', color: '#fff' });
                 }
             } catch(e) {
                 Swal.fire({ icon: 'error', title: 'Error de red', text: e.message, background: 'rgba(20,10,35,0.98)', color: '#fff' });

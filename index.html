@@ -210,6 +210,17 @@
                 </div>
 
 
+                <!-- 🍿 BANNER DE SERVICIOS STREAMING & CUENTAS PREMIUM -->
+                <div id="streaming-main-banner" class="btn-streaming-trigger" style="margin-top: 15px; margin-bottom: 15px; background: linear-gradient(135deg, rgba(229, 9, 20, 0.15), rgba(157, 0, 255, 0.15)); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 14px; padding: 16px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.2); cursor: pointer;">
+                    <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #E50914, #FF5000); color: #fff; font-size: 0.65rem; font-weight: 900; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;">ENTREGA INMEDIATA</div>
+                    <div style="font-size: 2.2rem; margin-bottom: 4px;">🍿🎬</div>
+                    <h3 style="color: #fff; font-family: 'Montserrat', sans-serif; font-size: 1.15rem; font-weight: 800; margin: 0 0 4px 0;">Cuentas de Streaming & Licencias</h3>
+                    <p style="color: #ccc; font-size: 0.82rem; margin: 0 0 12px 0;">Netflix, YouTube Premium, Disney+, Canva Pro, Max HBO y más...</p>
+                    <button class="btn-primary btn-streaming-trigger" style="width: 100%; background: linear-gradient(135deg, #E50914, #9D00FF); color: #fff; font-weight: 800; padding: 12px; border-radius: 10px; border: none; cursor: pointer; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);">
+                        <i class="fa-solid fa-clapperboard"></i> Ver Catálogo de Streaming
+                    </button>
+                </div>
+
                 <!-- Banner de Referidos PREMIUM -->
                 <div id="referral-banner" class="referral-banner-premium">
                     <div class="referral-banner-glow"></div>
@@ -387,10 +398,11 @@
             <!-- Payment Gateway Section (Hidden by default) -->
             <div id="payment-section" class="payment-container" style="display: none;">
                 <!-- Resumen de Producto Streaming (Visible solo para compras de Streaming) -->
-                <div id="streaming-selected-summary" style="display: none; background: linear-gradient(135deg, rgba(229,9,20,0.15), rgba(157,0,255,0.15)); border: 1px solid rgba(229,9,20,0.4); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; text-align: center;">
+                <div id="streaming-selected-summary" style="display: none; background: linear-gradient(135deg, rgba(229,9,20,0.15), rgba(157,0,255,0.15)); border: 1px solid rgba(229,9,20,0.4); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; text-align: center; position: relative;">
                     <div style="font-size:0.75rem; color:#aaa; font-weight:700; text-transform:uppercase; letter-spacing:1px;">🍿 Servicio de Streaming Seleccionado</div>
-                    <div style="font-size:1.25rem; font-weight:800; color:#fff; margin-top:3px;" id="streaming-summary-title">Netflix Ultra HD 4K</div>
+                    <div style="font-size:1.3rem; font-weight:800; color:#fff; margin-top:4px;" id="streaming-summary-title">Netflix Ultra HD 4K</div>
                     <div style="font-size:1.15rem; font-weight:800; color:#00FF94; margin-top:4px;" id="streaming-summary-price">3.50 USDT</div>
+                    <button id="btn-change-streaming-service" type="button" style="margin-top:10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#ddd; padding:5px 14px; border-radius:8px; font-size:0.8rem; cursor:pointer; font-weight:600; transition:all 0.2s;"><i class="fa-solid fa-rotate-left" style="margin-right:4px;"></i> Cambiar Servicio</button>
                 </div>
 
                 <h2 class="section-title">Método de Pago</h2>
@@ -581,100 +593,23 @@
             </div>
 
             <div class="streaming-services-grid">
-                <!-- Netflix -->
-                <div class="streaming-card brand-netflix">
-                    <div class="streaming-card-badge">POPULAR</div>
-                    <div class="streaming-icon"><i class="fa-solid fa-film" style="color: #E50914;"></i></div>
-                    <h3>Netflix Ultra HD 4K</h3>
-                    <p class="streaming-desc">Perfil privado o Cuenta completa de 1 Mes</p>
-                    <div class="streaming-price">3.50 USDT</div>
-                    <button class="streaming-order-btn" data-service="Netflix Ultra HD 4K" data-price="3.50">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
+                <div class="streaming-loading" style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.7);">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: #9D00FF; margin-bottom: 12px;"></i>
+                    <p style="font-weight: 600; font-size: 0.95rem;">Cargando catálogo actualizado...</p>
                 </div>
+            </div>
 
-                <!-- Disney+ -->
-                <div class="streaming-card brand-disney">
-                    <div class="streaming-icon"><i class="fa-solid fa-clapperboard" style="color: #00D2FF;"></i></div>
-                    <h3>Disney+ / Star+</h3>
-                    <p class="streaming-desc">Acceso a películas, series y deportes en vivo (ESPN)</p>
-                    <div class="streaming-price">3.00 USDT</div>
-                    <button class="streaming-order-btn" data-service="Disney+ / Star+" data-price="3.00">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- Max HBO -->
-                <div class="streaming-card brand-max">
-                    <div class="streaming-icon"><i class="fa-solid fa-play" style="color: #002BE7;"></i></div>
-                    <h3>Max (HBO Max)</h3>
-                    <p class="streaming-desc">Plan Estándar 1 Mes con series exclusivas</p>
-                    <div class="streaming-price">2.80 USDT</div>
-                    <button class="streaming-order-btn" data-service="Max (HBO)" data-price="2.80">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- ViX Premium -->
-                <div class="streaming-card brand-vix">
-                    <div class="streaming-icon"><i class="fa-solid fa-tv" style="color: #FF5000;"></i></div>
-                    <h3>ViX Premium</h3>
-                    <p class="streaming-desc">Fútbol en vivo, liga mexicana, series y novelas</p>
-                    <div class="streaming-price">2.50 USDT</div>
-                    <button class="streaming-order-btn" data-service="ViX Premium" data-price="2.50">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- Canva Pro -->
-                <div class="streaming-card brand-canva">
-                    <div class="streaming-icon"><i class="fa-solid fa-paintbrush" style="color: #00C4CC;"></i></div>
-                    <h3>Canva Pro</h3>
-                    <p class="streaming-desc">Licencia Pro para diseño, kit de marca y plantillas</p>
-                    <div class="streaming-price">2.00 USDT</div>
-                    <button class="streaming-order-btn" data-service="Canva Pro" data-price="2.00">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- Spotify Premium -->
-                <div class="streaming-card brand-spotify">
-                    <div class="streaming-icon"><i class="fa-brands fa-spotify" style="color: #1DB954;"></i></div>
-                    <h3>Spotify Premium</h3>
-                    <p class="streaming-desc">Música sin anuncios, descargas e historial ilimitado</p>
-                    <div class="streaming-price">2.50 USDT</div>
-                    <button class="streaming-order-btn" data-service="Spotify Premium" data-price="2.50">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- Amazon Prime -->
-                <div class="streaming-card brand-prime">
-                    <div class="streaming-icon"><i class="fa-solid fa-video" style="color: #00A8E1;"></i></div>
-                    <h3>Prime Video</h3>
-                    <p class="streaming-desc">Catálogo de películas y producciones originales</p>
-                    <div class="streaming-price">2.50 USDT</div>
-                    <button class="streaming-order-btn" data-service="Amazon Prime Video" data-price="2.50">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
-
-                <!-- Crunchyroll -->
-                <div class="streaming-card brand-crunchyroll">
-                    <div class="streaming-icon"><i class="fa-solid fa-masks-theater" style="color: #F47521;"></i></div>
-                    <h3>Crunchyroll Mega Fan</h3>
-                    <p class="streaming-desc">Anime sin anuncios en HD y simuldubs en tiempo real</p>
-                    <div class="streaming-price">2.50 USDT</div>
-                    <button class="streaming-order-btn" data-service="Crunchyroll Mega Fan" data-price="2.50">
-                        <i class="fa-solid fa-cart-shopping"></i> Comprar Ahora
-                    </button>
-                </div>
+            <!-- Historial de Compras Streaming -->
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+                <button id="streaming-history-btn" onclick="document.getElementById('streaming-services-modal').style.display='none'; setTimeout(()=>window.showMyHistory && window.showMyHistory(), 100);" style="background: rgba(157,0,255,0.12); border: 1px solid rgba(157,0,255,0.35); color: #c084fc; border-radius: 10px; padding: 10px 22px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='rgba(157,0,255,0.25)'" onmouseout="this.style.background='rgba(157,0,255,0.12)'">
+                    <i class="fa-solid fa-receipt"></i> Ver Mis Compras
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Custom Script -->
-    <script src="script.js?v=3.5.6"></script>
+    <script src="script.js?v=3.7.1"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>

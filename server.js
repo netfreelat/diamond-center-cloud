@@ -67,6 +67,8 @@ function readJsonFile(filePath, defaultData = []) {
 
 function writeJsonFile(filePath, data) {
     try {
+        const dir = require('path').dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
         return true;
     } catch(e) {
@@ -114,9 +116,52 @@ function normalizeRef(ref) {
     return clean.toLowerCase();
 }
 
+const PATH_STREAMING_CATALOG = path.join(__dirname, 'data', 'streaming_catalog.json');
+
+const defaultStreamingCatalog = [
+    { id: 'netflix', name: 'Netflix Ultra HD 4K', desc: 'Perfil privado o Cuenta completa de 1 Mes', icon: 'fa-solid fa-film', color: '#E50914', price: 5.51, badge: 'POPULAR', active: true },
+    { id: 'disney', name: 'Disney+ / Star+', desc: 'Acceso a películas, series y deportes en vivo (ESPN)', icon: 'fa-solid fa-clapperboard', color: '#00D2FF', price: 3.20, badge: '', active: true },
+    { id: 'max', name: 'Max (HBO Max)', desc: 'Plan Estándar 1 Mes con series exclusivas', icon: 'fa-solid fa-play', color: '#002BE7', price: 2.80, badge: '', active: true },
+    { id: 'vix', name: 'ViX Premium', desc: 'Fútbol en vivo, liga mexicana, series y novelas', icon: 'fa-solid fa-tv', color: '#FF5000', price: 2.50, badge: '', active: true },
+    { id: 'canva', name: 'Canva Pro', desc: 'Licencia Pro para diseño, kit de marca y plantillas', icon: 'fa-solid fa-paintbrush', color: '#00C4CC', price: 2.00, badge: '', active: true },
+    { id: 'spotify', name: 'Spotify Premium', desc: 'Música sin anuncios, descargas e historial ilimitado', icon: 'fa-brands fa-spotify', color: '#1DB954', price: 2.50, badge: '', active: true },
+    { id: 'prime', name: 'Prime Video', desc: 'Catálogo de películas y producciones originales', icon: 'fa-solid fa-video', color: '#00A8E1', price: 2.50, badge: '', active: true },
+    { id: 'crunchyroll', name: 'Crunchyroll Mega Fan', desc: 'Anime sin anuncios en HD y simuldubs en tiempo real', icon: 'fa-solid fa-masks-theater', color: '#F47521', price: 2.50, badge: '', active: true }
+];
+
+function getStreamingCatalog() {
+    if (!settings.juegos) settings.juegos = {};
+    if (!settings.juegos.streaming_catalog || !Array.isArray(settings.juegos.streaming_catalog) || settings.juegos.streaming_catalog.length === 0) {
+        const diskCatalog = readJsonFile(PATH_STREAMING_CATALOG, null);
+        if (diskCatalog && Array.isArray(diskCatalog) && diskCatalog.length > 0) {
+            settings.juegos.streaming_catalog = diskCatalog;
+        } else {
+            const defaultCopy = JSON.parse(JSON.stringify(defaultStreamingCatalog));
+            if (settings.juegos.streaming_prices) {
+                defaultCopy.forEach(item => {
+                    if (settings.juegos.streaming_prices[item.id] !== undefined) {
+                        item.price = parseFloat(settings.juegos.streaming_prices[item.id]);
+                    }
+                });
+            }
+            settings.juegos.streaming_catalog = defaultCopy;
+            writeJsonFile(PATH_STREAMING_CATALOG, defaultCopy);
+        }
+    }
+    return settings.juegos.streaming_catalog;
+}
+
+function saveStreamingCatalogState(catalog) {
+    if (!settings.juegos) settings.juegos = {};
+    settings.juegos.streaming_catalog = catalog;
+    writeJsonFile(PATH_STREAMING_CATALOG, catalog);
+    supabase.from('ff_settings').update({ juegos: settings.juegos }).eq('id', 1).then(({ error }) => {
+        if (error) console.error('[STREAMING-PERSIST] Error Supabase:', error.message);
+    });
+}
+
 function areRefsSimilar(ref1, ref2) {
     if (!ref1 || !ref2) return false;
-    
     const r1 = ref1.toString().trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const r2 = ref2.toString().trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
@@ -1659,6 +1704,7 @@ async function getStreamingStockAccount(packName) {
     else if (packLower.includes('spotify')) serviceKey = 'spotify';
     else if (packLower.includes('prime')) serviceKey = 'prime';
     else if (packLower.includes('crunchyroll')) serviceKey = 'crunchyroll';
+    else if (packLower.includes('youtube')) serviceKey = 'youtube';
 
     if (serviceKey && settings.juegos && settings.juegos.streaming_stock && Array.isArray(settings.juegos.streaming_stock[serviceKey])) {
         if (settings.juegos.streaming_stock[serviceKey].length > 0) {
@@ -3286,17 +3332,25 @@ const server = http.createServer(async (req, res) => {
 
                         // ===== JUEGOS NO-AUTOMATIZADOS: Aprobación manual directa desde Telegram =====
                         if (!esAutomatizado) {
-                            console.log(`[WEBHOOK] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
+                            console.log(`[WEBHOOK] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente.`);
+                            const esStreaming = juego === 'streaming' || ['netflix', 'disney', 'star', 'max', 'hbo', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll', 'youtube'].some(s => (order.pack || '').toLowerCase().includes(s));
+                            let deliveredPin = 'Manual';
+                            if (esStreaming) {
+                                const acc = await getStreamingStockAccount(order.pack);
+                                if (acc) deliveredPin = acc;
+                            }
                             orders[ref].status = 'approved';
-                            updateOrderStatus(ref, 'approved', 'Manual');
+                            orders[ref].pin = deliveredPin;
+                            updateOrderStatus(ref, 'approved', deliveredPin);
                             markPaymentAsUsed(order.method, ref);
                             saveRecent(order.name, order.pack);
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
-                            queueWhatsAppMessage({ ...order, ref }, true);
-                            notifyAdminsOrderStatus({ ...order, ref }, true, 'Telegram (manual)');
+                            queueWhatsAppMessage({ ...order, ref, pin: deliveredPin }, true, deliveredPin !== 'Manual' ? deliveredPin : null);
+                            notifyAdminsOrderStatus({ ...order, ref, pin: deliveredPin }, true, 'Telegram (manual)');
                             scheduleReviewRequest({ ...order, ref });
-                            sendPushToUser(order.login_uid || order.uid, 'Pedido Aprobado ✅', `¡Tu pedido de ${order.pack} fue aprobado!`, '/icon-192.png', '/historial');
+                            const pushMsg = (esStreaming && deliveredPin !== 'Manual') ? `¡Tu pedido de ${order.pack} fue aprobado! Credenciales: ${deliveredPin}` : `¡Tu pedido de ${order.pack} fue aprobado!`;
+                            sendPushToUser(order.login_uid || order.uid, 'Pedido Aprobado ✅', pushMsg, '/icon-192.png', '/historial');
                             updateTelegramStatus(ref);
 
                             const editPayloadManual = JSON.stringify({
@@ -4193,9 +4247,16 @@ const server = http.createServer(async (req, res) => {
                     const juego = order.juego || 'freefire';
                     const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike' || juego === 'mobilelegends' || juego === 'mobilelegendsus';
                     if (!esAutomatizado) {
-                        console.log(`[ADMIN-APPROVE] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente (sin Jadh.shop).`);
+                        console.log(`[ADMIN-APPROVE] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente.`);
+                        const esStreaming = juego === 'streaming' || ['netflix', 'disney', 'star', 'max', 'hbo', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll', 'youtube'].some(s => (order.pack || '').toLowerCase().includes(s));
+                        let deliveredPin = 'Manual';
+                        if (esStreaming) {
+                            const acc = await getStreamingStockAccount(order.pack);
+                            if (acc) deliveredPin = acc;
+                        }
                         orders[targetRef].status = 'approved';
-                        updateOrderStatus(targetRef, 'approved', 'Manual');
+                        orders[targetRef].pin = deliveredPin;
+                        updateOrderStatus(targetRef, 'approved', deliveredPin);
                         markPaymentAsUsed(order.method, targetRef);
                         saveRecent(order.name, order.pack);
                         const isCanje = order.method === 'canje';
@@ -4203,10 +4264,11 @@ const server = http.createServer(async (req, res) => {
                             const usdtPrice = parseFloat(order.price.split('USDT')[0]);
                             if (!isNaN(usdtPrice)) await addPoints(order.login_uid || order.uid, usdtPrice, order.name);
                         }
-                        queueWhatsAppMessage({ ...order, ref: targetRef }, true);
-                        notifyAdminsOrderStatus({ ...order, ref: targetRef }, true, 'Panel Admin (manual)');
+                        queueWhatsAppMessage({ ...order, ref: targetRef, pin: deliveredPin }, true, deliveredPin !== 'Manual' ? deliveredPin : null);
+                        notifyAdminsOrderStatus({ ...order, ref: targetRef, pin: deliveredPin }, true, 'Panel Admin (manual)');
                         scheduleReviewRequest({ ...order, ref: targetRef });
-                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅', `¡Tu pedido de ${order.pack} fue aprobado! Recuerda completar tu recarga.`, '/icon-192.png', '/historial');
+                        const pushMsg = (esStreaming && deliveredPin !== 'Manual') ? `¡Tu pedido de ${order.pack} fue approved! Credenciales: ${deliveredPin}` : `¡Tu pedido de ${order.pack} fue aprobado!`;
+                        sendPushToUser(order.login_uid || order.uid, 'Recarga Aprobada ✅', pushMsg, '/icon-192.png', '/historial');
                         updateTelegramStatus(targetRef);
                         res.writeHead(200);
                         return res.end(JSON.stringify({ success: true, resolvedRef: targetRef, message: `Pedido de ${order.juego.toUpperCase()} aprobado manualmente. Recuerda realizar la recarga en la plataforma correspondiente.` }));
@@ -5021,19 +5083,150 @@ const server = http.createServer(async (req, res) => {
     // ENDPOINTS DE ALMACÉN Y STOCK DE STREAMING
     // ============================================================
     } else if (parsedUrl.pathname === '/api/streaming-stock' && req.method === 'GET') {
-        const stockMap = {};
-        const services = ['netflix', 'disney', 'max', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll'];
+        const catalog = getStreamingCatalog();
         const stockData = (settings.juegos && settings.juegos.streaming_stock) ? settings.juegos.streaming_stock : {};
-        services.forEach(s => {
-            stockMap[s] = (stockData[s] && Array.isArray(stockData[s])) ? stockData[s].length : 0;
+        const stockMap = {};
+        const pricesMap = {};
+
+        catalog.forEach(item => {
+            if (item.active !== false) {
+                stockMap[item.id] = (stockData[item.id] && Array.isArray(stockData[item.id])) ? stockData[item.id].length : 0;
+                pricesMap[item.id] = parseFloat(item.price);
+            }
         });
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, stock: stockMap }));
+        res.end(JSON.stringify({ success: true, catalog: catalog.filter(c => c.active !== false), stock: stockMap, prices: pricesMap }));
 
     } else if (parsedUrl.pathname === '/admin/streaming-stock' && req.method === 'GET') {
+        const catalog = getStreamingCatalog();
         const stockData = (settings.juegos && settings.juegos.streaming_stock) ? settings.juegos.streaming_stock : {};
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, stock: stockData }));
+        res.end(JSON.stringify({ success: true, catalog, stock: stockData }));
+
+    } else if (parsedUrl.pathname === '/admin/save-streaming-catalog' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { catalog } = JSON.parse(body || '{}');
+                if (!catalog || !Array.isArray(catalog)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: 'Catálogo de streaming requerido.' }));
+                }
+                if (!settings.juegos) settings.juegos = {};
+                settings.juegos.streaming_catalog = catalog;
+
+                if (!settings.juegos.streaming_prices) settings.juegos.streaming_prices = {};
+                catalog.forEach(c => {
+                    if (c.id) settings.juegos.streaming_prices[c.id] = parseFloat(c.price);
+                });
+
+                saveStreamingCatalogState(catalog);
+
+                console.log('[STREAMING-CATALOG] 🍿 Catálogo actualizado:', catalog.length, 'productos');
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, catalog: settings.juegos.streaming_catalog }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+
+    } else if (parsedUrl.pathname === '/admin/add-streaming-product' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { name, desc, price, icon, color, badge } = JSON.parse(body || '{}');
+                if (!name || price === undefined) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: 'Nombre y precio requeridos.' }));
+                }
+                const catalog = getStreamingCatalog();
+                const id = name.toLowerCase().trim().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
+                const newProduct = {
+                    id,
+                    name: name.trim(),
+                    desc: desc ? desc.trim() : '',
+                    icon: icon ? icon.trim() : 'fa-solid fa-tv',
+                    color: color || '#9D00FF',
+                    price: parseFloat(price) || 2.50,
+                    badge: badge ? badge.trim() : '',
+                    active: true
+                };
+                catalog.push(newProduct);
+                settings.juegos.streaming_catalog = catalog;
+
+                if (!settings.juegos.streaming_prices) settings.juegos.streaming_prices = {};
+                settings.juegos.streaming_prices[id] = newProduct.price;
+
+                saveStreamingCatalogState(catalog);
+
+                console.log(`[STREAMING-CATALOG] ➕ Producto agregado: ${name} (ID: ${id})`);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, product: newProduct, catalog }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+
+    } else if (parsedUrl.pathname === '/admin/delete-streaming-product' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { id } = JSON.parse(body || '{}');
+                if (!id) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: 'ID de producto requerido.' }));
+                }
+                const catalog = getStreamingCatalog();
+                const idx = catalog.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                    catalog.splice(idx, 1);
+                    settings.juegos.streaming_catalog = catalog;
+                    saveStreamingCatalogState(catalog);
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, catalog }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
+
+    } else if (parsedUrl.pathname === '/admin/update-streaming-prices' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { prices } = JSON.parse(body || '{}');
+                if (!prices || typeof prices !== 'object') {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: 'Objeto de precios requerido.' }));
+                }
+                if (!settings.juegos) settings.juegos = {};
+                settings.juegos.streaming_prices = prices;
+
+                const catalog = getStreamingCatalog();
+                catalog.forEach(item => {
+                    if (prices[item.id] !== undefined) {
+                        item.price = parseFloat(prices[item.id]);
+                    }
+                });
+
+                saveStreamingCatalogState(catalog);
+
+                console.log('[STREAMING-PRICES] 💲 Precios de streaming actualizados:', prices);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, prices: settings.juegos.streaming_prices, catalog }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: e.message }));
+            }
+        });
 
     } else if (parsedUrl.pathname === '/admin/add-streaming-stock' && req.method === 'POST') {
         let body = '';
@@ -5330,9 +5523,13 @@ const server = http.createServer(async (req, res) => {
                 
                 supabase.from('ff_settings').update(dbUpdate).eq('id', 1)
                     .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando settings:', error.message); });
-                res.writeHead(200);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));
-            } catch (e) { res.writeHead(400); res.end('Error'); }
+            } catch (e) {
+                console.error('[SETTINGS] Error guardando ajustes:', e.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, message: e.message || 'Error guardando ajustes' }));
+            }
         });
     } else if (parsedUrl.pathname === '/api/config' && req.method === 'GET') {
         const cleanJuegos = {};
@@ -5349,6 +5546,8 @@ const server = http.createServer(async (req, res) => {
             barra_informativa: settings.barra_informativa,
             precios: settings.precios,
             juegos: cleanJuegos,
+            streaming_catalog: getStreamingCatalog(),
+            streaming_prices: (settings.juegos && settings.juegos.streaming_prices) ? settings.juegos.streaming_prices : {},
             metodos_pago: settings.metodos_pago,
             whatsapp: settings.whatsapp,
             publicidades: settings.publicidades || [],

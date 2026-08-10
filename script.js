@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // URL del servidor en Render (TU URL REAL)
     const SERVER_URL = isLocal ? 'http://localhost:3500' : window.location.origin;
+    window.SERVER_URL = SERVER_URL; // Exponer globalmente para funciones fuera de DOMContentLoaded
 
     // Unificar y actualizar marquesina con velocidad constante
     function updateMarqueeDisplay() {
@@ -184,26 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SERVER_URL}/api/config`);
             const data = await res.json();
             
-            // Si la tasa o los precios cambiaron, o es la primera carga, re-renderizar
             const shouldRender = !APP_CONFIG.precios || 
                                JSON.stringify(APP_CONFIG.precios) !== JSON.stringify(data.precios) ||
                                JSON.stringify(APP_CONFIG.juegos) !== JSON.stringify(data.juegos) ||
+                               JSON.stringify(APP_CONFIG.streaming_prices) !== JSON.stringify(data.streaming_prices) ||
+                               JSON.stringify(APP_CONFIG.streaming_catalog) !== JSON.stringify(data.streaming_catalog) ||
                                APP_CONFIG.tasa_del_dia !== data.tasa_del_dia ||
                                JSON.stringify(APP_CONFIG.stock) !== JSON.stringify(data.stock) ||
                                JSON.stringify(APP_CONFIG.publicidades) !== JSON.stringify(data.publicidades);
 
             APP_CONFIG = data;
             DOLAR_RATE = data.tasa_del_dia;
-            
-            // Actualizar marquesina
+            window._tasaAdmin = data.tasa_del_dia;
+
             adminMarqueeText = data.barra_informativa || "";
             updateMarqueeDisplay();
 
             if (shouldRender) {
-                console.log('[CONFIG] 🔄 Actualizando tienda (Precios, Stock o Anuncios cambiaron)');
+                console.log('[CONFIG] 🔄 Actualizando tienda (Precios, Catálogo o Stock cambiaron)');
                 if (data.juegos) renderGames(data.juegos);
                 renderPackages(getPackagesForCurrentGame(), data.tasa_del_dia);
                 if (typeof renderAds === 'function') renderAds(data.publicidades);
+                if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges(data.streaming_catalog);
             }
 
             // Actualizar métodos de pago (solo si cambiaron)
@@ -229,7 +232,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Carga inicial y sondeo automático cada 5 segundos
     loadConfig();
+    if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges();
     setInterval(loadConfig, 5000);
+    setInterval(() => {
+        if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges();
+    }, 5000);
+
+    // Escuchar actualizaciones en directo del panel de administración (en la misma sesión de navegador)
+    try {
+        const storeBC = new BroadcastChannel('recargasney_store_updates');
+        storeBC.onmessage = (event) => {
+            if (event.data && event.data.type === 'PRICES_UPDATED') {
+                console.log('[STORE-BC] 🔔 Actualización de precios detectada en tiempo real.');
+                loadConfig();
+                if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges();
+            }
+        };
+    } catch(e) {}
 
     // ===== SECCIÓN DE RESEÑAS =====
     async function loadReviews() {
@@ -480,6 +499,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
                 ` : ''}
+                ${(order.pin && order.juego === 'streaming' && order.status === 'approved') ? (() => {
+                    const pinLines = order.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
+                    const credHtml = pinLines.length > 0
+                        ? pinLines.map(line => `<div style="font-family:monospace; font-size:0.88rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; margin-bottom:6px;">${line}</div>`).join('')
+                        : `<div style="font-family:monospace; font-size:0.88rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px;">${order.pin}</div>`;
+                    return `
+                    <div style="background: rgba(229,9,20,0.08); border: 1px dashed rgba(229,9,20,0.5); border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 14px;">
+                        <span style="font-size: 0.72rem; color: #E50914; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;">🍿 CREDENCIALES DE ACCESO</span>
+                        ${credHtml}
+                        <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin.replace(/'/g, "\\'").replace(/\n/g, ' | ')}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='📋 Copiar Credenciales', 2000); })" style="background:linear-gradient(135deg,#E50914,#9D00FF); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-weight:800; font-size:0.8rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-top:8px; box-shadow:0 4px 12px rgba(229,9,20,0.3);">
+                            📋 Copiar Credenciales
+                        </button>
+                        <p style="font-size:0.67rem; color:#888; margin:8px 0 0;">⚠️ No compartas estas credenciales con nadie</p>
+                    </div>`;
+                })() : ''}
                 <div style="margin-top: 14px; text-align: center;">
                     <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(order.ref)}" target="_blank" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px rgba(37,211,102,0.2); border: 1px solid #20ba5a;">
                         <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> Consultar estado por WhatsApp
@@ -572,269 +606,125 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('ff_my_orders', JSON.stringify(myOrders));
     }
 
-    // Manejar Botón de Historial — carga tiempo real desde servidor si hay ID verificado
-    historyBtn.addEventListener('click', async () => {
-        const activeUid = historyLoadedForUid || playerInput.value.trim();
+    // ─────────────────────────────────────────────────────────────
+    // HISTORIAL DE COMPRAS — Muestra directo, sin pedir ID
+    // ─────────────────────────────────────────────────────────────
+    function buildOrderRow(order) {
+        const statusText = order.status === 'approved' ? '✅ APROBADO' : (order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE');
+        const statusBg   = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
+        const statusColor= order.status === 'approved' ? '#00FF94' : (order.status === 'rejected' ? '#FF3D71' : '#FFD93D');
+        const methodIcon = order.method === 'binance' ? '₿' : '📱';
+        const dateStr    = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
 
-        // ── Caso 1: Hay UID verificado → mostrar historial del servidor ──
-        if (activeUid && currentPlayerHistory.length >= 0 && historyLoadedForUid === activeUid) {
-            // Recargar en tiempo real antes de mostrar
-            Swal.fire({
-                title: '<i class="fa-solid fa-rotate" style="animation: spin 1s linear infinite;"></i> Cargando...',
-                html: '<p style="color:#aaa;font-size:0.85rem;">Consultando historial en tiempo real...</p>',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                background: 'rgba(20, 10, 35, 0.97)',
-                color: '#fff',
-                didOpen: () => Swal.showLoading()
-            });
-            await fetchPlayerHistory(activeUid);
-            Swal.close();
-
-            if (currentPlayerHistory.length === 0) {
-                return Swal.fire({
-                    icon: 'info',
-                    title: '📭 Sin Compras',
-                    text: 'Este jugador aún no tiene compras registradas.',
-                    background: 'rgba(20, 10, 35, 0.97)',
-                    color: '#fff',
-                    confirmButtonColor: '#9D00FF'
-                });
-            }
-
-            let historyHtml = `
-                <div style="margin-bottom:12px; padding:8px 12px; background:rgba(157,0,255,0.08); border-radius:8px; border:1px solid rgba(157,0,255,0.2); font-size:0.75rem; color:#aaa; text-align:left;">
-                    <i class="fa-solid fa-id-badge" style="color:#9D00FF;"></i> ID: <strong style="color:#fff;">${activeUid}</strong>
-                    &nbsp;·&nbsp; <i class="fa-solid fa-circle-check" style="color:#25D366;"></i> Datos en tiempo real
-                </div>
-                <div class="history-list" style="max-height: 380px; overflow-y: auto; padding-right: 8px;">`;
-
-            currentPlayerHistory.forEach(order => {
-                const statusClass = order.status === 'approved' ? 'status-approved' : (order.status === 'rejected' ? 'status-rejected' : 'status-pending');
-                const statusText  = order.status === 'approved' ? '✅ APROBADO' : (order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE');
-                const statusBg    = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
-                const methodIcon  = order.method === 'binance' ? '₿' : '📱';
-                const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
-
-                let packFormatted = `💎 ${order.pack} diamantes`;
-                if (order.juego === 'roblox') {
-                    const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
-                    packFormatted = `🎮 Roblox US ${amount}USD`;
-                } else if (order.juego === 'bloodstrike') {
-                    packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
-                } else if (order.juego === 'mobilelegends') {
-                    packFormatted = `🛡️ Mobile Legends ${order.pack} 💎`;
-                }
-
-                const isRobloxPin = order.juego === 'roblox';
-                const pinLabelText = isRobloxPin ? `🔑 PIN: ${order.pin}` : `⚡ ID Recarga: ${order.pin}`;
-                const btnText = isRobloxPin ? `📋 Copiar PIN` : `Copiar ID`;
-
-                const pinBox = order.pin
-                    ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                           <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">${pinLabelText}</span>
-                           <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='${btnText}',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">${btnText}</button>
-                       </div>`
-                    : '';
-
-                historyHtml += `
-                    <div style="border-bottom:1px solid rgba(255,255,255,0.07); padding:14px 0; text-align:left;">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                            <div style="flex:1;">
-                                <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
-                                <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">${packFormatted}</p>
-                                ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
-                            </div>
-                            <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap; display:flex; align-items:center; gap:8px;">
-                                <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
-                                <button onclick="window.showOrderTicket('${order.ref}')" style="background:rgba(255,255,255,0.08) !important; border:1px solid rgba(255,255,255,0.15) !important; color:#fff !important; border-radius:4px !important; padding:2px 5px !important; font-size:0.75rem !important; cursor:pointer !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; height:auto !important; min-height:auto !important; width:auto !important; margin:0 !important;" title="Ver Ticket"><i class="fa-solid fa-eye"></i></button>
-                            </div>
-                        </div>
-                        <div style="margin-top:6px; font-size:0.72rem; color:#666;">
-                            Ref: <code style="color:var(--secondary);">${order.ref}</code>
-                            ${order.control_num ? `&nbsp;·&nbsp; N°: <code style="color:#aaa;">${order.control_num}</code>` : ''}
-                        </div>
-                        ${pinBox}
-                    </div>`;
-            });
-
-            historyHtml += '</div>';
-
-            return Swal.fire({
-                title: '<i class="fa-solid fa-receipt"></i> Historial de Compras',
-                html: historyHtml,
-                background: 'rgba(20, 10, 35, 0.98)',
-                color: '#fff',
-                confirmButtonText: '🔄 Actualizar',
-                confirmButtonColor: '#9D00FF',
-                showCloseButton: true,
-                width: '420px'
-            }).then(result => {
-                if (result.isConfirmed) historyBtn.click(); // Recargar al presionar Actualizar
-            });
+        let packFormatted = `💎 ${order.pack} diamantes`;
+        if (order.juego === 'roblox') {
+            const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
+            packFormatted = `🎮 Roblox US ${amount}USD`;
+        } else if (order.juego === 'bloodstrike') {
+            packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
+        } else if (order.juego === 'mobilelegends') {
+            packFormatted = `🛡️ Mobile Legends ${order.pack} 💎`;
+        } else if (order.juego === 'streaming') {
+            packFormatted = `🍿 Streaming: ${order.pack}`;
         }
 
-        // ── Caso 2: Sin ID verificado → pedir ID al usuario para consultar ──
-        const savedUid = localStorage.getItem('ff_user_id') || localStorage.getItem('ff_last_id') || '';
-        const { value: inputUid } = await Swal.fire({
-            title: '<i class="fa-solid fa-receipt"></i> Consultar Compras',
-            html: `
-                <p style="font-size:0.85rem; color:#aaa; margin-bottom:12px;">
-                    Ingresa tu ID de Free Fire para ver tu historial de compras.
-                </p>
-                <input id="swal-history-uid" type="text" inputmode="numeric"
-                    class="swal2-input"
-                    placeholder="Ej: 123456789"
-                    value="${savedUid}"
-                    autocomplete="off"
-                    style="font-size:1.1rem; letter-spacing:2px; text-align:center;">
-            `,
-            showCancelButton: true,
-            confirmButtonText: '<i class="fa-solid fa-magnifying-glass"></i> Buscar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#9D00FF',
-            background: 'rgba(20, 10, 35, 0.98)',
-            color: '#fff',
-            didOpen: () => {
-                const inp = document.getElementById('swal-history-uid');
-                if (inp) {
-                    inp.focus();
-                    inp.select();
-                    inp.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') Swal.clickConfirm();
-                    });
-                }
-            },
-            preConfirm: () => {
-                const v = document.getElementById('swal-history-uid').value.trim();
-                if (!v) { Swal.showValidationMessage('Ingresa tu ID de Free Fire'); return false; }
-                return v;
-            }
-        });
+        return `
+            <div style="border-bottom:1px solid rgba(255,255,255,0.07); padding:12px 0; text-align:left; cursor:pointer;" onclick="window.showOrderTicket('${order.ref}')" title="Ver Ticket">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <div style="flex:1;">
+                        <p style="margin:0; font-size:0.67rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
+                        <p style="margin:4px 0 0; font-weight:800; font-size:0.9rem; color:#fff;">${packFormatted}</p>
+                        ${order.price ? `<p style="margin:2px 0 0; font-size:0.7rem; color:#888;">Precio: ${order.price}</p>` : ''}
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        <span style="background:${statusBg}; color:${statusColor}; font-size:0.65rem; font-weight:900; padding:3px 8px; border-radius:6px; white-space:nowrap;">${statusText}</span>
+                        <span style="font-size:0.65rem; color:#666; display:flex; align-items:center; gap:3px;"><i class="fa-solid fa-ticket" style="color:#9D00FF;"></i> Ver Ticket</span>
+                    </div>
+                </div>
+                <div style="margin-top:4px; font-size:0.68rem; color:#555;">Ref: <code style="color:var(--secondary);">${order.ref}</code>${order.control_num ? ` · N°: <code style="color:#aaa;">${order.control_num}</code>` : ''}</div>
+            </div>`;
+    }
 
-        if (!inputUid) return;
+    window.showMyHistory = async function() {
+        // 1. Órdenes locales guardadas en este dispositivo
+        let localOrders = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
 
-        // Consultar historial del ID ingresado
-        Swal.fire({
-            title: 'Consultando...',
-            html: '<p style="color:#aaa;font-size:0.85rem;">Buscando tus compras en tiempo real...</p>',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            background: 'rgba(20, 10, 35, 0.97)',
-            color: '#fff',
-            didOpen: () => Swal.showLoading()
-        });
+        // 2. Si hay UID verificado, también traer del servidor
+        if (historyLoadedForUid) {
+            Swal.fire({ title: 'Cargando...', allowOutsideClick: false, showConfirmButton: false, background: 'rgba(20,10,35,0.97)', color:'#fff', didOpen: () => Swal.showLoading() });
+            await fetchPlayerHistory(historyLoadedForUid);
+            Swal.close();
+            // Combinar: servidor + locales únicos (no duplicar por ref)
+            const serverRefs = new Set(currentPlayerHistory.map(o => o.ref));
+            const extraLocal = localOrders.filter(o => !serverRefs.has(o.ref));
+            localOrders = [...currentPlayerHistory, ...extraLocal];
+        }
 
-        await fetchPlayerHistory(inputUid);
-        Swal.close();
+        // Ordenar del más reciente al más antiguo
+        localOrders.sort((a, b) => (b.time || 0) - (a.time || 0));
 
-        if (currentPlayerHistory.length === 0) {
+        if (localOrders.length === 0) {
             return Swal.fire({
                 icon: 'info',
                 title: '📭 Sin Compras',
-                html: `<p style="color:#aaa;">El ID <strong>${inputUid}</strong><br>no tiene compras registradas.</p>`,
+                html: `<p style="color:#aaa; font-size:0.9rem;">Aún no tienes compras registradas en este dispositivo.<br><br>Tus compras se guardan automáticamente cuando realizas un pedido.</p>`,
                 background: 'rgba(20, 10, 35, 0.97)',
                 color: '#fff',
-                confirmButtonColor: '#9D00FF'
+                confirmButtonColor: '#9D00FF',
+                confirmButtonText: 'Entendido'
             });
         }
 
-        // Mostrar historial encontrado
-        let historyHtml = `
-            <div style="margin-bottom:12px; padding:8px 12px; background:rgba(157,0,255,0.08); border-radius:8px; border:1px solid rgba(157,0,255,0.2); font-size:0.75rem; color:#aaa; text-align:left;">
-                <i class="fa-solid fa-id-badge" style="color:#9D00FF;"></i> ID: <strong style="color:#fff;">${inputUid}</strong>
-                &nbsp;·&nbsp; <i class="fa-solid fa-circle-check" style="color:#25D366;"></i> Datos en tiempo real
-            </div>
-            <div class="history-list" style="max-height: 380px; overflow-y: auto; padding-right: 8px;">`;
+        const headerInfo = historyLoadedForUid
+            ? `<div style="margin-bottom:10px; padding:6px 10px; background:rgba(0,255,148,0.06); border-radius:8px; border:1px solid rgba(0,255,148,0.15); font-size:0.72rem; color:#aaa; text-align:left;"><i class="fa-solid fa-circle-check" style="color:#00FF94;"></i> ID verificado: <strong style="color:#fff;">${historyLoadedForUid}</strong> &nbsp;·&nbsp; ${localOrders.length} compra${localOrders.length !== 1 ? 's' : ''}</div>`
+            : `<div style="margin-bottom:10px; padding:6px 10px; background:rgba(157,0,255,0.06); border-radius:8px; border:1px solid rgba(157,0,255,0.2); font-size:0.72rem; color:#aaa; text-align:left;"><i class="fa-solid fa-mobile-screen" style="color:#9D00FF;"></i> ${localOrders.length} compra${localOrders.length !== 1 ? 's' : ''} en este dispositivo &nbsp;·&nbsp; <span style="color:#9D00FF;">Toca para ver ticket</span></div>`;
 
-        currentPlayerHistory.forEach(order => {
-            const statusClass = order.status === 'approved' ? 'status-approved' : (order.status === 'rejected' ? 'status-rejected' : 'status-pending');
-            const statusText  = order.status === 'approved' ? '✅ APROBADO' : (order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE');
-            const statusBg    = order.status === 'approved' ? 'rgba(37,211,102,0.1)' : (order.status === 'rejected' ? 'rgba(255,75,43,0.1)' : 'rgba(255,200,0,0.08)');
-            const methodIcon  = order.method === 'binance' ? '₿' : '📱';
-            const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
-
-            let packFormatted = `💎 ${order.pack} diamantes`;
-            if (order.juego === 'roblox') {
-                const amount = order.pack.split('+')[0].trim().replace(/usd/i, '');
-                packFormatted = `🎮 Roblox US ${amount}USD`;
-            } else if (order.juego === 'bloodstrike') {
-                packFormatted = `🔫 Bloodstrike ${order.pack} oro`;
-            } else if (order.juego === 'mobilelegends') {
-                packFormatted = `🛡️ Mobile Legends ${order.pack} 💎`;
-            }
-
-            const isRobloxPin = order.juego === 'roblox';
-            const pinLabelText = isRobloxPin ? `🔑 PIN: ${order.pin}` : `⚡ ID Recarga: ${order.pin}`;
-            const btnText = isRobloxPin ? `📋 Copiar PIN` : `Copiar ID`;
-
-            const pinBox = order.pin
-                ? `<div style="margin-top:8px; background:rgba(0,240,255,0.07); border:1px dashed rgba(0,240,255,0.4); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                       <span style="font-family:monospace; color:#00f0ff; font-size:0.85rem; font-weight:700;">${pinLabelText}</span>
-                       <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='${btnText}',1500); })" style="background:rgba(0,240,255,0.15) !important; border:1px solid rgba(0,240,255,0.3) !important; color:#00f0ff !important; border-radius:6px !important; padding:4px 10px !important; font-size:0.72rem !important; cursor:pointer !important; height:auto !important; min-height:auto !important; line-height:1.2 !important; display:inline-block !important; width:auto !important; margin:0 !important; box-sizing:border-box !important; flex-shrink:0 !important; align-self:center !important;">${btnText}</button>
-                   </div>`
-                : '';
-            historyHtml += `
-                <div style="border-bottom:1px solid rgba(255,255,255,0.07); padding:14px 0; text-align:left;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                        <div style="flex:1;">
-                            <p style="margin:0; font-size:0.68rem; color:#666;">${dateStr} · ${methodIcon} ${order.method === 'binance' ? 'Binance' : 'Pago Móvil'}</p>
-                            <p style="margin:4px 0 0; font-weight:800; font-size:0.95rem; color:#fff;">${packFormatted}</p>
-                            ${order.price ? `<p style="margin:2px 0 0; font-size:0.72rem; color:#888;">Precio: ${order.price}</p>` : ''}
-                        </div>
-                        <div style="background:${statusBg}; border-radius:6px; padding:4px 8px; white-space:nowrap; display:flex; align-items:center; gap:8px;">
-                            <span class="${statusClass}" style="font-size:0.68rem; font-weight:900;">${statusText}</span>
-                            <button onclick="window.showOrderTicket('${order.ref}')" style="background:rgba(255,255,255,0.08) !important; border:1px solid rgba(255,255,255,0.15) !important; color:#fff !important; border-radius:4px !important; padding:2px 5px !important; font-size:0.75rem !important; cursor:pointer !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; height:auto !important; min-height:auto !important; width:auto !important; margin:0 !important;" title="Ver Ticket"><i class="fa-solid fa-eye"></i></button>
-                        </div>
-                    </div>
-                    <div style="margin-top:6px; font-size:0.72rem; color:#666;">
-                        Ref: <code style="color:var(--secondary);">${order.ref}</code>
-                        ${order.control_num ? `&nbsp;·&nbsp; N°: <code style="color:#aaa;">${order.control_num}</code>` : ''}
-                    </div>
-                    ${pinBox}
-                </div>`;
-        });
-
-        historyHtml += '</div>';
+        let rowsHtml = '';
+        localOrders.forEach(order => { rowsHtml += buildOrderRow(order); });
 
         Swal.fire({
-            title: '<i class="fa-solid fa-receipt"></i> Historial de Compras',
-            html: historyHtml,
+            title: '<i class="fa-solid fa-receipt"></i> Mis Compras',
+            html: `${headerInfo}<div style="max-height:370px; overflow-y:auto; padding-right:4px;">${rowsHtml}</div>`,
             background: 'rgba(20, 10, 35, 0.98)',
             color: '#fff',
-            confirmButtonText: '🔄 Buscar otro ID',
+            confirmButtonText: '🔄 Actualizar',
             confirmButtonColor: '#9D00FF',
             showCloseButton: true,
             width: '420px'
         }).then(result => {
-            if (result.isConfirmed) historyBtn.click();
+            if (result.isConfirmed) window.showMyHistory();
         });
-    });
+    };
+
+    historyBtn.addEventListener('click', () => window.showMyHistory());
+
 
     // Manejar Botón de Precios
     if (pricesBtn) {
         pricesBtn.addEventListener('click', () => {
-            if (!APP_CONFIG.precios) {
+            const currentPrecios = getPackagesForCurrentGame();
+            if (!currentPrecios || Object.keys(currentPrecios).length === 0) {
                 Swal.fire({ icon: 'warning', title: 'Cargando...', text: 'Los precios aún se están cargando. Intenta de nuevo en unos segundos.', background: 'rgba(20, 10, 35, 0.95)', color: '#fff' });
                 return;
             }
 
+
             let htmlContent = '<div style="text-align: left; font-size: 0.9rem; margin-top: 10px;">';
             
-            Object.entries(APP_CONFIG.precios).forEach(([amount, data]) => {
+            Object.entries(currentPrecios).forEach(([amount, data]) => {
                 const priceBs = (data.usdt * DOLAR_RATE).toFixed(2).replace('.', ',');
                 const amountNum = parseInt(amount);
                 const isSpecial = isNaN(amountNum);
                 const displayTitle = data.label || amount;
                 const hasPlus = displayTitle.includes('+');
-                const bonusHtml = (!isSpecial && !hasPlus) ? `<span style="color:var(--secondary); font-size:0.8em;">+ ${(amountNum * 0.1).toFixed(0)}</span>` : '';
+                const bonusHtml = (!isSpecial && !hasPlus && currentJuego === 'freefire') ? `<span style="color:var(--secondary); font-size:0.8em;">+ ${(amountNum * 0.1).toFixed(0)}</span>` : '';
 
                 htmlContent += `
                     <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
                         <div style="font-weight: bold; color: #fff;">💎 ${displayTitle} ${bonusHtml}</div>
                         <div style="text-align: right;">
                             <div style="color: #25D366; font-weight: bold;">${priceBs} Bs</div>
-                            <div style="color: #aaa; font-size: 0.8em;">${data.usdt.toFixed(2)} USDT</div>
+                            <div style="color: #aaa; font-size: 0.8em;">${parseFloat(data.usdt).toFixed(2)} USDT</div>
                         </div>
                     </div>
                 `;
@@ -2761,24 +2651,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const ref = selectedMethod === 'pagomovil' ? refPM : refB;
-        // Para Roblox no hay ID de jugador Garena; usamos WA como identificador
+        // Para Roblox y Streaming usamos identificadores adaptados
         const isRobloxOrder = currentJuego === 'roblox';
-        const rawName = document.getElementById('player-name-display').innerText.trim();
-        const name = isRobloxOrder ? (rawName || `WA:${waNum}`) : rawName;
+        const isStreamingOrder = selectedGame === 'streaming' || currentJuego === 'streaming';
+        const rawName = document.getElementById('player-name-display') ? document.getElementById('player-name-display').innerText.trim() : '';
+        const name = (isRobloxOrder || isStreamingOrder) ? (rawName || `WA:${waNum}`) : rawName;
         const PAQUETES_ESPECIALES_KEYS = ['basica', 'semanal', 'mensual', 'booyah'];
-        const esEspecialOrder = PAQUETES_ESPECIALES_KEYS.includes(selectedPackage.amount.toString().toLowerCase());
-        // Para paquetes especiales: usar solo el amountKey (sin bonus ni qty) ya que son suscripciones
-        const packText = esEspecialOrder
-            ? selectedPackage.amount
-            : (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`);
 
-        const rawPriceConfirm = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
-        const discountMultConfirm = window.referralDiscountActive ? 0.97 : 1;
-        const priceUSDT = rawPriceConfirm * discountMultConfirm;
-        const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
-        if (window.referralDiscountActive) {
-            console.log(`[DESCUENTO_REFERIDO] Aplicando -3% en primera compra. Original: $${rawPriceConfirm.toFixed(2)} → Con descuento: $${priceUSDT.toFixed(2)} USDT`);
+        let packText = '';
+        let priceUSDT = 0;
+        let esEspecialOrder = false;
+
+        if (isStreamingOrder) {
+            packText = selectedPack || 'Servicio Streaming';
+            priceUSDT = selectedPriceUsdt || 2.50;
+        } else {
+            esEspecialOrder = selectedPackage && PAQUETES_ESPECIALES_KEYS.includes((selectedPackage.amount || '').toString().toLowerCase());
+            packText = esEspecialOrder
+                ? selectedPackage.amount
+                : (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`);
+
+            const selectedCard = document.querySelector('.package-card.selected');
+            const rawPriceConfirm = selectedCard ? (parseFloat(selectedCard.dataset.price) * selectedQty) : 0;
+            const discountMultConfirm = window.referralDiscountActive ? 0.97 : 1;
+            priceUSDT = rawPriceConfirm * discountMultConfirm;
+            if (window.referralDiscountActive) {
+                console.log(`[DESCUENTO_REFERIDO] Aplicando -3% en primera compra. Original: $${rawPriceConfirm.toFixed(2)} → Con descuento: $${priceUSDT.toFixed(2)} USDT`);
+            }
         }
+
+        const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
         let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
         const waFull = countryCode.value + waClean;
 
@@ -2799,16 +2701,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            // Para Roblox: uid = número WA (no hay ID Garena)
+            // Para Roblox/Streaming: uid = número WA (no hay ID Garena)
             // En modo regalo: uid = jugador receptor, loginUid = tú (quien gana los puntos)
             let effectiveUid;
             if (giftingMode && giftingTargetUid) {
                 effectiveUid = giftingTargetUid;
             } else {
-                effectiveUid = isRobloxOrder ? waFull : playerInput.value;
+                effectiveUid = (isRobloxOrder || isStreamingOrder) ? waFull : playerInput.value;
             }
             const loginUid = localStorage.getItem('ff_user_id') || effectiveUid;
-            const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${currentJuego}`;
+            const juegoParam = isStreamingOrder ? 'streaming' : currentJuego;
+            const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${juegoParam}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
             
             const notifyRes = await fetch(notifyUrl);
@@ -2836,7 +2739,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const newOrder = {
                 ref: ref,
                 control_num: controlNum,
-                pack: selectedQty > 1 ? `${selectedPackage.amount} (x${selectedQty})` : selectedPackage.amount,
+                pack: isStreamingOrder ? packText : (selectedQty > 1 ? `${selectedPackage.amount} (x${selectedQty})` : selectedPackage.amount),
                 date: new Date().toLocaleString("es-VE", { timeZone: "America/Caracas" }),
                 status: 'pending'
             };
@@ -2849,8 +2752,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeStr = now.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: true });
             const fullDateTime = `${dateStr} ${timeStr}`;
 
-            const receiptLogoTitle = isRobloxOrder ? 'ROBLOX' : (currentJuego === 'bloodstrike' ? 'BLOODSTRIKE' : (currentJuego === 'mobilelegends' ? 'MOBILE LEGENDS' : 'FREE F<span>I</span>RE'));
-            const productTitleVal = isRobloxOrder ? `Roblox US ${selectedPackage.amount}USD` : (esEspecialOrder ? packText : `${selectedPackage.amount} + ${selectedPackage.bonus} Bonus`);
+            const receiptLogoTitle = isStreamingOrder ? 'STREAMING' : (isRobloxOrder ? 'ROBLOX' : (currentJuego === 'bloodstrike' ? 'BLOODSTRIKE' : (currentJuego === 'mobilelegends' ? 'MOBILE LEGENDS' : 'FREE F<span>I</span>RE')));
+            const productTitleVal = isStreamingOrder ? packText : (isRobloxOrder ? `Roblox US ${selectedPackage ? selectedPackage.amount : ''}USD` : (esEspecialOrder ? packText : `${selectedPackage ? selectedPackage.amount : ''} + ${selectedPackage ? selectedPackage.bonus : ''} Bonus`));
 
             Swal.fire({
                 html: `
@@ -2864,7 +2767,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
                                 <p><strong>PLAN:</strong> <span class="val">${productTitleVal}</span></p>
-                                ${!isRobloxOrder ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : ''}
+                                ${(!isRobloxOrder && !isStreamingOrder) ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : `<p><strong>ENTREGA POR WHATSAPP:</strong> <span class="val">+${waFull}</span></p>`}
                                 ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
                                 <p><strong>Nº DE APROBACIÓN:</strong> <span class="val" style="color:#00FF94; font-weight:800;">#APROB-${approvalNum}</span> <small style="display:block; font-size:0.65rem; color:#aaa;">(Guarda este código para reclamos o renovaciones)</small></p>
                                 <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
@@ -4761,72 +4664,140 @@ const streamingBtn = document.getElementById('streaming-btn');
 const streamingModal = document.getElementById('streaming-services-modal');
 const streamingModalClose = document.getElementById('streaming-modal-close');
 
-async function updateStreamingStockBadges() {
+async function updateStreamingStockBadges(catalogOverride) {
     try {
-        const res = await fetch(`${SERVER_URL}/api/streaming-stock`);
+        const grid = document.querySelector('.streaming-services-grid');
+        if (!grid) return;
+
+        let catalog = [];
+        let stock = {};
+
+        // Siempre obtener el catálogo actualizado del servidor (precios en tiempo real)
+        const _surl = window.SERVER_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3500' : window.location.origin);
+        const res = await fetch(`${_surl}/api/streaming-stock`);
         const data = await res.json();
-        if (data.success && data.stock) {
-            const stock = data.stock;
-            document.querySelectorAll('.streaming-card').forEach(card => {
-                const btn = card.querySelector('.streaming-order-btn');
-                if (!btn) return;
-                const serviceName = (btn.getAttribute('data-service') || '').toLowerCase();
-
-                let key = null;
-                if (serviceName.includes('netflix')) key = 'netflix';
-                else if (serviceName.includes('disney')) key = 'disney';
-                else if (serviceName.includes('max') || serviceName.includes('hbo')) key = 'max';
-                else if (serviceName.includes('vix')) key = 'vix';
-                else if (serviceName.includes('canva')) key = 'canva';
-                else if (serviceName.includes('spotify')) key = 'spotify';
-                else if (serviceName.includes('prime')) key = 'prime';
-                else if (serviceName.includes('crunchyroll')) key = 'crunchyroll';
-
-                let badge = card.querySelector('.streaming-stock-badge');
-                if (!badge) {
-                    badge = document.createElement('div');
-                    badge.className = 'streaming-stock-badge';
-                    badge.style.cssText = 'font-size:0.7rem; font-weight:800; margin-bottom:8px; display:inline-block; padding:2px 8px; border-radius:10px;';
-                    const priceEl = card.querySelector('.streaming-price');
-                    if (priceEl) priceEl.parentNode.insertBefore(badge, priceEl);
-                }
-
-                const count = stock[key] || 0;
-                if (count > 0) {
-                    badge.style.background = 'rgba(0,255,148,0.12)';
-                    badge.style.color = '#00FF94';
-                    badge.style.border = '1px solid rgba(0,255,148,0.3)';
-                    badge.innerHTML = `🟢 ${count} Disponible${count > 1 ? 's' : ''}`;
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                    btn.style.cursor = 'pointer';
-                    btn.style.pointerEvents = 'auto';
-                    btn.classList.remove('out-of-stock', 'coming-soon');
-                    btn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> Comprar Ahora';
-                } else {
-                    badge.style.background = 'linear-gradient(135deg, rgba(157,0,255,0.25), rgba(121,40,202,0.25))';
-                    badge.style.color = '#c084fc';
-                    badge.style.border = '1px solid rgba(157,0,255,0.5)';
-                    badge.innerHTML = `⏳ PRÓXIMAMENTE`;
-                    btn.disabled = false; // Permitir click para disparar alerta informativa de Próximamente
-                    btn.style.opacity = '0.85';
-                    btn.style.cursor = 'pointer';
-                    btn.style.pointerEvents = 'auto';
-                    btn.classList.add('coming-soon');
-                    btn.innerHTML = '<i class="fa-solid fa-clock"></i> PRÓXIMAMENTE';
-                }
-            });
+        if (data.success) {
+            catalog = data.catalog || [];
+            stock = data.stock || {};
         }
-    } catch (e) {}
+
+        // Si el servidor no devolvió catálogo, usar el override como fallback
+        if (catalog.length === 0 && catalogOverride && Array.isArray(catalogOverride) && catalogOverride.length > 0) {
+            catalog = catalogOverride;
+        }
+
+        const rate = (window._tasaAdmin && window._tasaAdmin > 0) ? window._tasaAdmin : (DOLAR_RATE || 65);
+
+        if (catalog && catalog.length > 0) {
+            grid.innerHTML = '';
+            catalog.forEach(item => {
+                const count = stock[item.id] || 0;
+                const priceUsdt = parseFloat(item.price) || 2.50;
+                const priceBs = (priceUsdt * rate).toFixed(2);
+                
+                const badgeHtml = item.badge ? `<div class="streaming-card-badge">${item.badge}</div>` : '';
+                const stockBadge = count > 0 
+                    ? `<div class="streaming-stock-badge" style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:inline-block; padding:2px 8px; border-radius:10px; background:rgba(0,255,148,0.12); color:#00FF94; border:1px solid rgba(0,255,148,0.3);">🟢 ${count} Disponible${count > 1 ? 's' : ''}</div>`
+                    : `<div class="streaming-stock-badge" style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:inline-block; padding:2px 8px; border-radius:10px; background:rgba(220,38,38,0.15); color:#f87171; border:1px solid rgba(220,38,38,0.4);">🚫 Agotada</div>`;
+
+                const btnHtml = count > 0
+                    ? `<button class="streaming-order-btn" data-service-id="${item.id}" data-service="${item.name}" data-price="${priceUsdt.toFixed(2)}" style="opacity:1; cursor:pointer; pointer-events:auto;"><i class="fa-solid fa-cart-shopping"></i> Comprar Ahora</button>`
+                    : `<button class="streaming-order-btn" disabled style="opacity:0.5; cursor:not-allowed; pointer-events:none; background:rgba(220,38,38,0.2); border-color:rgba(220,38,38,0.4);"><i class="fa-solid fa-ban"></i> Agotada</button>`;
+
+                const cardHtml = `
+                    <div class="streaming-card brand-${item.id}">
+                        ${badgeHtml}
+                        <div class="streaming-icon"><i class="${item.icon || 'fa-solid fa-tv'}" style="color: ${item.color || '#9D00FF'};"></i></div>
+                        <h3>${item.name}</h3>
+                        <p class="streaming-desc">${item.desc || ''}</p>
+                        ${stockBadge}
+                        <div class="streaming-price">${priceUsdt.toFixed(2)} USDT <span style="font-size:0.78rem; color:rgba(255,255,255,0.6); font-weight:600; display:block; margin-top:2px;">/ ${priceBs} Bs</span></div>
+                        ${btnHtml}
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
+            initStreamingOrderButtons();
+        }
+    } catch (e) {
+        console.error('[STREAMING-CATALOG-ERROR]', e);
+    }
 }
 
-if (streamingBtn && streamingModal) {
-    streamingBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        streamingModal.style.display = 'flex';
-        updateStreamingStockBadges();
+function openStreamingPaymentModal(serviceName, priceUsdt) {
+    if (streamingModal) streamingModal.style.display = 'none';
+
+    selectedGame = 'streaming';
+    selectedPack = serviceName;
+    selectedPriceUsdt = priceUsdt;
+
+    const playerIdInput = document.getElementById('player-id');
+    if (playerIdInput && (!playerIdInput.value || playerIdInput.value.trim() === '')) {
+        playerIdInput.value = 'Cliente-Streaming';
+    }
+
+    const rate = (window._tasaAdmin && window._tasaAdmin > 0) ? window._tasaAdmin : 65;
+    const priceBs = (priceUsdt * rate).toFixed(2);
+
+    const summaryBox = document.getElementById('streaming-selected-summary');
+    const summaryTitle = document.getElementById('streaming-summary-title');
+    const summaryPrice = document.getElementById('streaming-summary-price');
+    if (summaryTitle) summaryTitle.innerText = serviceName;
+    if (summaryPrice) summaryPrice.innerText = `${priceUsdt.toFixed(2)} USDT / ${priceBs} Bs`;
+    if (summaryBox) summaryBox.style.display = 'block';
+
+    const amountPm = document.getElementById('amount-pagomovil');
+    const amountBin = document.getElementById('amount-binance');
+    if (amountPm) amountPm.value = `${priceBs} Bs`;
+    if (amountBin) amountBin.value = `${priceUsdt} USDT`;
+
+    const paymentSection = document.getElementById('payment-section');
+    const packagesSection = document.getElementById('packages-section');
+    if (packagesSection) packagesSection.style.display = 'none';
+    if (paymentSection) {
+        paymentSection.style.display = 'block';
+    }
+
+    const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
+    if (pmCard) pmCard.click();
+
+    setTimeout(() => {
+        if (paymentSection) {
+            paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
+}
+
+function initStreamingOrderButtons() {
+    document.querySelectorAll('.streaming-order-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            if (btn.classList.contains('coming-soon') || btn.classList.contains('out-of-stock')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: '⏳ Servicio Próximamente',
+                    html: 'Este servicio de streaming estará disponible muy pronto en la plataforma.<br>¡Tan pronto como el administrador cargue licencias estará habilitado!',
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+                return;
+            }
+            const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
+            const priceUsdt = parseFloat(btn.getAttribute('data-price')) || 2.50;
+            openStreamingPaymentModal(serviceName, priceUsdt);
+        };
     });
 }
+
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('#streaming-btn, .btn-streaming-trigger')) {
+        e.preventDefault();
+        const modal = document.getElementById('streaming-services-modal');
+        if (modal) modal.style.display = 'flex';
+        if (typeof updateStreamingStockBadges === 'function') updateStreamingStockBadges();
+    }
+});
 
 if (streamingModalClose && streamingModal) {
     streamingModalClose.addEventListener('click', () => {
@@ -4840,104 +4811,10 @@ if (streamingModalClose && streamingModal) {
     });
 }
 
-// Botones de pedido directo con pasarela de pago y verificación automática por Bot
-document.querySelectorAll('.streaming-order-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        // Si el producto está en estado PRÓXIMAMENTE o AGOTADO, mostrar aviso informativo
-        if (btn.classList.contains('coming-soon') || btn.classList.contains('out-of-stock')) {
-            Swal.fire({
-                icon: 'info',
-                title: '⏳ Servicio Próximamente',
-                html: 'Este servicio de streaming estará disponible muy pronto en la plataforma.<br>¡Tan pronto como el administrador cargue licencias estará habilitado!',
-                background: 'rgba(20,10,35,0.98)',
-                color: '#fff',
-                confirmButtonColor: '#9D00FF'
-            });
-            return;
-        }
-        if (btn.disabled || btn.classList.contains('out-of-stock')) {
-            return Swal.fire({
-                title: '🚫 Servicio Agotado',
-                text: 'Este servicio de streaming se encuentra AGOTADO en el almacén por el momento. Por favor no realices ningún pago hasta que haya nuevo stock disponible.',
-                icon: 'warning',
-                background: 'rgba(20, 10, 35, 0.96)',
-                color: '#fff',
-                confirmButtonColor: '#ff3d71'
-            });
-        }
-        const serviceName = btn.getAttribute('data-service') || 'Servicio Streaming';
-        const priceUsdt = parseFloat(btn.getAttribute('data-price')) || 2.50;
-        
-        // Cerrar modal de catálogo streaming
-        if (streamingModal) streamingModal.style.display = 'none';
-
-        // Configurar paquete seleccionado
-        selectedGame = 'streaming';
-        selectedPack = serviceName;
-        selectedPriceUsdt = priceUsdt;
-
-        // Ocultar sección de consulta de ID y bienvenida para que NO ensucie la pantalla
-        const verifyBtn = document.getElementById('verify-btn');
-        const playerIdInput = document.getElementById('player-id');
-        const welcomeSection = document.getElementById('welcome-section');
-        if (verifyBtn) verifyBtn.style.display = 'none';
-        if (playerIdInput && playerIdInput.parentNode) playerIdInput.parentNode.style.display = 'none';
-        if (welcomeSection) welcomeSection.style.display = 'none';
-        
-        // Auto-asignar identificador de cliente si está vacío
-        if (playerIdInput && (!playerIdInput.value || playerIdInput.value.trim() === '')) {
-            playerIdInput.value = 'Cliente-Streaming';
-        }
-
-        // Calcular monto exacto en Bolívares usando la tasa del día
-        const rate = (typeof tasaDelDia !== 'undefined' && tasaDelDia > 0) ? tasaDelDia : (settings.tasa_del_dia || 65);
-        const priceBs = (priceUsdt * rate).toFixed(2);
-
-        // Mostrar caja de resumen de producto streaming en la pasarela de pagos
-        const summaryBox = document.getElementById('streaming-selected-summary');
-        const summaryTitle = document.getElementById('streaming-summary-title');
-        const summaryPrice = document.getElementById('streaming-summary-price');
-        if (summaryTitle) summaryTitle.innerText = serviceName;
-        if (summaryPrice) summaryPrice.innerText = `${priceUsdt.toFixed(2)} USDT / ${priceBs} Bs`;
-        if (summaryBox) summaryBox.style.display = 'block';
-
-        // Actualizar campos de monto en los métodos de pago
-        const amountPm = document.getElementById('amount-pagomovil');
-        const amountBin = document.getElementById('amount-binance');
-        if (amountPm) amountPm.value = `${priceBs} Bs`;
-        if (amountBin) amountBin.value = `${priceUsdt} USDT`;
-
-        // Ocultar paquetes de diamantes y mostrar ÚNICAMENTE la pasarela de pagos
-        const paymentSection = document.getElementById('payment-section');
-        const packagesSection = document.getElementById('packages-section');
-        if (packagesSection) packagesSection.style.display = 'none';
-        if (paymentSection) {
-            paymentSection.style.display = 'block';
-        }
-
-        // Auto-seleccionar Pago Móvil por defecto
-        const pmCard = document.querySelector('.payment-method-card[data-method="pagomovil"]');
-        if (pmCard) pmCard.click();
-
-        // Desplazar la pantalla suavemente directo al cuadro de pagos
-        setTimeout(() => {
-            if (paymentSection) paymentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-
-        Swal.fire({
-            title: `🛒 Comprar ${serviceName}`,
-            html: `<div style="text-align:center;">
-                <p style="font-size:0.9rem; color:#aaa; margin-bottom:8px;">Realiza tu pago por <strong>Pago Móvil</strong> o <strong>Binance Pay</strong> y pega la referencia abajo para verificación automática instantánea.</p>
-                <div style="font-size:1.4rem; font-weight:800; color:#00FF94; margin-top:5px;">$${priceUsdt.toFixed(2)} USDT / ${priceBs} Bs</div>
-            </div>`,
-            icon: 'info',
-            background: 'rgba(20, 10, 35, 0.96)',
-            color: '#fff',
-            confirmButtonColor: '#9D00FF',
-            confirmButtonText: '¡Entendido, Ir a Pagar!'
-        });
-    });
+// Listener para botón "Cambiar Servicio" de streaming
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('#btn-change-streaming-service')) {
+        if (streamingModal) streamingModal.style.display = 'flex';
+    }
 });
 
