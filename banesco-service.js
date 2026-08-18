@@ -176,6 +176,23 @@ async function launchBrowser() {
     console.log('[BANESCO] ✅ Navegador lanzado correctamente.');
 }
 
+// Helper para buscar elementos dentro de frames (Banesco usa un iframe en el login)
+async function getBanescoFrame(selector, timeoutMs = 8000) {
+    if (!banescoPage) return null;
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+        const frames = banescoPage.frames();
+        for (const frame of frames) {
+            try {
+                const el = await frame.$(selector);
+                if (el) return frame;
+            } catch (_) {}
+        }
+        await sleep(300);
+    }
+    return banescoPage;
+}
+
 // ============================================================
 // LOGIN EN BANESCO ONLINE (ASP.NET WebForms - 2 pasos + preguntas opcionales)
 // ============================================================
@@ -226,8 +243,9 @@ async function banescoLogin() {
 
         // ── PASO 1: Ingresar usuario ──
         console.log('[BANESCO] 👤 Paso 1: Ingresando usuario...');
+        let userFrame = await getBanescoFrame('#txtUsuario', 10000);
         try {
-            await banescoPage.waitForSelector('#txtUsuario', { timeout: 10000 });
+            await userFrame.waitForSelector('#txtUsuario', { timeout: 10000 });
         } catch (e) {
             console.error('[BANESCO] ❌ Campo de usuario no encontrado en la página de login.');
             await takeDebugScreenshot('banesco_no_usuario_field');
@@ -235,34 +253,35 @@ async function banescoLogin() {
             return false;
         }
 
-        await banescoPage.click('#txtUsuario');
-        await banescoPage.$eval('#txtUsuario', el => { el.value = ''; });
+        await userFrame.click('#txtUsuario');
+        await userFrame.$eval('#txtUsuario', el => { el.value = ''; });
         await sleep(300);
-        await banescoPage.type('#txtUsuario', user, { delay: randomDelay(80, 140) });
+        await userFrame.type('#txtUsuario', user, { delay: randomDelay(80, 140) });
         await sleep(600);
 
-        await banescoPage.click('#bAceptar');
+        await userFrame.click('#bAceptar');
         await sleep(3500);
 
         // ── PASO 2: Ingresar contraseña ──
         console.log('[BANESCO] 🔑 Paso 2: Ingresando contraseña...');
 
         let onPasswordPage = false;
+        let passFrame = await getBanescoFrame('#txtClave', 8000);
         try {
-            await banescoPage.waitForSelector('#txtClave', { timeout: 8000 });
+            await passFrame.waitForSelector('#txtClave', { timeout: 8000 });
             onPasswordPage = true;
         } catch (e) {
             // Puede haber saltado directamente a preguntas de seguridad o al dashboard
         }
 
         if (onPasswordPage) {
-            await banescoPage.click('#txtClave');
-            await banescoPage.$eval('#txtClave', el => { el.value = ''; });
+            await passFrame.click('#txtClave');
+            await passFrame.$eval('#txtClave', el => { el.value = ''; });
             await sleep(300);
-            await banescoPage.type('#txtClave', pass, { delay: randomDelay(80, 140) });
+            await passFrame.type('#txtClave', pass, { delay: randomDelay(80, 140) });
             await sleep(600);
 
-            await banescoPage.click('#bAceptar');
+            await passFrame.click('#bAceptar');
             await sleep(4000);
         }
 
