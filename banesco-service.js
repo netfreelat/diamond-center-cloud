@@ -511,7 +511,7 @@ async function handleFrequentDeviceScreen() {
 
         if (isFrequentScreen) {
             console.log('[BANESCO] 🔒 Detectada pantalla de confirmación "Equipo de uso frecuente"...');
-            const pass = getBanescoPass();
+            const pass = process.env.BANESCO_PASS || 'Clifor2#';
 
             // Llenar el campo de clave si existe
             const passInput = await frame.$('input[type="password"]') || await frame.$('#txtClave') || await frame.$('input[name*="Clave"]');
