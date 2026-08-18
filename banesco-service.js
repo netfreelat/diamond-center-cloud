@@ -342,18 +342,25 @@ async function banescoLogin(force = false) {
 // ============================================================
 async function checkForSecurityQuestion() {
     try {
-        return await banescoPage.evaluate(() => {
-            const body = document.body.innerText.toLowerCase();
-            return (
-                body.includes('pregunta de seguridad') ||
-                body.includes('preguntas de seguridad') ||
-                body.includes('pregunta secreta') ||
-                body.includes('nombre de su perro') ||
-                body.includes('marca de su carro') ||
-                body.includes('pasatiempo') ||
-                body.includes('apellido')
-            );
-        });
+        const frames = banescoPage.frames();
+        for (const frame of frames) {
+            try {
+                const found = await frame.evaluate(() => {
+                    const body = document.body ? document.body.innerText.toLowerCase() : '';
+                    return (
+                        body.includes('pregunta de seguridad') ||
+                        body.includes('preguntas de seguridad') ||
+                        body.includes('pregunta secreta') ||
+                        body.includes('nombre de su perro') ||
+                        body.includes('marca de su carro') ||
+                        body.includes('pasatiempo') ||
+                        body.includes('apellido')
+                    );
+                });
+                if (found) return true;
+            } catch (_) {}
+        }
+        return false;
     } catch (e) {
         return false;
     }
@@ -361,85 +368,116 @@ async function checkForSecurityQuestion() {
 
 // ============================================================
 // RESPONDER PREGUNTAS DE SEGURIDAD
-// Banesco puede hacer 1 o más preguntas, una a la vez
+// Banesco puede hacer 1 o más preguntas simultáneas en la misma página
 // ============================================================
 async function answerSecurityQuestions() {
     const answers = getSecurityAnswers();
-    // Intentar responder hasta 5 preguntas (por si hay múltiples rondas)
-    for (let attempt = 0; attempt < 5; attempt++) {
+    console.log('[BANESCO] ❓ Procesando preguntas de seguridad...');
+
+    for (let round = 0; round < 5; round++) {
         const hasQuestion = await checkForSecurityQuestion();
         if (!hasQuestion) break;
 
-        // Obtener el texto de la pregunta y el campo de respuesta
-        const questionInfo = await banescoPage.evaluate(() => {
-            const labels = Array.from(document.querySelectorAll('label, span, td, p'));
-            let questionText = '';
-            for (const el of labels) {
-                const txt = (el.innerText || el.textContent || '').toLowerCase().trim();
-                if (
-                    txt.includes('perro') || txt.includes('carro') || txt.includes('marca') ||
-                    txt.includes('pasatiempo') || txt.includes('apellido') || txt.includes('mascota') ||
-                    txt.includes('deporte') || txt.includes('pregunta')
-                ) {
-                    questionText = txt;
+        // Buscar el frame que contiene las preguntas
+        let targetFrame = banescoPage;
+        const frames = banescoPage.frames();
+        for (const f of frames) {
+            try {
+                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
+                if (text.includes('pregunta') || text.includes('perro') || text.includes('carro') || text.includes('pasatiempo') || text.includes('apellido')) {
+                    targetFrame = f;
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        // Extraer todos los pares de (contexto -> inputId) en el marco objetivo
+        const pairs = await targetFrame.evaluate(() => {
+            const results = [];
+            const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="password"]'));
+            
+            inputs.forEach((input, index) => {
+                if (!input.id) input.id = 'sec_input_' + index;
+                let parent = input.parentElement;
+                let text = '';
+                for (let k = 0; k < 5 && parent; k++) {
+                    text += ' ' + (parent.innerText || parent.textContent || '');
+                    parent = parent.parentElement;
+                }
+                results.push({
+                    inputId: input.id,
+                    contextText: text.toLowerCase()
+                });
+            });
+            return results;
+        });
+
+        if (pairs.length === 0) {
+            console.warn('[BANESCO] ⚠️ No se encontraron campos de respuesta en la página de preguntas.');
+            break;
+        }
+
+        let answeredCount = 0;
+        for (const pair of pairs) {
+            let matchedAnswer = null;
+            let matchedKeyword = '';
+
+            for (const [keyword, answer] of Object.entries(answers)) {
+                if (pair.contextText.includes(keyword)) {
+                    matchedAnswer = answer;
+                    matchedKeyword = keyword;
                     break;
                 }
             }
 
-            // Buscar el campo de respuesta (input de texto dentro de la página de preguntas)
-            const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="password"]'));
-            const answerInput = inputs.find(i => {
-                const id = (i.id || '').toLowerCase();
-                return id.includes('resp') || id.includes('answer') || id.includes('segur') || id.includes('clave');
-            }) || inputs[0];
-
-            return {
-                questionText,
-                inputId: answerInput ? answerInput.id : null
-            };
-        });
-
-        console.log(`[BANESCO] ❓ Pregunta: "${questionInfo.questionText}" | Input ID: ${questionInfo.inputId}`);
-
-        // Determinar la respuesta basada en keywords en el texto de la pregunta
-        let respuesta = null;
-        const qt = questionInfo.questionText.toLowerCase();
-        for (const [keyword, answer] of Object.entries(answers)) {
-            if (qt.includes(keyword)) {
-                respuesta = answer;
-                console.log(`[BANESCO] ✅ Respondiendo "${keyword}" → "${answer}"`);
-                break;
+            if (matchedAnswer) {
+                console.log(`[BANESCO] ✅ Llenando campo #${pair.inputId} ("${matchedKeyword}") → "${matchedAnswer}"`);
+                try {
+                    await targetFrame.click(`#${pair.inputId}`);
+                    await targetFrame.$eval(`#${pair.inputId}`, el => { el.value = ''; });
+                    await sleep(200);
+                    await targetFrame.type(`#${pair.inputId}`, matchedAnswer, { delay: randomDelay(70, 120) });
+                    answeredCount++;
+                } catch (e) {
+                    console.error(`[BANESCO] Error escribiendo en #${pair.inputId}:`, e.message);
+                }
+            } else {
+                console.warn(`[BANESCO] ⚠️ No se identificó keyword para el contexto: "${pair.contextText.slice(0, 80)}"`);
             }
         }
 
-        if (!respuesta) {
-            console.warn(`[BANESCO] ⚠️ No se encontró respuesta para la pregunta: "${questionInfo.questionText}"`);
+        if (answeredCount === 0) {
+            console.error('[BANESCO] ❌ No se pudo responder ninguna pregunta.');
             await takeDebugScreenshot('banesco_unknown_security_question');
             return false;
         }
 
-        // Ingresar la respuesta
-        if (questionInfo.inputId) {
-            await banescoPage.click(`#${questionInfo.inputId}`);
-            await banescoPage.$eval(`#${questionInfo.inputId}`, el => { el.value = ''; });
-        } else {
-            // Fallback: hacer clic en el primer input visible
-            await banescoPage.evaluate(() => {
-                const input = document.querySelector('input[type="text"], input[type="password"]');
-                if (input) input.focus();
-            });
+        // Hacer clic en el botón Aceptar
+        console.log('[BANESCO] 🔘 Enviando respuestas de seguridad...');
+        try {
+            let submitBtn = await targetFrame.$('#bAceptar') || await targetFrame.$('#btnAceptar');
+            if (!submitBtn) {
+                const btns = await targetFrame.$$('input[type="submit"], input[type="button"], button');
+                for (const b of btns) {
+                    const val = await targetFrame.evaluate(el => (el.value || el.innerText || '').toLowerCase(), b);
+                    if (val.includes('aceptar') || val.includes('continuar')) {
+                        submitBtn = b;
+                        break;
+                    }
+                }
+            }
+            if (submitBtn) {
+                await submitBtn.click();
+            } else {
+                await targetFrame.click('#bAceptar');
+            }
+        } catch (e) {
+            console.error('[BANESCO] Error al hacer clic en Aceptar:', e.message);
         }
-        await sleep(300);
 
-        if (questionInfo.inputId) {
-            await banescoPage.type(`#${questionInfo.inputId}`, respuesta, { delay: randomDelay(80, 130) });
-        }
-        await sleep(500);
-
-        // Hacer clic en Aceptar
-        await banescoPage.click('#bAceptar');
-        await sleep(3000);
+        await sleep(4500);
     }
+
     return true;
 }
 
