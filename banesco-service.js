@@ -423,10 +423,12 @@ async function answerSecurityQuestions() {
         // Extraer todos los pares de (contexto -> inputId) en el marco objetivo
         const pairs = await targetFrame.evaluate(() => {
             const results = [];
-            const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="password"]'));
+            const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="password"]'))
+                .filter(i => i.offsetWidth > 0 && i.offsetHeight > 0 && !i.disabled && !i.readOnly);
             
             inputs.forEach((input, index) => {
-                if (!input.id) input.id = 'sec_input_' + index;
+                const id = input.id || 'sec_input_' + index;
+                input.id = id;
                 let parent = input.parentElement;
                 let text = '';
                 for (let k = 0; k < 5 && parent; k++) {
@@ -434,7 +436,7 @@ async function answerSecurityQuestions() {
                     parent = parent.parentElement;
                 }
                 results.push({
-                    inputId: input.id,
+                    inputId: id,
                     contextText: text.toLowerCase()
                 });
             });
