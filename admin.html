@@ -2545,10 +2545,13 @@
                         <span class="status-badge status-${order.status}" style="font-size: 0.7rem; padding: 2px 6px;" title="${order.reason || ''}">${order.status}</span>
                         ${order.status === 'rejected' && order.reason ? `<br><small style="color:#ff4b2b; font-size:0.6rem; display:block; margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${order.reason}">${order.reason}</small>` : ''}
                         <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            ${(order.status === 'pending' || order.status === 'rejected') ? `
+                                <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="${order.status === 'rejected' ? 'Aprobar pedido rechazado' : 'Aprobar'}" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-check"></i></button>
+                            ` : ''}
                             ${order.status === 'pending' ? `
-                                <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-check"></i></button>
                                 <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-times"></i></button>
-                            ` : (order.status === 'approved' || order.status === 'failed' || order.status === 'rejected') ? `
+                            ` : ''}
+                            ${(order.status === 'approved' || order.status === 'failed' || order.status === 'rejected') ? `
                                 <button onclick="retryRecharge('${order.ref}', '${order.uid}', '${order.pack}')" class="btn-action" title="Reintentar Recarga" style="background:rgba(255,150,0,0.15); border:1px solid rgba(255,150,0,0.4); color:#FF9600; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-rotate-right"></i></button>
                             ` : ''}
                             <button onclick="viewOrderTicket('${order.ref}')" class="btn-action" title="Ver Ticket" style="background:rgba(0,240,255,0.12); border:1px solid rgba(0,240,255,0.4); color:#00F0FF; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-receipt"></i></button>

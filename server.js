@@ -2262,39 +2262,7 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
-                        // Pedido sin pago encontrado en BDV — auto-rechazar si lleva +5 min
-                        // Pero SOLO si la consulta al banco fue exitosa (checked === true)
-                        if (bdvResult.checked) {
-                            const orderTime = new Date(order.time);
-                            const diffMin = (NOW - orderTime) / (1000 * 60);
-                            if (diffMin >= 5) {
-                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 5 min. Auto-rechazando...`);
-                                
-                                orders[ref].status = 'rejected';
-                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
-                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
-
-                                // Notificar cliente por WhatsApp (Rechazo)
-                                queueWhatsAppMessage({ ...orders[ref], ref }, false);
-                                
-                                // Notificar admins
-                                notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Auto-Rechazo');
-                                
-                                // Enviar notificación Push
-                                sendPushToUser(
-                                    orders[ref].login_uid || orders[ref].uid, 
-                                    'Pago Rechazado ❌', 
-                                    `No pudimos verificar tu pago para el pedido de ${orders[ref].pack}. Contáctanos por WhatsApp si es un error.`, 
-                                    '/icon-192.png', 
-                                    '/historial'
-                                );
-                                
-                                // Actualizar Telegram
-                                updateTelegramStatus(ref);
-                            }
-                        } else {
-                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} no se pudo verificar en BDV (banco lento o timeout). Se mantiene PENDIENTE para reintentar en el próximo ciclo.`);
-                        }
+                        console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} sin pago BDV detectado aún. Se mantiene PENDIENTE.`);
                     }
                 }
             } catch (bdvCycleErr) {
@@ -2428,27 +2396,7 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
-                        if (banescoResult.checked) {
-                            const orderTime = new Date(order.time);
-                            const diffMin = (NOW - orderTime) / (1000 * 60);
-                            if (diffMin >= 5) {
-                                console.log(`[BANESCO-AUTO] ❌ Pedido ${ref} sin pago Banesco tras 5 min. Auto-rechazando...`);
-                                orders[ref].status = 'rejected';
-                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
-                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
-                                queueWhatsAppMessage({ ...orders[ref], ref }, false);
-                                notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Auto-Rechazo');
-                                sendPushToUser(
-                                    orders[ref].login_uid || orders[ref].uid,
-                                    'Pago Rechazado ❌',
-                                    `No pudimos verificar tu pago para el pedido de ${orders[ref].pack}. Contáctanos por WhatsApp si es un error.`,
-                                    '/icon-192.png', '/historial'
-                                );
-                                updateTelegramStatus(ref);
-                            }
-                        } else {
-                            console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} no verificado (banco lento o timeout). Se mantiene PENDIENTE.`);
-                        }
+                        console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} sin pago Banesco detectado aún. Se mantiene PENDIENTE.`);
                     }
                 }
             } catch (banescoCycleErr) {
@@ -4779,14 +4727,14 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
 
-                // --- SEGURIDAD: NO APROBAR DOS VECES (memoria) ---
-                if (order && order.status !== 'pending') {
+                // --- SEGURIDAD: NO APROBAR DOS VECES (permitir pending y rejected) ---
+                if (order && order.status !== 'pending' && order.status !== 'rejected') {
                     console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${targetRef} (status actual: ${order.status})`);
                     res.writeHead(200);
-                    return res.end(JSON.stringify({ success: false, message: '🚫 Este pedido ya está siendo procesado o fue procesado.' }));
+                    return res.end(JSON.stringify({ success: false, message: `🚫 Este pedido ya fue procesado o aprobado (${order.status}).` }));
                 }
 
-                if (order && order.status === 'pending') {
+                if (order && (order.status === 'pending' || order.status === 'rejected')) {
                     // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS ---
                     if (targetRef && !force) {
                         const cleanRef = targetRef.trim();
@@ -4817,7 +4765,7 @@ const server = http.createServer(async (req, res) => {
                     // 🔒 DOBLE CANDADO SUPABASE: verificar estado en BD antes de proceder
                     // Previene race conditions si Telegram o WhatsApp bot aprobaron al mismo tiempo
                     const { data: dbCheck } = await supabase.from('ff_orders').select('status').eq('ref', targetRef).single();
-                    if (dbCheck && dbCheck.status !== 'pending') {
+                    if (dbCheck && dbCheck.status !== 'pending' && dbCheck.status !== 'rejected') {
                         console.log(`[ADMIN-APPROVE] 🛑 RACE CONDITION BLOQUEADA: ref ${targetRef} ya tiene estado '${dbCheck.status}' en Supabase.`);
                         order.status = dbCheck.status; // Sincronizar memoria
                         res.writeHead(200);
