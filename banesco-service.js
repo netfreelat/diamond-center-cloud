@@ -350,10 +350,14 @@ async function checkForSecurityQuestion() {
             try {
                 const found = await frame.evaluate(() => {
                     const body = document.body ? document.body.innerText.toLowerCase() : '';
+                    if (body.includes('equipo de uso frecuente') || body.includes('confirmo que estoy ingresando')) {
+                        return false;
+                    }
                     return (
+                        body.includes('validación de preguntas de seguridad') ||
+                        body.includes('responda las siguientes preguntas') ||
                         body.includes('pregunta de seguridad') ||
                         body.includes('preguntas de seguridad') ||
-                        body.includes('pregunta secreta') ||
                         body.includes('nombre de su perro') ||
                         body.includes('marca de su carro') ||
                         body.includes('pasatiempo') ||
