@@ -252,9 +252,24 @@ async function banescoLogin(force = false) {
             return true;
         }
 
-        // ── PASO 1: Ingresar usuario ──
+        // ── PASO 1: Ingresar Usuario ──
         console.log('[BANESCO] 👤 Paso 1: Ingresando usuario...');
-        let userFrame = await getBanescoFrame('#txtUsuario', 10000);
+        let userFrame = await getBanescoFrame('#txtUsuario');
+
+        // Detectar si Banesco advierte sobre una sesión previa activa
+        const isAlreadyActive = await userFrame.evaluate(() => {
+            const txt = document.body ? document.body.innerText.toLowerCase() : '';
+            return txt.includes('conexión activa') || txt.includes('conexion activa');
+        });
+
+        if (isAlreadyActive) {
+            console.log('[BANESCO] ⚠️ Detectada sesión previa activa. Presionando "Aceptar" para continuar...');
+            let accBtn = await userFrame.$('#bAceptar') || await userFrame.$('input[value*="Aceptar"]');
+            if (accBtn) await accBtn.click();
+            await sleep(3000);
+            userFrame = await getBanescoFrame('#txtUsuario');
+        }
+
         try {
             await userFrame.waitForSelector('#txtUsuario', { timeout: 10000 });
         } catch (e) {
