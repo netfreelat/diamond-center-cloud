@@ -6092,12 +6092,19 @@ const server = http.createServer(async (req, res) => {
                     dbUpdate.juegos = settings.juegos;
                 }
                 if (newSettings.metodos_pago !== undefined) {
-                    // Preservar auto_approve_enabled si ya estaba configurado en memoria
-                    if (settings.metodos_pago && settings.metodos_pago.pagomovil && settings.metodos_pago.pagomovil.auto_approve_enabled !== undefined) {
-                        if (!newSettings.metodos_pago.pagomovil) newSettings.metodos_pago.pagomovil = {};
-                        newSettings.metodos_pago.pagomovil.auto_approve_enabled = settings.metodos_pago.pagomovil.auto_approve_enabled;
-                    }
-                    dbUpdate.metodos_pago = newSettings.metodos_pago;
+                    dbUpdate.metodos_pago = {
+                        ...(settings.metodos_pago || {}),
+                        ...newSettings.metodos_pago,
+                        pagomovil: {
+                            ...((settings.metodos_pago && settings.metodos_pago.pagomovil) || {}),
+                            ...(newSettings.metodos_pago.pagomovil || {})
+                        },
+                        pagomovil_banesco: {
+                            ...((settings.metodos_pago && settings.metodos_pago.pagomovil_banesco) || {}),
+                            ...(newSettings.metodos_pago.pagomovil_banesco || {})
+                        }
+                    };
+                    settings.metodos_pago = dbUpdate.metodos_pago;
                 }
                 if (newSettings.whatsapp !== undefined) {
                     dbUpdate.whatsapp_config = newSettings.whatsapp;

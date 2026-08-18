@@ -3324,10 +3324,18 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                     username: document.getElementById('admin-user').value
                 },
                 metodos_pago: {
+                    ...(window._currentMetodosPago || allSettings.metodos_pago || {}),
                     pagomovil: {
                         banco: document.getElementById('pm-banco').value,
                         telefono: document.getElementById('pm-telefono').value,
-                        cedula: document.getElementById('pm-cedula').value
+                        cedula: document.getElementById('pm-cedula').value,
+                        auto_approve_enabled: (allSettings.metodos_pago?.pagomovil?.auto_approve_enabled) ?? false
+                    },
+                    pagomovil_banesco: {
+                        banco: document.getElementById('banesco-pm-banco')?.value || allSettings.metodos_pago?.pagomovil_banesco?.banco || 'Banesco Banco Universal (0134)',
+                        telefono: document.getElementById('banesco-pm-telefono')?.value || allSettings.metodos_pago?.pagomovil_banesco?.telefono || '',
+                        cedula: document.getElementById('banesco-pm-cedula')?.value || allSettings.metodos_pago?.pagomovil_banesco?.cedula || '',
+                        habilitado: true
                     },
                     binance: {
                         id: document.getElementById('bin-id').value,
