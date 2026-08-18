@@ -2211,6 +2211,12 @@ async function runAutoApprovalCycle() {
                     const bdvResult = await verifyBDVPayment(expectedBs, ref);
 
                     if (bdvResult.success) {
+                        // 🛡️ GUARDIA DE SEGURIDAD: Si la orden cambió de estado durante la consulta al banco, abortar
+                        if (!orders[ref] || orders[ref].status !== 'pending') {
+                            console.log(`[BDV-AUTO] 🛡️ Pedido ${ref} ya fue modificado manualmente (estado actual: ${orders[ref]?.status}). Abortando auto-aprobación.`);
+                            continue;
+                        }
+
                         console.log(`[BDV-AUTO] ✅ Pago BDV confirmado para ref ${ref} (${expectedBs} Bs). Auto-aprobando...`);
 
                         // Registrar como pago válido para que processPendingOrder lo use
@@ -2383,6 +2389,12 @@ async function runAutoApprovalCycle() {
                     const banescoResult = await verifyBanescoPayment(expectedBs, ref);
 
                     if (banescoResult.success) {
+                        // 🛡️ GUARDIA DE SEGURIDAD: Si la orden cambió de estado durante la consulta al banco, abortar
+                        if (!orders[ref] || orders[ref].status !== 'pending') {
+                            console.log(`[BANESCO-AUTO] 🛡️ Pedido ${ref} ya fue modificado manualmente (estado actual: ${orders[ref]?.status}). Abortando auto-aprobación.`);
+                            continue;
+                        }
+
                         console.log(`[BANESCO-AUTO] ✅ Pago Banesco confirmado para ref ${ref} (${expectedBs} Bs). Auto-aprobando...`);
 
                         const fullRef = banescoResult.movimiento?.referencia || ref;
