@@ -126,9 +126,9 @@ async function launchBrowser() {
             return; // ya está vivo
         } catch (e) {
             console.log('[BANESCO] 🔄 Navegador caído. Relanzando...');
+            try { await banescosBrowser.close(); } catch (_) {}
             banescosBrowser = null;
             banescoPage = null;
-            banescoSessionActive = false;
         }
     }
 
@@ -139,22 +139,31 @@ async function launchBrowser() {
     console.log('[BANESCO] 🚀 Lanzando navegador Puppeteer...');
     const executablePath = detectChromiumPath();
 
-    banescosBrowser = await puppeteer.launch({
-        headless: 'new',
-        userDataDir: SESSION_DIR,
-        executablePath,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--window-size=1280,900'
-        ],
-        defaultViewport: { width: 1280, height: 900 }
-    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            banescosBrowser = await puppeteer.launch({
+                headless: 'new',
+                userDataDir: SESSION_DIR,
+                executablePath,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
+                    '--window-size=1280,900'
+                ],
+                defaultViewport: { width: 1280, height: 900 }
+            });
+            break;
+        } catch (launchErr) {
+            console.warn(`[BANESCO] ⚠️ Intento ${attempt}/3 de lanzar navegador falló: ${launchErr.message}`);
+            if (attempt === 3) throw launchErr;
+            await sleep(2000);
+        }
+    }
 
     banescoPage = await banescosBrowser.newPage();
 
