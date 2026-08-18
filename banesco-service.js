@@ -493,16 +493,20 @@ async function answerSecurityQuestions() {
 // ============================================================
 async function handleFrequentDeviceScreen() {
     try {
+        await sleep(2000);
         let frame = banescoPage;
-        for (const f of banescoPage.frames()) {
-            try {
-                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
-                if (text.includes('equipo de uso frecuente') || (text.includes('clave') && text.includes('confirmo'))) {
-                    frame = f;
-                    break;
-                }
-            } catch (_) {}
-        }
+        try {
+            const frames = banescoPage.frames();
+            for (const f of frames) {
+                try {
+                    const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
+                    if (text.includes('equipo de uso frecuente') || (text.includes('clave') && text.includes('confirmo'))) {
+                        frame = f;
+                        break;
+                    }
+                } catch (_) {}
+            }
+        } catch (_) {}
 
         const isFrequentScreen = await frame.evaluate(() => {
             const body = document.body ? document.body.innerText.toLowerCase() : '';
