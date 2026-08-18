@@ -1047,13 +1047,12 @@ async function loadFromSupabase() {
             }
 
             // 🔐 Cargar estado y credenciales Banesco desde Supabase
-            if (settingsData.banesco_auto_approve !== undefined) {
-                banescoAutoApproveEnabled = !!settingsData.banesco_auto_approve;
-            } else if (settingsData.metodos_pago && settingsData.metodos_pago.banesco_auto_approve !== undefined) {
-                banescoAutoApproveEnabled = !!settingsData.metodos_pago.banesco_auto_approve;
-            } else if (settings.metodos_pago && settings.metodos_pago.pagomovil_banesco) {
-                banescoAutoApproveEnabled = !!settings.metodos_pago.pagomovil_banesco.auto_approve_enabled;
-            }
+            banescoAutoApproveEnabled = (
+                settingsData.banesco_auto_approve === true ||
+                (settingsData.metodos_pago && settingsData.metodos_pago.banesco_auto_approve === true) ||
+                (settingsData.metodos_pago && settingsData.metodos_pago.active_pagomovil_bank === 'banesco') ||
+                settings.active_pagomovil_bank === 'banesco'
+            );
 
             const banescoCreds = settingsData.banesco_credentials || (settingsData.metodos_pago && settingsData.metodos_pago.banesco_credentials);
             if (banescoCreds) {
