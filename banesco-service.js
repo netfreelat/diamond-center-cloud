@@ -244,6 +244,27 @@ async function banescoLogin(force = false) {
         }
         await sleep(2500);
 
+        // Detectar si alguna ventana o marco tiene el aviso de sesión previa activa
+        for (const f of banescoPage.frames()) {
+            try {
+                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
+                if (text.includes('conexión activa') || text.includes('conexion activa')) {
+                    console.log('[BANESCO] ⚠️ Detectada sesión previa activa. Presionando "Aceptar" para limpiar sesión...');
+                    let btn = await f.$('#bAceptar') || await f.$('input[value*="Aceptar"]');
+                    if (!btn) {
+                        const btns = await f.$$('input[type="submit"], input[type="button"], button');
+                        for (const b of btns) {
+                            const val = await f.evaluate(el => (el.value || el.innerText || '').toLowerCase(), b);
+                            if (val.includes('aceptar')) { btn = b; break; }
+                        }
+                    }
+                    if (btn) await btn.click();
+                    await sleep(3500);
+                    break;
+                }
+            } catch (_) {}
+        }
+
         // Verificar si ya tenemos sesión activa
         if (await checkIfBanescoLoggedIn()) {
             console.log('[BANESCO] ✅ Sesión activa desde cookie guardada.');
@@ -255,20 +276,6 @@ async function banescoLogin(force = false) {
         // ── PASO 1: Ingresar Usuario ──
         console.log('[BANESCO] 👤 Paso 1: Ingresando usuario...');
         let userFrame = await getBanescoFrame('#txtUsuario');
-
-        // Detectar si Banesco advierte sobre una sesión previa activa
-        const isAlreadyActive = await userFrame.evaluate(() => {
-            const txt = document.body ? document.body.innerText.toLowerCase() : '';
-            return txt.includes('conexión activa') || txt.includes('conexion activa');
-        });
-
-        if (isAlreadyActive) {
-            console.log('[BANESCO] ⚠️ Detectada sesión previa activa. Presionando "Aceptar" para continuar...');
-            let accBtn = await userFrame.$('#bAceptar') || await userFrame.$('input[value*="Aceptar"]');
-            if (accBtn) await accBtn.click();
-            await sleep(3000);
-            userFrame = await getBanescoFrame('#txtUsuario');
-        }
 
         try {
             await userFrame.waitForSelector('#txtUsuario', { timeout: 10000 });
