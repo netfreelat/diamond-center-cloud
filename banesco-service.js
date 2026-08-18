@@ -203,6 +203,34 @@ async function getBanescoFrame(selector, timeoutMs = 8000) {
 }
 
 // ============================================================
+// LIMPIAR AVISO DE SESIÓN PREVIA ACTIVA
+// ============================================================
+async function clearActiveSessionPopup() {
+    try {
+        for (const f of banescoPage.frames()) {
+            try {
+                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
+                if (text.includes('conexión activa') || text.includes('conexion activa')) {
+                    console.log('[BANESCO] ⚠️ Detectada sesión previa activa. Presionando "Aceptar" para limpiar sesión...');
+                    let btn = await f.$('#bAceptar') || await f.$('input[value*="Aceptar"]');
+                    if (!btn) {
+                        const btns = await f.$$('input[type="submit"], input[type="button"], button, a');
+                        for (const b of btns) {
+                            const val = await f.evaluate(el => (el.value || el.innerText || '').toLowerCase(), b);
+                            if (val.includes('aceptar')) { btn = b; break; }
+                        }
+                    }
+                    if (btn) await btn.click();
+                    await sleep(3500);
+                    return true;
+                }
+            } catch (_) {}
+        }
+    } catch (_) {}
+    return false;
+}
+
+// ============================================================
 // LOGIN EN BANESCO ONLINE (ASP.NET WebForms - 2 pasos + preguntas opcionales)
 // ============================================================
 async function banescoLogin(force = false) {
@@ -244,26 +272,8 @@ async function banescoLogin(force = false) {
         }
         await sleep(2500);
 
-        // Detectar si alguna ventana o marco tiene el aviso de sesión previa activa
-        for (const f of banescoPage.frames()) {
-            try {
-                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
-                if (text.includes('conexión activa') || text.includes('conexion activa')) {
-                    console.log('[BANESCO] ⚠️ Detectada sesión previa activa. Presionando "Aceptar" para limpiar sesión...');
-                    let btn = await f.$('#bAceptar') || await f.$('input[value*="Aceptar"]');
-                    if (!btn) {
-                        const btns = await f.$$('input[type="submit"], input[type="button"], button');
-                        for (const b of btns) {
-                            const val = await f.evaluate(el => (el.value || el.innerText || '').toLowerCase(), b);
-                            if (val.includes('aceptar')) { btn = b; break; }
-                        }
-                    }
-                    if (btn) await btn.click();
-                    await sleep(3500);
-                    break;
-                }
-            } catch (_) {}
-        }
+        // Limpiar aviso de sesión activa si aparece
+        await clearActiveSessionPopup();
 
         // Verificar si ya tenemos sesión activa
         if (await checkIfBanescoLoggedIn()) {
