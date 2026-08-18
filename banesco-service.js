@@ -196,7 +196,9 @@ async function getBanescoFrame(selector, timeoutMs = 8000) {
 // ============================================================
 // LOGIN EN BANESCO ONLINE (ASP.NET WebForms - 2 pasos + preguntas opcionales)
 // ============================================================
-async function banescoLogin() {
+async function banescoLogin(force = false) {
+    if (force) lastFailedLoginTime = 0;
+
     if (banescoLoginInProgress) {
         console.log('[BANESCO] ⏳ Login ya en progreso...');
         for (let i = 0; i < 30; i++) {
@@ -206,7 +208,7 @@ async function banescoLogin() {
         return banescoSessionActive;
     }
 
-    if (lastFailedLoginTime && (Date.now() - lastFailedLoginTime) < LOGIN_RETRY_INTERVAL_MS) {
+    if (!force && lastFailedLoginTime && (Date.now() - lastFailedLoginTime) < LOGIN_RETRY_INTERVAL_MS) {
         const remainingMin = Math.ceil((LOGIN_RETRY_INTERVAL_MS - (Date.now() - lastFailedLoginTime)) / 60000);
         console.log(`[BANESCO] ⏳ Login fallido recientemente. Reintentando en ~${remainingMin} min...`);
         return false;

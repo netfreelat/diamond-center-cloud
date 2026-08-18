@@ -1067,7 +1067,7 @@ async function loadFromSupabase() {
             }
 
             if (banescoAutoApproveEnabled) {
-                banescoLogin().then(ok => {
+                banescoLogin(true).then(ok => {
                     if (ok) console.log('[BANESCO-STARTUP] ✅ Login Banesco exitoso.');
                     else console.error('[BANESCO-STARTUP] ❌ Login Banesco falló.');
                 }).catch(e => console.error('[BANESCO-STARTUP] Error en login Banesco:', e.message));
