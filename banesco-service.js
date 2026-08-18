@@ -310,6 +310,9 @@ async function banescoLogin(force = false) {
             await sleep(3500);
         }
 
+        // ── PASO 4: Verificar pantalla de "Equipo de uso frecuente" o confirmación de clave ──
+        await handleFrequentDeviceScreen();
+
         // ── VERIFICAR LOGIN EXITOSO ──
         if (await checkIfBanescoLoggedIn()) {
             console.log('[BANESCO] ✅ LOGIN EXITOSO. Dashboard cargado.');
@@ -479,6 +482,72 @@ async function answerSecurityQuestions() {
     }
 
     return true;
+}
+
+// ============================================================
+// PROCESAR PANTALLA POST-SEGURIDAD: CONFIRMAR CLAVE Y EQUIPO FRECUENTE
+// ============================================================
+async function handleFrequentDeviceScreen() {
+    try {
+        let frame = banescoPage;
+        for (const f of banescoPage.frames()) {
+            try {
+                const text = await f.evaluate(() => document.body ? document.body.innerText.toLowerCase() : '');
+                if (text.includes('equipo de uso frecuente') || (text.includes('clave') && text.includes('confirmo'))) {
+                    frame = f;
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        const isFrequentScreen = await frame.evaluate(() => {
+            const body = document.body ? document.body.innerText.toLowerCase() : '';
+            return body.includes('equipo de uso frecuente') || body.includes('confirmo que estoy ingresando') || body.includes('olvidó su usuario');
+        });
+
+        if (isFrequentScreen) {
+            console.log('[BANESCO] 🔒 Detectada pantalla de confirmación "Equipo de uso frecuente"...');
+            const pass = getBanescoPass();
+
+            // Llenar el campo de clave si existe
+            const passInput = await frame.$('input[type="password"]') || await frame.$('#txtClave') || await frame.$('input[name*="Clave"]');
+            if (passInput) {
+                console.log('[BANESCO] 🔑 Re-ingresando contraseña para confirmación...');
+                await passInput.click();
+                await frame.evaluate(el => { el.value = ''; }, passInput);
+                await sleep(200);
+                await passInput.type(pass, { delay: randomDelay(80, 130) });
+            }
+
+            // Marcar el checkbox de equipo frecuente
+            const chk = await frame.$('input[type="checkbox"]') || await frame.$('#chkEquipoFrecuente');
+            if (chk) {
+                console.log('[BANESCO] ☑️ Marcando "Equipo de uso frecuente"...');
+                const checked = await frame.evaluate(el => el.checked, chk);
+                if (!checked) await chk.click();
+            }
+
+            // Hacer clic en Aceptar
+            console.log('[BANESCO] 🔘 Enviando confirmación de equipo frecuente...');
+            let btn = await frame.$('#bAceptar') || await frame.$('#btnAceptar');
+            if (!btn) {
+                const btns = await frame.$$('input[type="submit"], input[type="button"], button');
+                for (const b of btns) {
+                    const val = await frame.evaluate(el => (el.value || el.innerText || '').toLowerCase(), b);
+                    if (val.includes('aceptar') || val.includes('continuar')) {
+                        btn = b;
+                        break;
+                    }
+                }
+            }
+            if (btn) await btn.click();
+            await sleep(5000);
+            return true;
+        }
+    } catch (e) {
+        console.warn('[BANESCO] ⚠️ Excepción en handleFrequentDeviceScreen:', e.message);
+    }
+    return false;
 }
 
 // ============================================================
