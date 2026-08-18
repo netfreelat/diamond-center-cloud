@@ -486,14 +486,14 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 11%;">Fecha/Hora</th>
-                                <th style="width: 8%;">N° Control</th>
-                                <th style="width: 18%;">Monto y Referencia</th>
-                                <th style="width: 15%;">Jugador</th>
-                                <th style="width: 8%;">Paquete</th>
-                                <th style="width: 10%;">Estado</th>
-                                <th style="width: 15%;">ID Proveedor</th>
-                                <th style="width: 15%;">IP</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">Fecha/Hora</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">N° Control</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">Monto y Referencia</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">Jugador</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">Paquete</th>
+                                <th style="padding: 10px 8px; text-align: center; white-space: nowrap;">Estado</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">ID Proveedor</th>
+                                <th style="padding: 10px 8px; white-space: nowrap;">IP</th>
                             </tr>
                         </thead>
                         <tbody id="ventas-table-body">
@@ -662,7 +662,41 @@
                         </select>
 
                         <label style="font-size: 0.8rem; color: #ccc; display: block; margin-bottom: 5px;">Pega las Cuentas / Accesos (1 por línea):</label>
-                        <textarea id="streaming-accounts-input" rows="8" placeholder="Ejemplo:&#10;user1@gmail.com:clave123 (Perfil 1 - PIN 1234)&#10;user2@gmail.com:clave456 (Perfil 2)&#10;https://canva.com/join?code=XYZ" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-family: monospace; font-size: 0.8rem; margin-bottom: 15px;"></textarea>
+
+                        <!-- 🧙‍♂️ FORMULARIO RÁPIDO CON PALABRAS PRE-CREADAS (correo, clave, perfil, pin) -->
+                        <div style="background: rgba(157, 0, 255, 0.08); border: 1px solid rgba(157, 0, 255, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-size: 0.78rem; color: #d8b4fe; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-wand-magic-sparkles" style="color:#00F0FF"></i> Carga Rápida (Palabras Pre-creadas):</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px;">
+                                <div>
+                                    <label style="font-size: 0.68rem; color: #00FF94; font-weight: 800; display: block; margin-bottom: 2px;">correo:</label>
+                                    <input type="text" id="quick-stock-email" placeholder="ejemplo@gmail.com" style="width: 100%; padding: 7px 9px; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.68rem; color: #00FF94; font-weight: 800; display: block; margin-bottom: 2px;">clave:</label>
+                                    <input type="text" id="quick-stock-pass" placeholder="clave123" style="width: 100%; padding: 7px 9px; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.68rem; color: #00FF94; font-weight: 800; display: block; margin-bottom: 2px;">perfil:</label>
+                                    <input type="text" id="quick-stock-profile" placeholder="3" style="width: 100%; padding: 7px 9px; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.68rem; color: #00FF94; font-weight: 800; display: block; margin-bottom: 2px;">pin:</label>
+                                    <input type="text" id="quick-stock-pin" placeholder="5540" style="width: 100%; padding: 7px 9px; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; box-sizing: border-box;">
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" onclick="addQuickStreamingAccountToTextarea()" style="flex: 1; min-width: 170px; background: linear-gradient(135deg, rgba(0,240,255,0.25), rgba(157,0,255,0.25)); border: 1px solid #00F0FF; color: #00F0FF; padding: 8px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fa-solid fa-plus-circle"></i> Agregar a Lista de Abajo
+                                </button>
+                                <button type="button" onclick="insertPreFilledTemplateToTextarea()" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.2); color: #ccc; padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer;">
+                                    ⚡ Plantilla Vacía
+                                </button>
+                            </div>
+                        </div>
+
+                        <textarea id="streaming-accounts-input" rows="7" placeholder="Ejemplo:&#10;correo: p09709003@gmail.com | clave: gmail.com | perfil: 3 | pin: 5540&#10;correo: user2@gmail.com | clave: clave456 | perfil: 1" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-family: monospace; font-size: 0.8rem; margin-bottom: 15px;"></textarea>
 
                         <button onclick="addStreamingAccountsAdmin()" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #E50914, #9D00FF); cursor: pointer;">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Cuentas en Almacén
@@ -681,6 +715,57 @@
                             <p style="opacity: 0.5; text-align: center;">Cargando inventario...</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 🍿 HISTORIAL DE SERVICIOS STREAMING DESPACHADOS (ENTREGAS) -->
+            <div class="card" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="font-size: 1.05rem; color: #00F0FF; margin: 0;">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Historial de Servicios Streaming Despachados
+                        </h3>
+                        <p style="color: var(--text-gray); font-size: 0.82rem; margin: 4px 0 0 0;">
+                            Control de todas las cuentas y licencias de streaming entregadas a los clientes con sus credenciales y fechas de vencimiento.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="streaming-history-search" oninput="renderStreamingHistoryAdmin()" placeholder="Buscar cliente, correo o ref..." style="padding: 7px 12px; font-size: 0.8rem; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 220px;">
+                        <button onclick="loadAllTransactions(); setTimeout(renderStreamingHistoryAdmin, 500);" class="btn-action" style="background: rgba(0,240,255,0.15); border: 1px solid #00F0FF; color: #00F0FF; padding: 7px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 800; cursor: pointer;">
+                            <i class="fa-solid fa-rotate-right"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Indicadores Rápidos -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px;">
+                    <div style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px; padding: 10px; text-align: center;">
+                        <span style="font-size: 0.7rem; color: #aaa; text-transform: uppercase; font-weight: 700;">Total Ordenes Streaming</span>
+                        <div id="streaming-total-delivered" style="font-size: 1.4rem; font-weight: 900; color: #00F0FF; margin-top: 2px;">0</div>
+                    </div>
+                    <div style="background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.2); border-radius: 10px; padding: 10px; text-align: center;">
+                        <span style="font-size: 0.7rem; color: #aaa; text-transform: uppercase; font-weight: 700;">Aprobados / Entregados</span>
+                        <div id="streaming-approved-delivered" style="font-size: 1.4rem; font-weight: 900; color: #25D366; margin-top: 2px;">0</div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto; max-height: 450px; overflow-y: auto;">
+                    <table class="data-table" style="width: 100%; font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th>Fecha / Vencimiento</th>
+                                <th>Servicio / Plan</th>
+                                <th>Cliente / WA</th>
+                                <th>Precio</th>
+                                <th>Credenciales Entregadas</th>
+                                <th>Estado</th>
+                                <th style="text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="streaming-history-tbody">
+                            <tr><td colspan="7" style="text-align:center; opacity:0.5; padding: 20px;">Cargando historial de streaming...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -719,6 +804,15 @@
                 <div class="form-group">
                     <label>Barra Informativa (Marquesina):</label>
                     <textarea id="setting-marquee" placeholder="Escribe el mensaje que verán los usuarios..."></textarea>
+                </div>
+
+                <div class="form-group" style="background: rgba(255, 255, 255, 0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); margin-top: 15px;">
+                    <label style="color: var(--secondary); font-weight: 700; font-size: 1rem;"><i class="fa-solid fa-robot"></i> Destino del Bot de Recargas de Free Fire (Jadh.shop):</label>
+                    <p style="color: var(--text-gray); margin-bottom: 10px; font-size: 0.85rem;">Selecciona la opción de Jadh.shop a la cual el bot enviará automáticamente las recargas:</p>
+                    <select id="setting-freefire-provider" style="padding: 12px 15px; font-size: 0.95rem; color: #fff; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; width: 100%; cursor: pointer; font-weight: 600;">
+                        <option value="directas">🔥 Freefire Recargas Directas (https://jadh.shop/producto/freefire-recargas-directas)</option>
+                        <option value="auto">⚡ Freefire Auto (https://jadh.shop/producto/freefire-auto)</option>
+                    </select>
                 </div>
 
                 <div class="form-group" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(157, 0, 255, 0.08)); border: 1px solid rgba(255, 215, 0, 0.3); padding: 15px; border-radius: 12px; margin-top: 15px;">
@@ -909,6 +1003,256 @@
                 <button onclick="loadBDVStatus(true)" class="btn-main" style="background: rgba(157,0,255,0.1); border: 1px solid var(--primary); color: var(--primary); box-shadow: none; font-size: 0.85rem; padding: 10px 20px;">
                     <i class="fa-solid fa-rotate"></i> Actualizar Estado BDV
                 </button>
+            </div>
+
+
+            <!-- 🔐 BDV CREDENCIALES -->
+            <div class="action-card" id="bdv-credentials-card" style="margin-top: 20px; border: 1px solid rgba(0, 240, 255, 0.2); background: linear-gradient(135deg, rgba(0, 240, 255, 0.04), rgba(157, 0, 255, 0.04));">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-key" style="color: #00f0ff;"></i>
+                    Credenciales BDV en Línea
+                </h2>
+                <p style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 20px;">
+                    Cambia el usuario y contraseña que usa el bot para verificar pagos automáticamente en
+                    <strong style="color: #00f0ff;">bdvenlinea.banvenez.com</strong>. Los cambios se aplican de inmediato sin reiniciar el servidor.
+                </p>
+
+                <!-- Formulario -->
+                <div style="display: grid; gap: 16px;">
+
+                    <!-- Usuario -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-gray);">
+                            <i class="fa-solid fa-user" style="color: #00f0ff; width: 14px;"></i> Usuario BDV
+                        </label>
+                        <input type="text" id="bdv-cred-user" placeholder="Ej: Sneyder21"
+                            style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px; color: #fff; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                    </div>
+
+                    <!-- Contraseña -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-gray);">
+                            <i class="fa-solid fa-lock" style="color: #00f0ff; width: 14px;"></i> Contraseña BDV
+                        </label>
+                        <div style="position: relative;">
+                            <input type="password" id="bdv-cred-pass" placeholder="Nueva contraseña"
+                                style="width: 100%; padding: 12px 48px 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px; color: #fff; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                                onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                            <button onclick="toggleBDVPassVisibility()" id="bdv-pass-eye" title="Mostrar/ocultar contraseña"
+                                style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-gray); cursor: pointer; font-size: 1rem; padding: 4px; display: flex; align-items: center;">
+                                <i class="fa-solid fa-eye" id="bdv-pass-eye-icon"></i>
+                            </button>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 6px; margin-bottom: 0;">
+                            ⚠️ Deja en blanco para no cambiar la contraseña actual.
+                        </p>
+                    </div>
+
+                    <!-- Número de Cuenta -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-gray);">
+                            <i class="fa-solid fa-building-columns" style="color: #00f0ff; width: 14px;"></i> N° de Cuenta BDV (para recibir pagos)
+                        </label>
+                        <input type="text" id="bdv-cred-cuenta" placeholder="Ej: 01020350340000557061"
+                            style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px; color: #fff; font-size: 0.95rem; font-family: 'Courier New', monospace; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                        <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 6px; margin-bottom: 0;">
+                            Número de 20 dígitos. Deja en blanco para conservar el actual.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Botón guardar -->
+                <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+                    <button onclick="saveBDVCredentials()" id="bdv-cred-save-btn" class="btn-main"
+                        style="background: linear-gradient(135deg, rgba(0,240,255,0.2), rgba(157,0,255,0.2)); border: 1px solid rgba(0,240,255,0.5); color: #00f0ff; box-shadow: 0 4px 15px rgba(0,240,255,0.15); width: auto; padding: 12px 28px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar y Reconectar Bot BDV
+                    </button>
+                    <div id="bdv-cred-feedback" style="display: none; font-size: 0.85rem; padding: 10px 15px; border-radius: 8px; max-width: 500px;"></div>
+                </div>
+            </div>
+
+
+            <!-- 🏦 SELECTOR DE BANCO ACTIVO PAGO MÓVIL -->
+            <div class="action-card" id="bank-selector-card" style="margin-top: 20px; border: 1px solid rgba(255,193,7,0.3); background: linear-gradient(135deg, rgba(255,193,7,0.04), rgba(0,0,0,0));">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-code-branch" style="color: #FFC107;"></i>
+                    Banco Activo para Pago Móvil
+                </h2>
+                <p style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 20px;">
+                    Elige qué banco verán los usuarios al pagar por Pago Móvil. Solo aparecerá el banco que selecciones aquí.
+                </p>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <!-- BDV -->
+                    <label id="bank-opt-bdv" onclick="setActivePagomovilBank('bdv')" style="flex: 1; min-width: 160px; cursor: pointer; border: 2px solid rgba(157,0,255,0.4); border-radius: 16px; padding: 18px 20px; background: rgba(157,0,255,0.06); transition: all 0.25s; display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #9D00FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <div id="bank-dot-bdv" style="width: 12px; height: 12px; border-radius: 50%; background: #9D00FF; display: none;"></div>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #fff; font-size: 0.95rem;">🏦 BDV</div>
+                            <div style="font-size: 0.78rem; color: var(--text-gray);">Banco de Venezuela</div>
+                        </div>
+                    </label>
+                    <!-- BANESCO -->
+                    <label id="bank-opt-banesco" onclick="setActivePagomovilBank('banesco')" style="flex: 1; min-width: 160px; cursor: pointer; border: 2px solid rgba(0,240,255,0.2); border-radius: 16px; padding: 18px 20px; background: rgba(0,0,0,0.2); transition: all 0.25s; display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #00f0ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <div id="bank-dot-banesco" style="width: 12px; height: 12px; border-radius: 50%; background: #00f0ff; display: none;"></div>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #fff; font-size: 0.95rem;">🏦 Banesco</div>
+                            <div style="font-size: 0.78rem; color: var(--text-gray);">Banesco Banco Universal</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="bank-selector-feedback" style="display:none; margin-top: 14px; font-size: 0.85rem; padding: 10px 15px; border-radius: 8px;"></div>
+            </div>
+
+            <!-- 📋 DATOS BANESCO PARA CLIENTES -->
+            <div class="action-card" id="banesco-payment-data-card" style="margin-top: 20px; border: 1px solid rgba(0,240,255,0.2); background: linear-gradient(135deg, rgba(0,240,255,0.03), rgba(0,0,0,0)); display:none;">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-mobile-screen-button" style="color: #00f0ff;"></i>
+                    Datos de Pago Móvil Banesco (para clientes)
+                </h2>
+                <p style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 20px;">
+                    Estos datos aparecerán en la pantalla de pago del cliente cuando Banesco esté activo.
+                </p>
+                <div style="display: grid; gap: 14px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:0.85rem; color:var(--text-gray); margin-bottom:6px; display:block;">
+                            <i class="fa-solid fa-building-columns" style="color:#00f0ff; width:14px;"></i> Banco
+                        </label>
+                        <input type="text" id="banesco-pm-banco" placeholder="Ej: Banesco Banco Universal (0134)"
+                            style="width:100%; padding:12px 16px; background:rgba(0,0,0,0.4); border:1px solid rgba(0,240,255,0.2); border-radius:10px; color:#fff; font-size:0.95rem; font-family:inherit; outline:none; box-sizing:border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:0.85rem; color:var(--text-gray); margin-bottom:6px; display:block;">
+                            <i class="fa-solid fa-phone" style="color:#00f0ff; width:14px;"></i> Teléfono Pago Móvil
+                        </label>
+                        <input type="text" id="banesco-pm-telefono" placeholder="Ej: 04121234567"
+                            style="width:100%; padding:12px 16px; background:rgba(0,0,0,0.4); border:1px solid rgba(0,240,255,0.2); border-radius:10px; color:#fff; font-size:0.95rem; font-family:inherit; outline:none; box-sizing:border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:0.85rem; color:var(--text-gray); margin-bottom:6px; display:block;">
+                            <i class="fa-solid fa-id-card" style="color:#00f0ff; width:14px;"></i> Cédula / RIF
+                        </label>
+                        <input type="text" id="banesco-pm-cedula" placeholder="Ej: V-12345678"
+                            style="width:100%; padding:12px 16px; background:rgba(0,0,0,0.4); border:1px solid rgba(0,240,255,0.2); border-radius:10px; color:#fff; font-size:0.95rem; font-family:inherit; outline:none; box-sizing:border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                    </div>
+                </div>
+                <div style="margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                    <button onclick="saveBanescoPaymentData()" class="btn-main"
+                        style="background:linear-gradient(135deg,rgba(0,240,255,0.2),rgba(0,0,0,0.2)); border:1px solid rgba(0,240,255,0.5); color:#00f0ff; box-shadow:0 4px 15px rgba(0,240,255,0.15); width:auto; padding:12px 28px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar Datos Banesco
+                    </button>
+                    <div id="banesco-pm-feedback" style="display:none; font-size:0.85rem; padding:10px 15px; border-radius:8px;"></div>
+                </div>
+            </div>
+
+
+            <!-- 🏦 BANESCO AUTO-PAGO TOGGLE -->
+            <div class="action-card" style="margin-top: 20px; border: 1px solid rgba(0, 240, 255, 0.25);">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-building-columns" style="color: #00f0ff;"></i>
+                    Auto-Aprobación Banesco
+                </h2>
+                <p style="color: var(--text-gray); margin-bottom: 20px; font-size: 0.9rem;">
+                    Activa para que el bot verifique automáticamente los pagos por Pago Móvil en Banesco Online cada 60 segundos.
+                    <br><strong style="color: #FFC107;">⚠️ Los pagos manuales seguirán funcionando igual, independientemente de este toggle.</strong>
+                </p>
+                <!-- Estado actual -->
+                <div style="display: flex; align-items: center; gap: 20px; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 4px;">Estado del bot Banesco</div>
+                        <div id="banesco-toggle-status" style="font-size: 1.1rem; font-weight: 800; color: #ff4b2b;">🔴 DESACTIVADO</div>
+                        <div id="banesco-session-info" style="font-size: 0.75rem; color: var(--text-gray); margin-top: 4px;">Sesión: Inactiva</div>
+                    </div>
+                    <!-- Toggle Switch estilo iOS -->
+                    <label style="position: relative; display: inline-block; width: 64px; height: 34px; cursor: pointer;">
+                        <input type="checkbox" id="banesco-auto-toggle" onchange="toggleBanescoAuto(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; border-radius: 34px; transition: 0.3s;" id="banesco-toggle-bg">
+                            <span style="position: absolute; height: 26px; width: 26px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s; transform: translateX(0px);" id="banesco-toggle-knob"></span>
+                        </span>
+                    </label>
+                </div>
+                <div id="banesco-login-status" style="display: none; padding: 12px; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.3); border-radius: 10px; font-size: 0.85rem; margin-bottom: 15px;">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="color: #00f0ff; margin-right: 6px;"></i>
+                    <span>Iniciando sesión en Banesco Online... (puede tardar ~20 seg)</span>
+                </div>
+                <button onclick="loadBanescoStatus(true)" class="btn-main" style="background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.4); color: #00f0ff; box-shadow: none; font-size: 0.85rem; padding: 10px 20px;">
+                    <i class="fa-solid fa-rotate"></i> Actualizar Estado Banesco
+                </button>
+            </div>
+
+
+            <!-- 🔐 BANESCO CREDENCIALES -->
+            <div class="action-card" id="banesco-credentials-card" style="margin-top: 20px; border: 1px solid rgba(0, 240, 255, 0.2); background: linear-gradient(135deg, rgba(0,240,255,0.04), rgba(0,0,0,0));">
+                <h2 style="justify-content: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-key" style="color: #00f0ff;"></i>
+                    Credenciales Banesco Online
+                </h2>
+                <p style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 20px;">
+                    Configura el usuario, contraseña y respuestas de seguridad que usa el bot en
+                    <strong style="color: #00f0ff;">banesconline.com</strong>.
+                </p>
+                <div style="display: grid; gap: 16px;">
+                    <!-- Usuario -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-gray);">
+                            <i class="fa-solid fa-user" style="color: #00f0ff; width: 14px;"></i> Usuario Banesco
+                        </label>
+                        <input type="text" id="banesco-cred-user" placeholder="Ej: Sneyder198"
+                            style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,240,255,0.2); border-radius: 10px; color: #fff; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                    </div>
+                    <!-- Contraseña -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-gray);">
+                            <i class="fa-solid fa-lock" style="color: #00f0ff; width: 14px;"></i> Contraseña Banesco
+                        </label>
+                        <input type="password" id="banesco-cred-pass" placeholder="Nueva contraseña"
+                            style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,240,255,0.2); border-radius: 10px; color: #fff; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='rgba(0,240,255,0.6)'" onblur="this.style.borderColor='rgba(0,240,255,0.2)'">
+                        <p style="font-size: 0.75rem; color: var(--text-gray); margin-top: 6px; margin-bottom: 0;">⚠️ Deja en blanco para no cambiar la contraseña actual.</p>
+                    </div>
+                    <!-- Preguntas de Seguridad -->
+                    <div style="padding: 14px; background: rgba(255,193,7,0.06); border: 1px solid rgba(255,193,7,0.2); border-radius: 12px;">
+                        <div style="font-size: 0.82rem; color: #FFC107; font-weight: 600; margin-bottom: 12px;">🔐 Respuestas de Seguridad (si el banco las pide)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 0.78rem; color: var(--text-gray);">¿Nombre de su perro?</label>
+                                <input type="text" id="banesco-sec-perro" placeholder="Ej: Clifor"
+                                    style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,193,7,0.2); border-radius: 8px; color: #fff; font-size: 0.88rem; font-family: inherit; outline: none; box-sizing: border-box; margin-top: 4px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; color: var(--text-gray);">¿Marca de su carro?</label>
+                                <input type="text" id="banesco-sec-carro" placeholder="Ej: nova"
+                                    style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,193,7,0.2); border-radius: 8px; color: #fff; font-size: 0.88rem; font-family: inherit; outline: none; box-sizing: border-box; margin-top: 4px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; color: var(--text-gray);">¿Pasatiempo?</label>
+                                <input type="text" id="banesco-sec-pasatiempo" placeholder="Ej: futbol"
+                                    style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,193,7,0.2); border-radius: 8px; color: #fff; font-size: 0.88rem; font-family: inherit; outline: none; box-sizing: border-box; margin-top: 4px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; color: var(--text-gray);">¿Apellido de soltera de su madre?</label>
+                                <input type="text" id="banesco-sec-apellido" placeholder="Ej: martinez"
+                                    style="width: 100%; padding: 9px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,193,7,0.2); border-radius: 8px; color: #fff; font-size: 0.88rem; font-family: inherit; outline: none; box-sizing: border-box; margin-top: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Botón guardar -->
+                <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+                    <button onclick="saveBanescoCredentials()" id="banesco-cred-save-btn" class="btn-main"
+                        style="background: linear-gradient(135deg, rgba(0,240,255,0.2), rgba(0,0,0,0.2)); border: 1px solid rgba(0,240,255,0.5); color: #00f0ff; box-shadow: 0 4px 15px rgba(0,240,255,0.15); width: auto; padding: 12px 28px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar y Reconectar Bot Banesco
+                    </button>
+                    <div id="banesco-cred-feedback" style="display: none; font-size: 0.85rem; padding: 10px 15px; border-radius: 8px; max-width: 500px;"></div>
+                </div>
             </div>
 
 
@@ -1357,7 +1701,7 @@
             if (tabId === 'historial-ventas') loadAllTransactions();
             if (tabId === 'pines') loadPinStats();
             if (tabId === 'usuarios') loadUsers();
-            if (tabId === 'wa-bot-tab') { checkWaStatus(); loadBDVStatus(); }
+            if (tabId === 'wa-bot-tab') { checkWaStatus(); loadBDVStatus(); loadBDVCredentials(); }
             if (tabId === 'settings') loadSettings();
             if (tabId === 'juegos-tab') loadJuegos();
             if (tabId === 'referidos-tab') loadReferidos();
@@ -1742,6 +2086,49 @@
         }
         // ───────────────────────────────────────────────────────────────────
 
+        function filterVentasByStatus(status) {
+            const input = document.getElementById('ventas-search');
+            if (input) {
+                input.value = status;
+                filterVentas();
+            }
+        }
+
+        async function showRuletaWinnersModal() {
+            Swal.fire({
+                title: 'Cargando historial de ruleta y premios...',
+                didOpen: () => Swal.showLoading(),
+                background: 'rgba(20,10,35,0.98)',
+                color: '#fff'
+            });
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/ruleta-history`);
+                const data = await res.json();
+                let html = '<div style="text-align:left; max-height:350px; overflow-y:auto;">';
+                if (data.history && data.history.length > 0) {
+                    html += '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;"><thead><tr style="color:#00F0FF; border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:6px; text-align:left;">Fecha</th><th style="padding:6px; text-align:left;">Cliente</th><th style="padding:6px; text-align:left;">UID</th><th style="padding:6px; text-align:right;">Premio</th></tr></thead><tbody>';
+                    data.history.forEach(item => {
+                        const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString('es-VE') : 'Reciente';
+                        html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:6px; color:#aaa;">${dateStr}</td><td style="padding:6px; font-weight:700; color:#fff;">${item.name || 'Cliente'}</td><td style="padding:6px; color:var(--secondary);">${item.uid || '-'}</td><td style="padding:6px; text-align:right; color:#00FF94; font-weight:800;">+$${item.prize_usdt} USDT</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<p style="text-align:center; color:#aaa; padding:20px;">No hay historial de premios de ruleta aún.</p>';
+                }
+                html += '</div>';
+                Swal.fire({
+                    title: '<span style="font-family:Montserrat; font-weight:800;">🎰 Historial de Premios y Ruleta</span>',
+                    html: html,
+                    background: 'rgba(20,10,35,0.98)',
+                    color: '#fff',
+                    confirmButtonText: 'Cerrar',
+                    confirmButtonColor: '#9D00FF'
+                });
+            } catch(e) {
+                Swal.fire('Error', 'No se pudo cargar el historial de ruleta.', 'error');
+            }
+        }
+
         async function loadDashboardStats() {
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/stats`);
@@ -1750,31 +2137,35 @@
                 updatePendingBadge(stats.pending);
                 
                 document.getElementById('dashboard-stats').innerHTML = `
-                    <div class="stat-card ${stats.pending > 0 ? 'alert' : ''}">
+                    <div class="stat-card ${stats.pending > 0 ? 'alert' : ''}" style="cursor: pointer;" onclick="showTab('historial-ventas', document.querySelectorAll('.tab-btn')[1]); filterVentasByStatus('pending');" title="Ver Pedidos Pendientes">
                         <span class="label"><i class="fa-solid fa-clock"></i> P. PENDIENTES</span>
                         <span class="value" style="color:#FFC107">${stats.pending}</span>
+                        <div style="font-size:0.62rem; color:rgba(255,193,7,0.7); margin-top:4px; font-weight:700;">Clic para filtrar 🔍</div>
                     </div>
-                    <div class="stat-card success">
+                    <div class="stat-card success" style="cursor: pointer;" onclick="showTab('historial-ventas', document.querySelectorAll('.tab-btn')[1]); filterVentasByStatus('approved');" title="Ver Pedidos Aprobados">
                         <span class="label"><i class="fa-solid fa-check-double"></i> P. APROBADOS</span>
                         <span class="value">${stats.approved}</span>
+                        <div style="font-size:0.62rem; color:rgba(0,255,148,0.7); margin-top:4px; font-weight:700;">Clic para filtrar 🔍</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor: pointer;" onclick="showTab('usuarios', document.querySelectorAll('.tab-btn')[2]);" title="Ver Usuarios Registrados">
                         <span class="label"><i class="fa-solid fa-user-friends"></i> USUARIOS</span>
                         <span class="value" style="color:var(--primary)">${stats.total_users}</span>
+                        <div style="font-size:0.62rem; color:rgba(157,0,255,0.7); margin-top:4px; font-weight:700;">Ver lista 👥</div>
                     </div>
-                    <div class="stat-card" style="cursor: pointer;" onclick="showPricesModal()">
+                    <div class="stat-card" style="cursor: pointer;" onclick="showPricesModal()" title="Ver Lista de Precios">
                         <span class="label"><i class="fa-solid fa-tags"></i> PRECIOS EN BS</span>
                         <span class="value" style="color:#00FF94; font-size:1.6rem;">VER LISTA</span>
+                        <div style="font-size:0.62rem; color:rgba(0,255,148,0.7); margin-top:4px; font-weight:700;">Clic para consultar 📋</div>
                     </div>
-                    <div class="stat-card" style="border-color:rgba(255,215,0,0.35); background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,165,0,0.03));">
+                    <div class="stat-card" style="cursor: pointer; border-color:rgba(255,215,0,0.35); background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,165,0,0.03));" onclick="showTab('referidos-tab', document.querySelectorAll('.tab-btn')[3]);" title="Ver Panel de Referidos">
                         <span class="label" style="color:#FFD700;"><i class="fa-solid fa-share-nodes"></i> REFERIDOS PAGADOS</span>
                         <span class="value" style="color:#FFD700; font-size:1.8rem;">$${(stats.referral_usdt || 0).toFixed(2)}</span>
-                        <div style="font-size:0.62rem; color:rgba(255,215,0,0.6); margin-top:4px; font-weight:700;">USDT en comisiones</div>
+                        <div style="font-size:0.62rem; color:rgba(255,215,0,0.6); margin-top:4px; font-weight:700;">USDT en comisiones &bull; Clic para ver 👥</div>
                     </div>
-                    <div class="stat-card" style="border-color:rgba(157,0,255,0.4); background:linear-gradient(135deg,rgba(157,0,255,0.1),rgba(0,240,255,0.05));">
+                    <div class="stat-card" style="cursor: pointer; border-color:rgba(157,0,255,0.4); background:linear-gradient(135deg,rgba(157,0,255,0.1),rgba(0,240,255,0.05));" onclick="showRuletaWinnersModal();" title="Ver Historial de Ruleta">
                         <span class="label" style="color:#00F0FF;"><i class="fa-solid fa-dice"></i> RULETA PAGADA</span>
                         <span class="value" style="background:linear-gradient(135deg,#9D00FF,#00F0FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:1.8rem;">$${(stats.roulette_usdt || 0).toFixed(2)}</span>
-                        <div style="font-size:0.62rem; color:rgba(0,240,255,0.6); margin-top:4px; font-weight:700;">USDT en premios</div>
+                        <div style="font-size:0.62rem; color:rgba(0,240,255,0.6); margin-top:4px; font-weight:700;">USDT en premios &bull; Clic para ver 🎰</div>
                     </div>
                 `;
                 updateSalesChart();
@@ -2096,6 +2487,8 @@
                 const result = await res.json();
                 if (result.success) {
                     allTransactions = result.orders;
+                    window._allTransactions = result.orders; // Expuesto para viewOrderTicket()
+                    if (typeof renderStreamingHistoryAdmin === 'function') renderStreamingHistoryAdmin();
                     
                     // Conservar el filtro de búsqueda si el administrador ha escrito una consulta
                     const queryInput = document.getElementById('ventas-search');
@@ -2151,16 +2544,15 @@
                     <td style="text-align: center; vertical-align: middle;">
                         <span class="status-badge status-${order.status}" style="font-size: 0.7rem; padding: 2px 6px;" title="${order.reason || ''}">${order.status}</span>
                         ${order.status === 'rejected' && order.reason ? `<br><small style="color:#ff4b2b; font-size:0.6rem; display:block; margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${order.reason}">${order.reason}</small>` : ''}
-                        ${order.status === 'pending' ? `
-                            <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center;">
+                        <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            ${order.status === 'pending' ? `
                                 <button onclick="approveOrder('${order.ref}')" class="btn-action btn-approve" title="Aprobar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-check"></i></button>
                                 <button onclick="rejectOrder('${order.ref}')" class="btn-action btn-reject" title="Rechazar" style="padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; margin-right: 0; cursor: pointer;"><i class="fa-solid fa-times"></i></button>
-                            </div>
-                        ` : (order.status === 'approved' || order.status === 'failed' || order.status === 'rejected') ? `
-                            <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: center;">
+                            ` : (order.status === 'approved' || order.status === 'failed' || order.status === 'rejected') ? `
                                 <button onclick="retryRecharge('${order.ref}', '${order.uid}', '${order.pack}')" class="btn-action" title="Reintentar Recarga" style="background:rgba(255,150,0,0.15); border:1px solid rgba(255,150,0,0.4); color:#FF9600; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-rotate-right"></i></button>
-                            </div>
-                        ` : ''}
+                            ` : ''}
+                            <button onclick="viewOrderTicket('${order.ref}')" class="btn-action" title="Ver Ticket" style="background:rgba(0,240,255,0.12); border:1px solid rgba(0,240,255,0.4); color:#00F0FF; padding: 2px 5px; font-size: 0.65rem; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-receipt"></i></button>
+                        </div>
                     </td>
                     <td>
                         <div style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.pin || ''}">
@@ -2187,19 +2579,36 @@
             renderAllTransactions(filtered);
         }
 
-        async function approveOrder(ref) {
+        async function approveOrder(ref, force = false) {
             Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
                 const res = await adminFetch(`${SERVER_URL}/admin/aprobar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ref })
+                    body: JSON.stringify({ ref, force })
                 });
                 const result = await res.json();
                 if (result.success) {
                     new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3').play().catch(e => {});
                     Swal.fire('¡Éxito!', result.message || 'Pedido aprobado.', 'success');
                     loadAllTransactions();
+                } else if (result.isDuplicateWarning) {
+                    Swal.fire({
+                        title: '⚠️ Advertencia de Pago Duplicado',
+                        text: result.message,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, Aprobar de todas formas',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        background: 'rgba(20, 10, 35, 0.98)',
+                        color: '#fff'
+                    }).then((confirmRes) => {
+                        if (confirmRes.isConfirmed) {
+                            approveOrder(ref, true);
+                        }
+                    });
                 } else {
                     Swal.fire('Error', result.message, 'error');
                 }
@@ -2233,6 +2642,162 @@
                 new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
                 loadAllTransactions();
             } catch (e) { console.error(e); }
+        }
+
+        // 🎫 VER TICKET DE COMPRA — Para enviar por WhatsApp al cliente
+        function viewOrderTicket(ref) {
+            // Buscar la orden en la lista cargada
+            const allRows = window._allTransactions || [];
+            const order = allRows.find(o => o.ref === ref);
+            if (!order) {
+                Swal.fire('Error', 'No se encontró el pedido con esa referencia.', 'error');
+                return;
+            }
+
+            const statusLabel = order.status === 'approved' ? '✅ APROBADO' : order.status === 'rejected' ? '❌ RECHAZADO' : '⏳ PENDIENTE';
+            const statusColor = order.status === 'approved' ? '#00FF94' : order.status === 'rejected' ? '#FF3D71' : '#FFD93D';
+            const isStreaming = (order.juego || '').toLowerCase() === 'streaming';
+            const gameLabel = (order.juego || 'freefire').toUpperCase();
+
+            // Fechas
+            const purchaseDate = order.timestamp ? new Date(order.timestamp) : new Date();
+            const fechaCompraStr = purchaseDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' });
+            const expireDate = new Date(purchaseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const dayE = String(expireDate.getDate()).padStart(2, '0');
+            const monthE = String(expireDate.getMonth() + 1).padStart(2, '0');
+            const yearE = expireDate.getFullYear();
+            const formattedExpireDate = `${dayE}-${monthE}-${yearE}`;
+
+            let packType = order.pack || 'Perfil';
+            if ((order.pack || '').toLowerCase().includes('perfil')) packType = 'Perfil';
+            else if ((order.pack || '').toLowerCase().includes('pantalla')) packType = 'Pantalla';
+            else if ((order.pack || '').toLowerCase().includes('cuenta')) packType = 'Cuenta Completa';
+
+            let credsHtml = '';
+            let rawCredsText = '';
+            if (order.pin && isStreaming && order.status === 'approved') {
+                const pinLines = order.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
+                rawCredsText = pinLines.join('\n');
+                credsHtml = pinLines.map(line => {
+                    if (line.includes(':')) {
+                        const idx = line.indexOf(':');
+                        const k = line.substring(0, idx).trim();
+                        const v = line.substring(idx + 1).trim();
+                        return `<div style="display:flex; justify-content:space-between; font-size:0.84rem;"><span style="color:#aaa;">${k}:</span><strong style="color:#00FF94; font-family:monospace; word-break:break-all;">${v}</strong></div>`;
+                    }
+                    return `<div style="font-family:monospace; font-size:0.84rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:4px 8px; margin-bottom:4px; text-align:left;">${line}</div>`;
+                }).join('');
+            }
+
+            // Texto listo para enviar por WhatsApp
+            const waText = isStreaming ? `🧾 *COMPROBANTE DE PAGO — STREAMING RECARGASNEY*
+━━━━━━━━━━━━━━━━━━━━
+🍿 *Tipo de paquete:* ${packType}
+${rawCredsText ? `${rawCredsText}\n` : ''}📅 *Plan:* 30 días
+⏳ *Fecha Vencimiento:* ${formattedExpireDate}
+Nº Control: #${order.control_num || order.ref}
+
+⚠️ *Aviso Importante:*
+No está permitido modificar la cuenta, perfil, PIN, correo o contraseña. Úsalo únicamente en un dispositivo a la vez. El incumplimiento de estas normas conllevará a la pérdida de la garantía del servicio sin previo aviso.
+━━━━━━━━━━━━━━━━━━━━
+✅ Gracias por tu compra en RecargasNey.com` : `🧾 *TICKET DE COMPRA — RECARGASNEY*
+━━━━━━━━━━━━━━━━━━━━
+📦 *Servicio:* ${gameLabel}
+🎮 *Plan:* ${order.pack}
+👤 *Cliente:* ${order.name || '-'} (${order.uid})
+💰 *Precio:* ${order.price || 'N/A'}
+🔖 *Ref. Pago:* ${order.ref}
+📋 *Control:* ${order.control_num || 'N/A'}
+📅 *Fecha:* ${fechaCompraStr}
+${statusLabel}
+${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
+━━━━━━━━━━━━━━━━━━━━
+✅ Gracias por tu compra en RecargasNey.com`;
+
+            const waUrl = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+            const streamingCardHtml = `
+                <div style="text-align:center; padding:0 4px">
+                    <div style="background: rgba(37,211,102,0.15); border: 2px solid #25D366; color: #25D366; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 10px; box-shadow: 0 0 20px rgba(37,211,102,0.3);">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2 style="color: #25D366; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; text-align: center; margin: 0 0 14px 0;">¡Ejecución exitosa!</h2>
+
+                    <div style="background: rgba(15, 8, 30, 0.95); border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 20px; padding: 18px 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 25px rgba(0,240,255,0.12); font-family: 'Inter', sans-serif; text-align: left;">
+                        <img src="img/streaming_logo.png" alt="Streaming" style="width: 75px; height: 75px; object-fit: contain; display: block; margin: 0 auto 14px auto; border-radius: 14px; filter: drop-shadow(0 4px 12px rgba(157,0,255,0.4));">
+                        
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.84rem; color: #d0d0d0;">
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Tipo de paquete:</span><strong style="color: #fff;">${packType}</strong></div>
+                            ${credsHtml}
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Plan:</span><strong style="color: #fff;">30 días</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Fecha Vencimiento:</span><strong style="color: #00FF94;">${formattedExpireDate}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Nº Control:</span><strong style="color: #00F0FF;">#${order.control_num || order.ref}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Estado:</span><strong style="color: ${statusColor};">${statusLabel}</strong></div>
+                        </div>
+
+                        <!-- Aviso Importante -->
+                        <div style="margin-top: 14px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px;">
+                            <div style="color: #ff4b2b; font-weight: 800; font-size: 0.78rem; text-align: center; margin-bottom: 6px;"><i class="fa-solid fa-triangle-exclamation"></i> Aviso Importante</div>
+                            <p style="color: rgba(255, 100, 100, 0.85); font-size: 0.68rem; text-align: center; line-height: 1.4; margin: 0; background: rgba(255, 75, 43, 0.08); border: 1px dashed rgba(255, 75, 43, 0.3); padding: 8px 10px; border-radius: 8px;">
+                                No está permitido modificar la cuenta, perfil, PIN, correo o contraseña. Úsalo únicamente en un dispositivo a la vez. El incumplimiento de estas normas conllevará a la pérdida de la garantía del servicio sin previo aviso.
+                            </p>
+                        </div>
+
+                        <div style="text-align: center; font-size: 0.82rem; color: #FFD700; font-weight: 700; letter-spacing: 1px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+                            Comprobante de Pago
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
+                        <a href="${waUrl}" target="_blank" style="background:#25D366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; padding:12px; font-weight:800; font-size:0.88rem; box-shadow:0 4px 12px rgba(37,211,102,0.3)">
+                            <i class="fa-brands fa-whatsapp" style="font-size:1.2rem"></i> Enviar Ticket por WhatsApp
+                        </a>
+                        <button onclick="navigator.clipboard.writeText(\`${waText.replace(/`/g,'\\`')}\`).then(()=>{this.innerText='✓ ¡Texto Copiado!';setTimeout(()=>this.innerHTML='<i class=\'fa-solid fa-copy\'></i> Copiar Texto del Ticket',2000)})" style="background:rgba(157,0,255,0.15); border:1px solid rgba(157,0,255,0.4); color:#d8b4fe; border-radius:12px; padding:10px; font-weight:700; font-size:0.82rem; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:6px">
+                            <i class="fa-solid fa-copy"></i> Copiar Texto del Ticket
+                        </button>
+                    </div>
+                </div>`;
+
+            const defaultCardHtml = `
+                <div style="text-align:left;padding:0 4px">
+                    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(157,0,255,0.3);border-radius:12px;padding:14px;font-size:0.82rem;line-height:1.7">
+                        <p><strong style="color:#aaa">SERVICIO:</strong> <span style="color:#9D00FF;font-weight:700;text-transform:uppercase">${gameLabel}</span></p>
+                        <p><strong style="color:#aaa">PLAN:</strong> <span>${order.pack}</span></p>
+                        <p><strong style="color:#aaa">CLIENTE:</strong> <span>${order.name || '-'}</span></p>
+                        <p><strong style="color:#aaa">ID / WA:</strong> <code style="color:#00F0FF">${order.uid}</code></p>
+                        <p><strong style="color:#aaa">PRECIO:</strong> <span style="color:#00FF94;font-weight:700">${order.price || 'N/A'}</span></p>
+                        <p><strong style="color:#aaa">REF. PAGO:</strong> <code>${order.ref}</code></p>
+                        <p><strong style="color:#aaa">CONTROL:</strong> <code>${order.control_num || 'N/A'}</code></p>
+                        <p><strong style="color:#aaa">MÉTODO:</strong> ${order.method === 'pagomovil' ? 'Pago Móvil' : order.method === 'canje' ? '🎁 Canje' : 'Binance'}</p>
+                        <p><strong style="color:#aaa">FECHA:</strong> ${fechaCompraStr}</p>
+                        <p><strong style="color:#aaa">ESTADO:</strong> <span style="color:${statusColor};font-weight:800">${statusLabel}</span></p>
+                        ${order.reason ? `<p><strong style="color:#aaa">MOTIVO RECHAZO:</strong> <span style="color:#ff4b2b">${order.reason}</span></p>` : ''}
+                    </div>
+                    ${order.pin ? `
+                        <div style="background:rgba(0,240,255,0.08);border:1px dashed #00f0ff;border-radius:10px;padding:12px;margin:12px 0;text-align:center">
+                            <span style="font-size:0.7rem;color:#00f0ff;font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px">🔑 PIN / CÓDIGO</span>
+                            <code style="font-family:monospace;font-size:1rem;color:#00FF94;font-weight:bold;word-break:break-all">${order.pin}</code><br>
+                            <button onclick="navigator.clipboard.writeText('${order.pin.replace(/'/g,"\\'")}').then(()=>{this.innerText='✓ Copiado!';setTimeout(()=>this.innerText='📋 Copiar PIN',2000)})" style="background:#00f0ff;color:#07030D;border:none;border-radius:8px;padding:7px 14px;font-weight:800;font-size:0.78rem;cursor:pointer;margin-top:8px">📋 Copiar PIN</button>
+                        </div>` : ''}
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+                        <a href="${waUrl}" target="_blank" style="background:#25D366;color:#fff;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:12px;font-weight:800;font-size:0.88rem;box-shadow:0 4px 12px rgba(37,211,102,0.3)">
+                            <i class="fa-brands fa-whatsapp" style="font-size:1.2rem"></i> Enviar Ticket por WhatsApp
+                        </a>
+                        <button onclick="navigator.clipboard.writeText(\`${waText.replace(/`/g,'\\`')}\`).then(()=>{this.innerText='✓ ¡Texto Copiado!';setTimeout(()=>this.innerHTML='<i class=\'fa-solid fa-copy\'></i> Copiar Texto del Ticket',2000)})" style="background:rgba(157,0,255,0.15);border:1px solid rgba(157,0,255,0.4);color:#d8b4fe;border-radius:10px;padding:10px;font-weight:700;font-size:0.82rem;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:6px">
+                            <i class="fa-solid fa-copy"></i> Copiar Texto del Ticket
+                        </button>
+                    </div>
+                </div>`;
+
+            Swal.fire({
+                title: isStreaming ? '' : '<i class="fa-solid fa-receipt"></i> Ticket del Pedido',
+                html: isStreaming ? streamingCardHtml : defaultCardHtml,
+                background: 'rgba(10, 5, 20, 0.98)',
+                color: '#fff',
+                showConfirmButton: false,
+                showCloseButton: true,
+                width: window.innerWidth < 600 ? '95%' : '480px'
+            });
         }
 
         async function loadPinStats() {
@@ -2619,16 +3184,35 @@
                 allSettings = await res.json();
                 document.getElementById('setting-tasa').value = allSettings.tasa_del_dia;
                 document.getElementById('setting-marquee').value = allSettings.barra_informativa;
+                if (document.getElementById('setting-freefire-provider')) {
+                    document.getElementById('setting-freefire-provider').value = allSettings.freefire_provider_option || 'directas';
+                }
                 document.getElementById('admin-user').value = allSettings.admin.username;
 
                 // Cargar métodos de pago
                 if (allSettings.metodos_pago) {
+                    window._currentMetodosPago = allSettings.metodos_pago;
                     document.getElementById('pm-banco').value = allSettings.metodos_pago.pagomovil.banco;
                     document.getElementById('pm-telefono').value = allSettings.metodos_pago.pagomovil.telefono;
                     document.getElementById('pm-cedula').value = allSettings.metodos_pago.pagomovil.cedula;
                     document.getElementById('bin-id').value = allSettings.metodos_pago.binance.id;
                     document.getElementById('bin-nombre').value = allSettings.metodos_pago.binance.nombre;
+                    // Datos Banesco para clientes
+                    const ban = allSettings.metodos_pago.pagomovil_banesco;
+                    if (ban) {
+                        const bBanco = document.getElementById('banesco-pm-banco');
+                        const bTel   = document.getElementById('banesco-pm-telefono');
+                        const bCed   = document.getElementById('banesco-pm-cedula');
+                        if (bBanco) bBanco.value = ban.banco    || '';
+                        if (bTel)   bTel.value   = ban.telefono || '';
+                        if (bCed)   bCed.value   = ban.cedula   || '';
+                    }
                 }
+
+                // Cargar banco activo y actualizar selector visual
+                adminFetch(`${SERVER_URL}/admin/active-pagomovil-bank`).then(r => r.json()).then(d => {
+                    if (d.bank) updateBankSelectorUI(d.bank);
+                }).catch(() => {});
 
                 // Cargar WhatsApp
                 if (allSettings.whatsapp) {
@@ -2733,6 +3317,7 @@
                 ...allSettings,
                 tasa_del_dia: parseFloat(document.getElementById('setting-tasa').value),
                 barra_informativa: document.getElementById('setting-marquee').value,
+                freefire_provider_option: document.getElementById('setting-freefire-provider') ? document.getElementById('setting-freefire-provider').value : 'directas',
                 publicidades: getAdsDataFromInputs().filter(ad => ad.imagen),
                 admin: {
                     ...allSettings.admin,
@@ -2972,6 +3557,94 @@
             }
         }
 
+        // ============================================================
+        // 🔐 BDV CREDENTIALS: Cargar y guardar credenciales del banco
+        // ============================================================
+        async function loadBDVCredentials() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/bdv-credentials`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success) {
+                    if (data.user)   document.getElementById('bdv-cred-user').value   = data.user;
+                    if (data.cuenta) document.getElementById('bdv-cred-cuenta').value = data.cuenta;
+                    // La contraseña nunca se pre-llena con el valor real (viene enmascarada)
+                    document.getElementById('bdv-cred-pass').value = '';
+                    document.getElementById('bdv-cred-pass').placeholder = data.pass
+                        ? '•••••••• (establecida)'
+                        : 'Ingresa la contraseña';
+                }
+            } catch (e) {
+                console.error('[BDV-CREDS] Error cargando credenciales:', e);
+            }
+        }
+
+        async function saveBDVCredentials() {
+            const user   = (document.getElementById('bdv-cred-user').value   || '').trim();
+            const pass   = (document.getElementById('bdv-cred-pass').value   || '').trim();
+            const cuenta = (document.getElementById('bdv-cred-cuenta').value || '').trim();
+            const btn    = document.getElementById('bdv-cred-save-btn');
+            const fb     = document.getElementById('bdv-cred-feedback');
+
+            if (!user) {
+                fb.style.display = 'block';
+                fb.style.background = 'rgba(255,75,43,0.15)';
+                fb.style.border = '1px solid rgba(255,75,43,0.4)';
+                fb.style.color = '#ff4b2b';
+                fb.innerHTML = '❌ El campo <strong>Usuario BDV</strong> es obligatorio.';
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            btn.disabled = true;
+            fb.style.display = 'none';
+
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/bdv-credentials`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user, pass, cuenta })
+                });
+                const data = await res.json();
+
+                fb.style.display = 'block';
+                if (data.success) {
+                    fb.style.background = 'rgba(0, 255, 148, 0.1)';
+                    fb.style.border = '1px solid rgba(0, 255, 148, 0.3)';
+                    fb.style.color = '#00FF94';
+                    fb.innerHTML = '✅ ' + (data.message || 'Credenciales guardadas correctamente.');
+                    // Recargar para mostrar el estado actualizado
+                    setTimeout(() => loadBDVCredentials(), 1000);
+                } else {
+                    fb.style.background = 'rgba(255,75,43,0.1)';
+                    fb.style.border = '1px solid rgba(255,75,43,0.3)';
+                    fb.style.color = '#ff4b2b';
+                    fb.innerHTML = '❌ ' + (data.error || 'Error al guardar.');
+                }
+            } catch (e) {
+                fb.style.display = 'block';
+                fb.style.background = 'rgba(255,75,43,0.1)';
+                fb.style.border = '1px solid rgba(255,75,43,0.3)';
+                fb.style.color = '#ff4b2b';
+                fb.innerHTML = '❌ Error de conexión: ' + e.message;
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar y Reconectar Bot BDV';
+                btn.disabled = false;
+            }
+        }
+
+        function toggleBDVPassVisibility() {
+            const input = document.getElementById('bdv-cred-pass');
+            const icon  = document.getElementById('bdv-pass-eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
         async function toggleBDVAuto(checked) {
             const loginStatusEl = document.getElementById('bdv-login-status');
             const toggleBg = document.getElementById('bdv-toggle-bg');
@@ -3020,6 +3693,254 @@
                 loginStatusEl.style.display = 'none';
                 Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
                 toggle.checked = !checked; // Revertir
+            }
+        }
+        // =====================================================
+
+        // ============================================================
+        // 🏦 BANCO SELECTOR — Cargar estado y cambiar banco activo
+        // ============================================================
+        async function loadActivePagomovilBank() {
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/active-pagomovil-bank`);
+                const data = await res.json();
+                if (data.success) updateBankSelectorUI(data.bank);
+            } catch (e) { console.error('[BANK-SELECTOR] Error cargando banco activo:', e); }
+        }
+
+        function updateBankSelectorUI(bank) {
+            const optBdv     = document.getElementById('bank-opt-bdv');
+            const optBanesco = document.getElementById('bank-opt-banesco');
+            const dotBdv     = document.getElementById('bank-dot-bdv');
+            const dotBanesco = document.getElementById('bank-dot-banesco');
+            if (!optBdv || !optBanesco) return;
+
+            if (bank === 'bdv') {
+                optBdv.style.borderColor     = 'rgba(157,0,255,0.8)';
+                optBdv.style.background      = 'rgba(157,0,255,0.12)';
+                dotBdv.style.display         = 'block';
+                optBanesco.style.borderColor = 'rgba(0,240,255,0.2)';
+                optBanesco.style.background  = 'rgba(0,0,0,0.2)';
+                dotBanesco.style.display     = 'none';
+            } else {
+                optBanesco.style.borderColor = 'rgba(0,240,255,0.8)';
+                optBanesco.style.background  = 'rgba(0,240,255,0.1)';
+                dotBanesco.style.display     = 'block';
+                optBdv.style.borderColor     = 'rgba(157,0,255,0.2)';
+                optBdv.style.background      = 'rgba(0,0,0,0.2)';
+                dotBdv.style.display         = 'none';
+            }
+            // Mostrar formulario de datos Banesco solo cuando está activo
+            const banescoDataCard = document.getElementById('banesco-payment-data-card');
+            if (banescoDataCard) banescoDataCard.style.display = (bank === 'banesco') ? '' : 'none';
+        }
+
+        async function setActivePagomovilBank(bank) {
+            const fb = document.getElementById('bank-selector-feedback');
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/active-pagomovil-bank`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bank })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    updateBankSelectorUI(bank);
+                    fb.style.display    = 'block';
+                    fb.style.background = 'rgba(0,255,148,0.1)';
+                    fb.style.border     = '1px solid rgba(0,255,148,0.3)';
+                    fb.style.color      = '#00FF94';
+                    fb.textContent      = data.message;
+                    setTimeout(() => fb.style.display = 'none', 3000);
+                }
+            } catch (e) {
+                fb.style.display = 'block';
+                fb.style.color   = '#ff4b2b';
+                fb.textContent   = 'Error de conexión: ' + e.message;
+            }
+        }
+
+        // ============================================================
+        // 🏦 BANESCO AUTO-TOGGLE
+        // ============================================================
+        async function loadBanescoStatus(showToast = false) {
+            try {
+                const res  = await adminFetch(`${SERVER_URL}/admin/banesco-config`);
+                const data = await res.json();
+
+                const statusEl  = document.getElementById('banesco-toggle-status');
+                const sessionEl = document.getElementById('banesco-session-info');
+                const toggle    = document.getElementById('banesco-auto-toggle');
+                const toggleBg  = document.getElementById('banesco-toggle-bg');
+                const toggleKnob= document.getElementById('banesco-toggle-knob');
+
+                toggle.checked = data.enabled;
+                if (data.enabled) {
+                    statusEl.innerHTML          = '🟢 <span style="color:#25D366;">ACTIVADO</span>';
+                    toggleBg.style.background   = '#00b4cc';
+                    toggleKnob.style.transform  = 'translateX(30px)';
+                } else {
+                    statusEl.innerHTML          = '🔴 <span style="color:#ff4b2b;">DESACTIVADO</span>';
+                    toggleBg.style.background   = '#333';
+                    toggleKnob.style.transform  = 'translateX(0px)';
+                }
+                if (data.banescoStatus) {
+                    const s = data.banescoStatus;
+                    if (s.sessionActive && s.lastLogin) {
+                        sessionEl.textContent = `Sesión: ✅ Activa · Último login: ${new Date(s.lastLogin).toLocaleTimeString('es-VE')}`;
+                    } else if (s.browserActive) {
+                        sessionEl.textContent = 'Sesión: ⚠️ Navegador activo, sin login';
+                    } else {
+                        sessionEl.textContent = 'Sesión: Inactiva';
+                    }
+                }
+                if (showToast) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Estado Banesco actualizado', showConfirmButton: false, timer: 1500 });
+                }
+            } catch (e) { console.error('[BANESCO-ADMIN] Error cargando estado:', e); }
+        }
+
+        async function toggleBanescoAuto(checked) {
+            const loginStatusEl = document.getElementById('banesco-login-status');
+            const toggleBg      = document.getElementById('banesco-toggle-bg');
+            const toggleKnob    = document.getElementById('banesco-toggle-knob');
+            const statusEl      = document.getElementById('banesco-toggle-status');
+            const toggle        = document.getElementById('banesco-auto-toggle');
+
+            if (checked) {
+                toggleBg.style.background  = '#00b4cc';
+                toggleKnob.style.transform = 'translateX(30px)';
+                statusEl.innerHTML         = '⏳ <span style="color:#FFC107;">ACTIVANDO...</span>';
+                loginStatusEl.style.display = 'block';
+            } else {
+                toggleBg.style.background  = '#333';
+                toggleKnob.style.transform = 'translateX(0px)';
+                statusEl.innerHTML         = '⏳ <span style="color:#aaa;">DESACTIVANDO...</span>';
+                loginStatusEl.style.display = 'none';
+            }
+            try {
+                const res  = await adminFetch(`${SERVER_URL}/admin/banesco-config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: checked })
+                });
+                const data = await res.json();
+                loginStatusEl.style.display = 'none';
+                if (data.success) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: checked ? 'success' : 'info', title: data.message, showConfirmButton: false, timer: 3000, background: 'rgba(20,10,35,0.95)', color: '#fff' });
+                    setTimeout(loadBanescoStatus, 500);
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cambiar el estado', 'error');
+                    toggle.checked = !checked;
+                }
+            } catch (e) {
+                loginStatusEl.style.display = 'none';
+                Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
+                toggle.checked = !checked;
+            }
+        }
+
+        // ============================================================
+        // 🔐 BANESCO CREDENTIALS
+        // ============================================================
+        async function loadBanescoCredentials() {
+            try {
+                const res  = await adminFetch(`${SERVER_URL}/admin/banesco-credentials`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success) {
+                    if (data.user) document.getElementById('banesco-cred-user').value = data.user;
+                    document.getElementById('banesco-cred-pass').placeholder = data.pass ? '•••••••• (establecida)' : 'Ingresa la contraseña';
+                }
+            } catch (e) { console.error('[BANESCO-CREDS] Error cargando credenciales:', e); }
+        }
+
+        async function saveBanescoCredentials() {
+            const user        = (document.getElementById('banesco-cred-user').value        || '').trim();
+            const pass        = (document.getElementById('banesco-cred-pass').value        || '').trim();
+            const sec_perro   = (document.getElementById('banesco-sec-perro').value        || '').trim();
+            const sec_carro   = (document.getElementById('banesco-sec-carro').value        || '').trim();
+            const sec_pasatiempo = (document.getElementById('banesco-sec-pasatiempo').value || '').trim();
+            const sec_apellido   = (document.getElementById('banesco-sec-apellido').value  || '').trim();
+            const btn = document.getElementById('banesco-cred-save-btn');
+            const fb  = document.getElementById('banesco-cred-feedback');
+
+            if (!user) {
+                fb.style.display    = 'block';
+                fb.style.background = 'rgba(255,75,43,0.15)';
+                fb.style.border     = '1px solid rgba(255,75,43,0.4)';
+                fb.style.color      = '#ff4b2b';
+                fb.innerHTML        = '❌ El campo <strong>Usuario Banesco</strong> es obligatorio.';
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            btn.disabled  = true;
+            fb.style.display = 'none';
+
+            try {
+                const res  = await adminFetch(`${SERVER_URL}/admin/banesco-credentials`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user, pass, sec_perro, sec_carro, sec_pasatiempo, sec_apellido })
+                });
+                const data = await res.json();
+                fb.style.display = 'block';
+                if (data.success) {
+                    fb.style.background = 'rgba(0,255,148,0.1)';
+                    fb.style.border     = '1px solid rgba(0,255,148,0.3)';
+                    fb.style.color      = '#00FF94';
+                    fb.innerHTML        = '✅ ' + (data.message || 'Credenciales guardadas correctamente.');
+                    setTimeout(() => loadBanescoCredentials(), 1000);
+                } else {
+                    fb.style.background = 'rgba(255,75,43,0.1)';
+                    fb.style.border     = '1px solid rgba(255,75,43,0.3)';
+                    fb.style.color      = '#ff4b2b';
+                    fb.innerHTML        = '❌ ' + (data.error || 'Error al guardar.');
+                }
+            } catch (e) {
+                fb.style.display    = 'block';
+                fb.style.background = 'rgba(255,75,43,0.1)';
+                fb.style.border     = '1px solid rgba(255,75,43,0.3)';
+                fb.style.color      = '#ff4b2b';
+                fb.innerHTML        = '❌ Error de conexión: ' + e.message;
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar y Reconectar Bot Banesco';
+                btn.disabled  = false;
+            }
+        }
+
+        // ── DATOS BANESCO PARA CLIENTES ──────────────────────────────
+        async function saveBanescoPaymentData() {
+            const banco    = (document.getElementById('banesco-pm-banco')?.value    || '').trim();
+            const telefono = (document.getElementById('banesco-pm-telefono')?.value || '').trim();
+            const cedula   = (document.getElementById('banesco-pm-cedula')?.value   || '').trim();
+            const fb = document.getElementById('banesco-pm-feedback');
+            if (!telefono) {
+                fb.style.cssText = 'display:block; background:rgba(255,75,43,0.1); border:1px solid rgba(255,75,43,0.3); color:#ff4b2b; font-size:0.85rem; padding:10px 15px; border-radius:8px;';
+                fb.innerHTML = '⚠️ El teléfono es obligatorio.';
+                return;
+            }
+            fb.style.cssText = 'display:none;';
+            try {
+                const res = await adminFetch(`${SERVER_URL}/admin/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        metodos_pago: {
+                            ...(window._currentMetodosPago || {}),
+                            pagomovil_banesco: { banco, telefono, cedula, habilitado: true }
+                        }
+                    })
+                });
+                const data = await res.json();
+                fb.style.cssText = data.success
+                    ? 'display:block; background:rgba(0,255,148,0.1); border:1px solid rgba(0,255,148,0.3); color:#00FF94; font-size:0.85rem; padding:10px 15px; border-radius:8px;'
+                    : 'display:block; background:rgba(255,75,43,0.1); border:1px solid rgba(255,75,43,0.3); color:#ff4b2b; font-size:0.85rem; padding:10px 15px; border-radius:8px;';
+                fb.innerHTML = data.success ? '✅ Datos de Banesco guardados.' : ('❌ ' + (data.error || 'Error al guardar.'));
+            } catch(e) {
+                fb.style.cssText = 'display:block; background:rgba(255,75,43,0.1); border:1px solid rgba(255,75,43,0.3); color:#ff4b2b; font-size:0.85rem; padding:10px 15px; border-radius:8px;';
+                fb.innerHTML = '❌ Error de conexión: ' + e.message;
             }
         }
         // =====================================================
@@ -3154,7 +4075,101 @@
                         `;
                     });
                 }
+                // Actualizar Historial de Streaming Despachados
+                renderStreamingHistoryAdmin();
             } catch (e) { console.error('Error cargando almacén streaming:', e); }
+        }
+
+        function renderStreamingHistoryAdmin() {
+            const tbody = document.getElementById('streaming-history-tbody');
+            const totalEl = document.getElementById('streaming-total-delivered');
+            const approvedEl = document.getElementById('streaming-approved-delivered');
+
+            if (!tbody) return;
+
+            const allOrders = window._allTransactions || [];
+            const streamingOrders = allOrders.filter(o => {
+                const j = (o.juego || '').toLowerCase();
+                const p = (o.pack || '').toLowerCase();
+                return j === 'streaming' || p.includes('netflix') || p.includes('disney') || p.includes('max') || p.includes('spotify') || p.includes('vix') || p.includes('canva') || p.includes('prime') || p.includes('crunchyroll');
+            });
+
+            if (totalEl) totalEl.innerText = streamingOrders.length;
+            const approvedCount = streamingOrders.filter(o => o.status === 'approved').length;
+            if (approvedEl) approvedEl.innerText = approvedCount;
+
+            const query = (document.getElementById('streaming-history-search')?.value || '').toLowerCase().trim();
+            const filtered = streamingOrders.filter(o => {
+                if (!query) return true;
+                return (o.name || '').toLowerCase().includes(query) ||
+                       (o.uid || '').toLowerCase().includes(query) ||
+                       (o.pack || '').toLowerCase().includes(query) ||
+                       (o.ref || '').toLowerCase().includes(query) ||
+                       (o.pin || '').toLowerCase().includes(query);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; opacity:0.5; padding: 20px;">No se encontraron registros de streaming.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            filtered.forEach(order => {
+                const tr = document.createElement('tr');
+                
+                const purchaseDate = order.timestamp ? new Date(order.timestamp) : (order.date ? new Date(order.date) : new Date());
+                const dateStr = purchaseDate.toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' });
+                const timeStr = purchaseDate.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: true });
+
+                const expireDate = new Date(purchaseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                const dayE = String(expireDate.getDate()).padStart(2, '0');
+                const monthE = String(expireDate.getMonth() + 1).padStart(2, '0');
+                const yearE = expireDate.getFullYear();
+                const formattedExpireDate = `${dayE}-${monthE}-${yearE}`;
+
+                let credsDisplay = '—';
+                if (order.pin) {
+                    const pinLines = order.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
+                    credsDisplay = pinLines.map(l => `<div style="color:#00FF94; font-family:monospace; font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px;">${l}</div>`).join('');
+                }
+
+                const statusClass = order.status === 'approved' ? 'status-approved' : (order.status === 'rejected' ? 'status-rejected' : 'status-pending');
+                const statusText = order.status === 'approved' ? 'APROBADO' : (order.status === 'rejected' ? 'RECHAZADO' : 'PENDIENTE');
+
+                tr.innerHTML = `
+                    <td>
+                        <small style="color:#fff;">${dateStr} ${timeStr}</small><br>
+                        <small style="color:#FFD700; font-weight:700;">Vence: ${formattedExpireDate}</small>
+                    </td>
+                    <td>
+                        <strong style="color:#9D00FF;">${order.pack}</strong><br>
+                        <small style="color:var(--text-gray); font-size:0.7rem;">STREAMING</small>
+                    </td>
+                    <td>
+                        <div style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${order.name || ''}">${order.name || '-'}</div>
+                        <small style="color:#00F0FF; font-size:0.72rem;">${order.uid}</small>
+                    </td>
+                    <td><span style="color:#00FF94; font-weight:700;">${order.price || 'N/A'}</span></td>
+                    <td>
+                        <div style="max-width:220px; overflow:hidden;">${credsDisplay}</div>
+                    </td>
+                    <td>
+                        <span class="status-badge ${statusClass}" style="font-size:0.68rem;">${statusText}</span>
+                    </td>
+                    <td style="text-align:center;">
+                        <div style="display:flex; gap:4px; justify-content:center;">
+                            <button onclick="viewOrderTicket('${order.ref}')" class="btn-action" title="Ver Ticket" style="background:rgba(0,240,255,0.15); border:1px solid #00F0FF; color:#00F0FF; padding:4px 8px; font-size:0.7rem; border-radius:6px; cursor:pointer;">
+                                🎫 Ticket
+                            </button>
+                            ${order.pin ? `
+                            <button onclick="navigator.clipboard.writeText('${order.pin.replace(/'/g, "\\'").replace(/\n/g, ' | ')}').then(()=>Swal.fire({toast:true,position:'top-end',icon:'success',title:'Credenciales copiadas',showConfirmButton:false,timer:1500}))" class="btn-action" title="Copiar Credenciales" style="background:rgba(229,9,20,0.2); border:1px solid #E50914; color:#ff6b6b; padding:4px 8px; font-size:0.7rem; border-radius:6px; cursor:pointer;">
+                                📋
+                            </button>` : ''}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         async function saveStreamingPricesAdmin() {
@@ -3309,6 +4324,54 @@
                         Swal.fire('Error', data.message || 'No se pudo eliminar.', 'error');
                     }
                 } catch(e) { Swal.fire('Error', e.message, 'error'); }
+            }
+        }
+
+        function addQuickStreamingAccountToTextarea() {
+            const email = (document.getElementById('quick-stock-email').value || '').trim();
+            const pass = (document.getElementById('quick-stock-pass').value || '').trim();
+            const profile = (document.getElementById('quick-stock-profile').value || '').trim();
+            const pin = (document.getElementById('quick-stock-pin').value || '').trim();
+
+            if (!email || !pass) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: 'Ingresa al menos el Correo y la Clave.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+                return;
+            }
+
+            let line = `correo: ${email} | clave: ${pass}`;
+            if (profile) line += ` | perfil: ${profile}`;
+            if (pin) line += ` | pin: ${pin}`;
+
+            const textarea = document.getElementById('streaming-accounts-input');
+            if (textarea.value.trim() !== '') {
+                textarea.value += '\n' + line;
+            } else {
+                textarea.value = line;
+            }
+
+            // Limpiar campos para la siguiente entrada rápida
+            document.getElementById('quick-stock-email').value = '';
+            document.getElementById('quick-stock-pass').value = '';
+            document.getElementById('quick-stock-profile').value = '';
+            document.getElementById('quick-stock-pin').value = '';
+
+            document.getElementById('quick-stock-email').focus();
+        }
+
+        function insertPreFilledTemplateToTextarea() {
+            const textarea = document.getElementById('streaming-accounts-input');
+            const template = `correo:  | clave:  | perfil:  | pin: `;
+            if (textarea.value.trim() !== '') {
+                textarea.value += '\n' + template;
+            } else {
+                textarea.value = template;
             }
         }
 
@@ -3525,10 +4588,11 @@
 
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
                         ${Object.entries(juego.paquetes || {}).map(([pkId, pk]) => `
-                            <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.05);gap:10px;">
+                            <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.05);gap:10px;position:relative;">
                                 <div style="display:flex;flex-direction:column;gap:2px;">
                                     <span style="font-size:0.85rem;font-weight:700;">${pk.label}</span>
                                     <span style="color:var(--secondary);font-weight:800;font-size:0.9rem;">${pk.usdt} $</span>
+                                    ${(pk.tag || pk.badge) ? `<span style="font-size:0.68rem;background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid rgba(255,215,0,0.3);padding:2px 6px;border-radius:4px;font-weight:800;display:inline-block;width:fit-content;margin-top:2px;">${pk.tag_icon || pk.badge_icon || '🔥'} ${pk.tag || pk.badge}</span>` : ''}
                                 </div>
                                 <div style="display:flex;gap:4px;">
                                     <button onclick="editPackage('${key}', '${pkId}')" class="btn-action" style="padding:4px 8px;font-size:0.75rem;background:rgba(0,240,255,0.15);color:var(--secondary);border:1px solid var(--secondary);" title="Editar"><i class="fa-solid fa-edit"></i></button>
@@ -3631,10 +4695,16 @@
                     <div style="text-align:left;display:grid;gap:12px;">
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">ID del Paquete / Cantidad (ej: 100)</label>
                         <input id="swal-pk-id" class="swal2-input" placeholder="100" style="margin:0;width:100%;"></div>
-                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta (ej: 100 Diamantes)</label>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta del Paquete (ej: 100 Diamantes)</label>
                         <input id="swal-pk-label" class="swal2-input" placeholder="100 Diamantes" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Precio en USDT</label>
                         <input id="swal-pk-usdt" class="swal2-input" type="number" step="0.01" placeholder="1.00" style="margin:0;width:100%;"></div>
+                        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                            <div><label style="font-size:0.8rem;color:#FFD700;font-weight:700;display:block;margin-bottom:4px;">🏷️ Badge / Etiqueta Promocional</label>
+                            <input id="swal-pk-tag" class="swal2-input" placeholder="ej: Popular, Más Vendido, VIP" style="margin:0;width:100%;"></div>
+                            <div><label style="font-size:0.8rem;color:#FFD700;font-weight:700;display:block;margin-bottom:4px;">Ícono / Emoji</label>
+                            <input id="swal-pk-tag-icon" class="swal2-input" placeholder="🔥" value="🔥" style="margin:0;width:100%;"></div>
+                        </div>
                     </div>`,
                 confirmButtonText: '<i class="fa-solid fa-plus"></i> Agregar',
                 confirmButtonColor: '#9D00FF',
@@ -3644,30 +4714,41 @@
                     const pkIdInput = document.getElementById('swal-pk-id').value.trim();
                     const label = document.getElementById('swal-pk-label').value.trim();
                     const usdt = parseFloat(document.getElementById('swal-pk-usdt').value);
-                    if (!pkIdInput || !label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
-                    return { pkId: pkIdInput, label, usdt };
+                    const tag = document.getElementById('swal-pk-tag').value.trim();
+                    const tag_icon = document.getElementById('swal-pk-tag-icon').value.trim() || '🔥';
+                    if (!pkIdInput || !label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos obligatorios correctamente'); return false; }
+                    return { pkId: pkIdInput, label, usdt, tag, tag_icon };
                 }
             }).then(async result => {
                 if (!result.isConfirmed) return;
-                const { pkId, label, usdt } = result.value;
+                const { pkId, label, usdt, tag, tag_icon } = result.value;
                 if (!juegosData[gameKey].paquetes) juegosData[gameKey].paquetes = {};
-                juegosData[gameKey].paquetes[pkId] = { label, usdt };
+                juegosData[gameKey].paquetes[pkId] = { label, usdt, tag, tag_icon };
                 await saveJuegos();
             });
         }
 
         function editPackage(gameKey, pkId) {
-            const pk = juegosData[gameKey].paquetes[pkId];
+            const pk = juegosData[gameKey].paquetes[pkId] || {};
+            const currentTag = pk.tag || pk.badge || '';
+            const currentTagIcon = pk.tag_icon || pk.badge_icon || '🔥';
+
             Swal.fire({
                 title: `<span style="color:#fff;font-family:Montserrat">💎 Editar Paquete</span>`,
                 background: 'rgba(20,10,35,0.98)',
                 color: '#fff',
                 html: `
                     <div style="text-align:left;display:grid;gap:12px;">
-                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta (ej: 100 Diamantes)</label>
-                        <input id="swal-edit-pk-label" class="swal2-input" value="${pk.label}" style="margin:0;width:100%;"></div>
+                        <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Etiqueta del Paquete (ej: 100 Diamantes)</label>
+                        <input id="swal-edit-pk-label" class="swal2-input" value="${pk.label || ''}" style="margin:0;width:100%;"></div>
                         <div><label style="font-size:0.8rem;color:#a0a0b5;font-weight:600;display:block;margin-bottom:4px;">Precio en USDT</label>
-                        <input id="swal-edit-pk-usdt" class="swal2-input" type="number" step="0.01" value="${pk.usdt}" style="margin:0;width:100%;"></div>
+                        <input id="swal-edit-pk-usdt" class="swal2-input" type="number" step="0.01" value="${pk.usdt || ''}" style="margin:0;width:100%;"></div>
+                        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                            <div><label style="font-size:0.8rem;color:#FFD700;font-weight:700;display:block;margin-bottom:4px;">🏷️ Badge / Etiqueta Promocional</label>
+                            <input id="swal-edit-pk-tag" class="swal2-input" value="${currentTag}" placeholder="ej: Popular, Más Vendido, VIP (vacío = default)" style="margin:0;width:100%;"></div>
+                            <div><label style="font-size:0.8rem;color:#FFD700;font-weight:700;display:block;margin-bottom:4px;">Ícono / Emoji</label>
+                            <input id="swal-edit-pk-tag-icon" class="swal2-input" value="${currentTagIcon}" placeholder="🔥" style="margin:0;width:100%;"></div>
+                        </div>
                     </div>`,
                 confirmButtonText: '<i class="fa-solid fa-save"></i> Guardar',
                 confirmButtonColor: '#9D00FF',
@@ -3676,12 +4757,14 @@
                 preConfirm: () => {
                     const label = document.getElementById('swal-edit-pk-label').value.trim();
                     const usdt = parseFloat(document.getElementById('swal-edit-pk-usdt').value);
-                    if (!label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa todos los campos correctamente'); return false; }
-                    return { label, usdt };
+                    const tag = document.getElementById('swal-edit-pk-tag').value.trim();
+                    const tag_icon = document.getElementById('swal-edit-pk-tag-icon').value.trim() || '🔥';
+                    if (!label || isNaN(usdt) || usdt <= 0) { Swal.showValidationMessage('Completa los campos obligatorios correctamente'); return false; }
+                    return { label, usdt, tag, tag_icon };
                 }
             }).then(async result => {
                 if (!result.isConfirmed) return;
-                juegosData[gameKey].paquetes[pkId] = result.value;
+                juegosData[gameKey].paquetes[pkId] = { ...pk, ...result.value };
                 await saveJuegos();
             });
         }
@@ -3824,6 +4907,7 @@
             <button id="inf-subtab-solicitudes" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;" onclick="showInfluencerSubtab('solicitudes')"><i class="fa-solid fa-user-check"></i> Solicitudes</button>
             <button id="inf-subtab-videos" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('videos')"><i class="fa-solid fa-video"></i> Videos</button>
             <button id="inf-subtab-tarifas" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('tarifas')"><i class="fa-solid fa-gem"></i> Tarifas</button>
+            <button id="inf-subtab-cupones" class="btn-main" style="width:auto;padding:10px 20px;font-size:0.85rem;background:rgba(255,255,255,0.1);color:#b0a8c0;" onclick="showInfluencerSubtab('cupones')"><i class="fa-solid fa-ticket"></i> Códigos de Descuento 🎟️</button>
         </div>
 
         <!-- SOLICITUDES -->
@@ -3888,6 +4972,62 @@
             </div>
         </div>
 
+        <!-- CUPONES DE DESCUENTO (1era Recarga) -->
+        <div id="inf-panel-cupones" class="action-card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <h2><i class="fa-solid fa-ticket" style="color:#9D00FF"></i> Códigos de Descuento (Primera Recarga)</h2>
+                <button onclick="loadCouponsAdmin()" class="btn-main" style="width:auto;padding:8px 16px;font-size:0.85rem;"><i class="fa-solid fa-sync-alt"></i> Actualizar</button>
+            </div>
+            <p style="color:var(--text-gray);margin-bottom:20px;font-size:0.9rem;">
+                Los códigos creados aquí son válidos para <strong>usos ilimitados</strong>, pero <strong>únicamente en la 1era recarga</strong> de cada usuario nuevo.
+            </p>
+
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(157,0,255,0.3);border-radius:12px;padding:20px;margin-bottom:24px;">
+                <h4 style="margin-bottom:14px;color:var(--secondary);"><i class="fa-solid fa-plus-circle"></i> Crear o Generar Código de Descuento</h4>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+                    <div>
+                        <label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">% Descuento</label>
+                        <input type="number" id="coupon-default-percent" value="10" min="1" max="100" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:90px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Código Personalizado (opcional)</label>
+                        <input type="text" id="coupon-custom-code" placeholder="Ej: BIENVENIDA10" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;text-transform:uppercase;width:180px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Vincular a Influencer (opcional)</label>
+                        <select id="coupon-influencer-select" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;min-width:180px;">
+                            <option value="">General (Sin influencer)</option>
+                        </select>
+                    </div>
+                    <button onclick="createCouponAdmin()" class="btn-main" style="width:auto;padding:10px 18px;font-size:0.85rem;background:linear-gradient(135deg,#9D00FF,#00D4FF);">
+                        <i class="fa-solid fa-plus"></i> Crear Código
+                    </button>
+                    <button onclick="generateAutoCouponAdmin()" class="btn-main" style="width:auto;padding:10px 18px;font-size:0.85rem;background:linear-gradient(135deg,#059669,#34d399);">
+                        <i class="fa-solid fa-bolt"></i> Generar Automático
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>% Descuento</th>
+                            <th>Restricción</th>
+                            <th>Influencer Asignado</th>
+                            <th>Usos Registrados</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coupons-admin-table-body">
+                        <tr><td colspan="7" style="text-align:center;padding:20px;color:#b0a8c0;">Cargando cupones...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- MODALS: Review y Edit Rate -->
         <div id="review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;">
             <div style="background:#0d0d1f;border:1px solid rgba(108,61,232,0.4);border-radius:16px;padding:28px;max-width:440px;width:100%;position:relative;">
@@ -3936,14 +5076,16 @@
     let currentSubId = null;
 
     function showInfluencerSubtab(tab) {
-        ['solicitudes','videos','tarifas'].forEach(t => {
-            document.getElementById('inf-panel-' + t).style.display = (t === tab) ? '' : 'none';
+        ['solicitudes','videos','tarifas','cupones'].forEach(t => {
+            const panel = document.getElementById('inf-panel-' + t);
+            if (panel) panel.style.display = (t === tab) ? '' : 'none';
             const btn = document.getElementById('inf-subtab-' + t);
             if (btn) { btn.style.background = (t === tab) ? '' : 'rgba(255,255,255,0.1)'; btn.style.color = (t === tab) ? '' : '#b0a8c0'; }
         });
         if (tab === 'solicitudes') loadInfluencersAdmin();
         if (tab === 'videos') loadSubmissionsAdmin();
         if (tab === 'tarifas') loadRatesAdmin();
+        if (tab === 'cupones') loadCouponsAdmin();
     }
 
     // Helper fetch con Bearer token usando adminFetch del script principal
@@ -3979,12 +5121,12 @@
         const search = (document.getElementById('inf-search')?.value || '').toLowerCase();
         let list = allInfluencers;
         if (filter !== 'all') list = list.filter(i => i.status === filter);
-        if (search) list = list.filter(i => (i.username||'').toLowerCase().includes(search) || (i.tiktok_handle||'').toLowerCase().includes(search) || (i.ff_uid||'').includes(search));
+        if (search) list = list.filter(i => (i.username||'').toLowerCase().includes(search) || (i.tiktok_handle||'').toLowerCase().includes(search) || (i.phone||'').includes(search) || (i.ff_uid||'').includes(search));
         if (!list.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#b0a8c0;">No hay influencers registrados</td></tr>'; return; }
         const sc = { pending:'#FFD93D', approved:'#00FF94', rejected:'#FF3D71', suspended:'#b0a8c0' };
         const sl = { pending:'Pendiente', approved:'Aprobado', rejected:'Rechazado', suspended:'Suspendido' };
         tbody.innerHTML = list.map(inf => `<tr>
-            <td><strong style="color:var(--secondary);">${escInf(inf.username)}</strong><br><small style="color:#b0a8c0;">@${escInf(inf.tiktok_handle)}</small><br><small style="color:#b0a8c0;">${escInf(inf.email)}</small></td>
+            <td><strong style="color:var(--secondary);">${escInf(inf.username)}</strong><br><small style="color:#b0a8c0;">@${escInf(inf.tiktok_handle)}</small><br><small style="color:#00FF94;font-weight:600;"><i class="fa-brands fa-whatsapp"></i> ${escInf(inf.phone || inf.email || 'Sin contacto')}</small></td>
             <td><span style="font-weight:700;color:#ff9100;"><i class="fa-solid fa-gamepad"></i> ${escInf(inf.ff_uid || 'No indicado')}</span></td>
             <td>${Number(inf.followers_count||0).toLocaleString()}</td>
             <td><span style="color:${sc[inf.status]||'#fff'};font-weight:700;">${sl[inf.status]||inf.status}</span></td>
@@ -3992,8 +5134,11 @@
             <td style="color:#b0a8c0;">$${Number(inf.total_dollars_earned||0).toFixed(2)} USDT</td>
             <td style="font-size:0.8rem;color:#b0a8c0;">${inf.created_at ? new Date(inf.created_at).toLocaleDateString('es-VE') : '-'}</td>
             <td><div style="display:flex;flex-wrap:wrap;gap:4px;">
-                ${inf.status!=='approved'?`<button onclick="changeInfluencerStatus(${inf.id},'approved')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#059669;color:#fff;cursor:pointer;">Aprobar</button>`:''}
-                ${inf.status!=='rejected'?`<button onclick="changeInfluencerStatus(${inf.id},'rejected')" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:#dc2626;color:#fff;cursor:pointer;">Rechazar</button>`:''}
+                ${inf.status!=='approved'?`<button onclick="changeInfluencerStatus(${inf.id},'approved')" style="padding:4px 8px;font-size:0.72rem;border-radius:6px;border:none;background:#059669;color:#fff;cursor:pointer;" title="Aprobar">✓ Aprobar</button>`:''}
+                ${inf.status!=='rejected'?`<button onclick="changeInfluencerStatus(${inf.id},'rejected')" style="padding:4px 8px;font-size:0.72rem;border-radius:6px;border:none;background:#dc2626;color:#fff;cursor:pointer;" title="Rechazar">✕ Rechazar</button>`:''}
+                <button onclick="openEditInfluencerModal(${inf.id})" style="padding:4px 8px;font-size:0.72rem;border-radius:6px;border:none;background:linear-gradient(135deg,#6c3de8,#8b5cf6);color:#fff;cursor:pointer;" title="Editar Datos">✏️ Editar</button>
+                <button onclick="openChangeInfPasswordModal(${inf.id},'${escInf(inf.username)}')" style="padding:4px 8px;font-size:0.72rem;border-radius:6px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;cursor:pointer;" title="Cambiar Contraseña">🔑 Clave</button>
+                <button onclick="deleteInfluencerAdmin(${inf.id},'${escInf(inf.username)}')" style="padding:4px 8px;font-size:0.72rem;border-radius:6px;border:none;background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;cursor:pointer;" title="Borrar Registro">🗑️ Borrar</button>
             </div></td>
         </tr>`).join('');
     }
@@ -4005,6 +5150,155 @@
             if (data.success) loadInfluencersAdmin();
             else alert('Error: ' + (data.message || data.error));
         } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function openEditInfluencerModal(id) {
+        const inf = allInfluencers.find(i => i.id === id);
+        if (!inf) return;
+
+        const { value: formValues } = await Swal.fire({
+            title: '✏️ Editar Influencer',
+            html: `
+                <div style="text-align:left; font-size:0.88rem; display:flex; flex-direction:column; gap:10px;">
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">Nombre de Usuario:</label>
+                        <input id="swal-inf-username" class="swal2-input" value="${escInf(inf.username)}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">📱 Teléfono / WhatsApp:</label>
+                        <input id="swal-inf-phone" class="swal2-input" value="${escInf(inf.phone || '')}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">🎵 Usuario TikTok (@):</label>
+                        <input id="swal-inf-tiktok" class="swal2-input" value="${escInf(inf.tiktok_handle)}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">🎮 UID de Free Fire:</label>
+                        <input id="swal-inf-ffuid" class="swal2-input" value="${escInf(inf.ff_uid || '')}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">👥 Seguidores:</label>
+                        <input id="swal-inf-followers" type="number" class="swal2-input" value="${inf.followers_count || 0}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">💰 Saldo ($ USDT):</label>
+                        <input id="swal-inf-balance" type="number" step="0.01" class="swal2-input" value="${inf.dollars_balance || 0}" style="width:100%; margin:4px 0 0 0; background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                    </div>
+                    <div>
+                        <label style="color:#aaa; font-weight:600;">📌 Estado:</label>
+                        <select id="swal-inf-status" class="swal2-input" style="width:100%; margin:4px 0 0 0; background:rgba(20,10,35,0.95); color:#fff; border:1px solid rgba(255,255,255,0.2);">
+                            <option value="pending" ${inf.status==='pending'?'selected':''}>Pendiente</option>
+                            <option value="approved" ${inf.status==='approved'?'selected':''}>Aprobado</option>
+                            <option value="rejected" ${inf.status==='rejected'?'selected':''}>Rechazado</option>
+                            <option value="suspended" ${inf.status==='suspended'?'selected':''}>Suspendido</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            background: '#0d0d1f',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: '💾 Guardar Cambios',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#9D00FF',
+            preConfirm: () => {
+                return {
+                    username: document.getElementById('swal-inf-username').value.trim(),
+                    phone: document.getElementById('swal-inf-phone').value.trim(),
+                    tiktok_handle: document.getElementById('swal-inf-tiktok').value.trim(),
+                    ff_uid: document.getElementById('swal-inf-ffuid').value.trim(),
+                    followers_count: document.getElementById('swal-inf-followers').value,
+                    dollars_balance: document.getElementById('swal-inf-balance').value,
+                    status: document.getElementById('swal-inf-status').value
+                };
+            }
+        });
+
+        if (formValues) {
+            try {
+                const res = await infFetch('/api/admin/influencers/' + id, {
+                    method: 'PUT',
+                    body: JSON.stringify(formValues)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon:'success', title:'¡Actualizado!', text:'Datos guardados correctamente.', background:'#0d0d1f', color:'#fff' });
+                    loadInfluencersAdmin();
+                } else {
+                    Swal.fire({ icon:'error', title:'Error', text: data.message || 'No se pudo actualizar.', background:'#0d0d1f', color:'#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon:'error', title:'Error de conexión', text: e.message, background:'#0d0d1f', color:'#fff' });
+            }
+        }
+    }
+
+    async function openChangeInfPasswordModal(id, username) {
+        const { value: newPassword } = await Swal.fire({
+            title: '🔑 Cambiar Contraseña',
+            text: `Nueva contraseña para @${username}:`,
+            input: 'password',
+            inputPlaceholder: 'Ingresa al menos 6 caracteres',
+            inputAttributes: { minlength: 6, size: 25 },
+            background: '#0d0d1f',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: '🔑 Actualizar Clave',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#f59e0b',
+            inputValidator: (value) => {
+                if (!value || value.length < 6) {
+                    return 'La contraseña debe tener al menos 6 caracteres';
+                }
+            }
+        });
+
+        if (newPassword) {
+            try {
+                const res = await infFetch('/api/admin/influencers/' + id + '/password', {
+                    method: 'PUT',
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon:'success', title:'¡Clave Actualizada!', text:`La contraseña de @${username} ha sido cambiada.`, background:'#0d0d1f', color:'#fff' });
+                } else {
+                    Swal.fire({ icon:'error', title:'Error', text: data.message || 'Error al cambiar contraseña', background:'#0d0d1f', color:'#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon:'error', title:'Error', text: e.message, background:'#0d0d1f', color:'#fff' });
+            }
+        }
+    }
+
+    async function deleteInfluencerAdmin(id, username) {
+        const confirmResult = await Swal.fire({
+            title: '🗑️ ¿Eliminar Influencer?',
+            html: `<p style="color:#aaa;">¿Estás seguro de que deseas eliminar permanentemente al influencer <strong style="color:#fff;">@${username}</strong>?</p><p style="color:#ff3d71; font-size:0.8rem; margin-top:8px;">Esta acción no se puede deshacer.</p>`,
+            icon: 'warning',
+            background: '#0d0d1f',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, Eliminar Registro',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (confirmResult.isConfirmed) {
+            try {
+                const res = await infFetch('/api/admin/influencers/' + id, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon:'success', title:'Eliminado', text:`El influencer @${username} fue eliminado.`, background:'#0d0d1f', color:'#fff' });
+                    loadInfluencersAdmin();
+                } else {
+                    Swal.fire({ icon:'error', title:'Error', text: data.message || 'Error al eliminar', background:'#0d0d1f', color:'#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon:'error', title:'Error', text: e.message, background:'#0d0d1f', color:'#fff' });
+            }
+        }
     }
 
     async function loadSubmissionsAdmin() {
@@ -4197,7 +5491,204 @@
 
     function escInf(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-    document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { loadRatesAdmin(); }, 3000); });
+    // ─── GESTIÓN DE CUPONES DE DESCUENTO (1era Recarga) ──────────────────────
+    let allCoupons = [];
+
+    async function loadCouponsAdmin() {
+        try {
+            const res = await infFetch('/api/admin/coupons');
+            const data = await res.json();
+            if (data.success) {
+                allCoupons = data.coupons || [];
+                renderCouponsTable();
+                populateInfluencerSelect();
+            } else {
+                console.error('Error cargando cupones:', data.message);
+            }
+        } catch(e) {
+            console.error('Error de red cargando cupones:', e.message);
+        }
+    }
+
+    function populateInfluencerSelect() {
+        const select = document.getElementById('coupon-influencer-select');
+        if (!select) return;
+        let html = '<option value="">General (Sin influencer)</option>';
+        if (allInfluencers && allInfluencers.length > 0) {
+            allInfluencers.forEach(inf => {
+                html += `<option value="${inf.id}" data-name="@${escInf(inf.tiktok_handle || inf.username)}">@${escInf(inf.tiktok_handle || inf.username)} (${escInf(inf.username)})</option>`;
+            });
+        }
+        select.innerHTML = html;
+    }
+
+    function renderCouponsTable() {
+        const tbody = document.getElementById('coupons-admin-table-body');
+        if (!tbody) return;
+        if (!allCoupons || allCoupons.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#b0a8c0;">No hay códigos de descuento registrados. ¡Crea uno arriba!</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = allCoupons.map(c => `
+            <tr>
+                <td><strong style="color:var(--secondary);font-size:1rem;letter-spacing:1px;"><i class="fa-solid fa-ticket"></i> ${escInf(c.code)}</strong></td>
+                <td><span style="color:#00FF94;font-weight:800;font-size:1.05rem;">${c.discount_percent}% OFF</span></td>
+                <td><span style="font-size:0.8rem;color:#FFD93D;background:rgba(255,217,61,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,217,61,0.2);">🔒 1era Recarga de Usuario</span></td>
+                <td><small style="color:#b0a8c0;">${escInf(c.influencer_name || 'General')}</small></td>
+                <td><strong style="color:#fff;">${c.uses_count || 0}</strong> uso(s)</td>
+                <td>
+                    <input type="checkbox" ${c.is_active !== false ? 'checked' : ''} onchange="toggleCouponStatus(${c.id}, this.checked)" style="width:16px;height:16px;cursor:pointer;">
+                    ${c.is_active !== false ? '<span style="color:#00FF94;font-weight:700;margin-left:4px;">Activo</span>' : '<span style="color:#FF3D71;font-weight:700;margin-left:4px;">Inactivo</span>'}
+                </td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <button onclick="editCouponPercent(${c.id}, ${c.discount_percent})" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:linear-gradient(135deg,#6c3de8,#8b5cf6);color:#fff;cursor:pointer;">✏️ % Descuento</button>
+                        <button onclick="deleteCouponAdmin(${c.id})" style="padding:5px 10px;font-size:0.75rem;border-radius:6px;border:none;background:rgba(220,38,38,0.3);color:#fca5a5;cursor:pointer;">✕ Eliminar</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function createCouponAdmin() {
+        const percent = parseFloat(document.getElementById('coupon-default-percent').value);
+        const code = document.getElementById('coupon-custom-code').value.trim();
+        const infSelect = document.getElementById('coupon-influencer-select');
+        const infId = infSelect ? infSelect.value : null;
+        const infName = infSelect && infSelect.selectedIndex > 0 ? infSelect.options[infSelect.selectedIndex].getAttribute('data-name') : null;
+
+        if (isNaN(percent) || percent <= 0 || percent > 100) {
+            Swal.fire({ icon: 'warning', title: 'Atención', text: 'El porcentaje de descuento debe estar entre 1% y 100%.', background: '#0d0d1f', color: '#fff' });
+            return;
+        }
+
+        try {
+            const res = await infFetch('/api/admin/coupons/create', {
+                method: 'POST',
+                body: JSON.stringify({ code, discount_percent: percent, influencer_id: infId, influencer_name: infName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('coupon-custom-code').value = '';
+                loadCouponsAdmin();
+                Swal.fire({ icon: 'success', title: '¡Código Creado!', text: `Código ${data.coupon.code} (${percent}% OFF) generado con éxito.`, background: '#0d0d1f', color: '#fff', timer: 2000, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
+            }
+        } catch(e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, background: '#0d0d1f', color: '#fff' });
+        }
+    }
+
+    async function generateAutoCouponAdmin() {
+        const percent = parseFloat(document.getElementById('coupon-default-percent').value) || 10;
+        const infSelect = document.getElementById('coupon-influencer-select');
+        const infId = infSelect ? infSelect.value : null;
+        const infName = infSelect && infSelect.selectedIndex > 0 ? infSelect.options[infSelect.selectedIndex].getAttribute('data-name') : null;
+
+        try {
+            const res = await infFetch('/api/admin/coupons/create', {
+                method: 'POST',
+                body: JSON.stringify({ discount_percent: percent, influencer_id: infId, influencer_name: infName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadCouponsAdmin();
+                Swal.fire({ icon: 'success', title: '¡Código Generado!', text: `Se generó el código automático: ${data.coupon.code} (${percent}% OFF).`, background: '#0d0d1f', color: '#fff' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
+            }
+        } catch(e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, background: '#0d0d1f', color: '#fff' });
+        }
+    }
+
+    async function toggleCouponStatus(id, active) {
+        try {
+            await infFetch('/api/admin/coupons/update', {
+                method: 'POST',
+                body: JSON.stringify({ id, is_active: active })
+            });
+            loadCouponsAdmin();
+        } catch(e) {
+            console.error('Error toggling coupon status:', e.message);
+        }
+    }
+
+    async function editCouponPercent(id, currentPercent) {
+        const { value: newPercent } = await Swal.fire({
+            title: '✏️ Cambiar % de Descuento',
+            input: 'number',
+            inputValue: currentPercent,
+            inputAttributes: { min: 1, max: 100, step: 1 },
+            background: '#0d0d1f',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            confirmButtonColor: '#9D00FF',
+            cancelButtonText: 'Cancelar',
+            preConfirm: (val) => {
+                const p = parseFloat(val);
+                if (isNaN(p) || p <= 0 || p > 100) {
+                    Swal.showValidationMessage('Ingresa un porcentaje válido entre 1 y 100');
+                    return false;
+                }
+                return p;
+            }
+        });
+
+        if (newPercent) {
+            try {
+                const res = await infFetch('/api/admin/coupons/update', {
+                    method: 'POST',
+                    body: JSON.stringify({ id, discount_percent: newPercent })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadCouponsAdmin();
+                    Swal.fire({ icon: 'success', title: 'Actualizado', text: `Descuento cambiado a ${newPercent}%.`, timer: 1500, showConfirmButton: false, background: '#0d0d1f', color: '#fff' });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: e.message, background: '#0d0d1f', color: '#fff' });
+            }
+        }
+    }
+
+    async function deleteCouponAdmin(id) {
+        const confirm = await Swal.fire({
+            title: '¿Eliminar código?',
+            text: 'Esta acción eliminará el código de descuento.',
+            icon: 'warning',
+            background: '#0d0d1f',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            confirmButtonColor: '#FF3D71',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await infFetch('/api/admin/coupons/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadCouponsAdmin();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
+                }
+            } catch(e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: e.message, background: '#0d0d1f', color: '#fff' });
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { loadRatesAdmin(); loadCouponsAdmin(); }, 3000); });
     </script>
 
 </body>

@@ -1,0 +1,95 @@
+﻿{
+    "id": "/?source=pwa",
+    "name": "RECARGASNEY.COM",
+    "short_name": "RECARGASNEY.COM",
+    "description": "Tienda premium e independiente de recarga de diamantes con entrega instantánea y sistema de lealtad.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#07030D",
+    "theme_color": "#07030D",
+    "orientation": "portrait",
+    "categories": [
+        "shopping",
+        "games"
+    ],
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-192.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icon.svg",
+            "type": "image/svg+xml",
+            "sizes": "192x192 512x512"
+        },
+        {
+            "src": "/icon.svg",
+            "type": "image/svg+xml",
+            "sizes": "192x192 512x512",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Canjear PIN",
+            "short_name": "Canjear",
+            "description": "Ir directo a canjear tus códigos de diamantes",
+            "url": "/canjear.html",
+            "icons": [
+                {
+                    "src": "/icon.svg",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Mi Cuenta",
+            "short_name": "Mi Cuenta",
+            "description": "Ver mis puntos acumulados e historial",
+            "url": "/?shortcut=account",
+            "icons": [
+                {
+                    "src": "/icon.svg",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/fondo.jpg",
+            "sizes": "1280x720",
+            "type": "image/webp",
+            "form_factor": "wide",
+            "label": "RECARGASNEY.COM - Recargas al Instante"
+        },
+        {
+            "src": "/fondo.jpg",
+            "sizes": "1280x720",
+            "type": "image/webp",
+            "form_factor": "narrow",
+            "label": "Compra pines y acumula puntos de lealtad"
+        }
+    ]
+}
+

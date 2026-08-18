@@ -50,6 +50,7 @@ const PATH_INFLUENCERS = path.join(__dirname, 'influencers.json');
 const PATH_SUBMISSIONS = path.join(__dirname, 'influencer_submissions.json');
 const PATH_PAYMENTS    = path.join(__dirname, 'influencer_payments.json');
 const PATH_RATES       = path.join(__dirname, 'influencer_rates.json');
+const PATH_COUPONS     = path.join(__dirname, 'coupons.json');
 
 function readJsonFile(filePath, defaultData = []) {
     try {
@@ -90,7 +91,8 @@ function initLocalInfluencerStorage() {
     readJsonFile(PATH_SUBMISSIONS, []);
     readJsonFile(PATH_PAYMENTS, []);
     readJsonFile(PATH_RATES, defaultRates);
-    console.log('[INFLUENCER-LOCAL] ✅ Almacenamiento local de influencers inicializado en VPS.');
+    readJsonFile(PATH_COUPONS, []);
+    console.log('[INFLUENCER-LOCAL] ✅ Almacenamiento local de influencers y cupones inicializado en VPS.');
 }
 
 
@@ -173,7 +175,7 @@ function areRefsSimilar(ref1, ref2) {
     const n2 = normalizeRef(r2);
     if (n1 === n2) return true;
 
-    // Solo considerar fin-con-fin si la menor referencia tiene al menos 3 dígitos significativos
+    // Considerar coincidencia si la ref más corta (al menos 3 dígitos significativos, ej: "1091") es sufijo de la otra
     const minLen = Math.min(n1.length, n2.length);
     if (minLen >= 3 && (n1.endsWith(n2) || n2.endsWith(n1))) {
         return true;
@@ -248,6 +250,108 @@ async function sendPushToUser(uid, title, body, icon = '/icon-192.png', urlPath 
     }
 }
 
+// ============================================================
+// 🔔 AUTOMATIZACIÓN DE NOTIFICACIONES PUSH PROGRAMADAS (MARKETING AUTOMÁTICO 24/7)
+// ============================================================
+async function sendBroadcastPush(title, body, urlPath = '/') {
+    if (!vapidPublicKey || !vapidPrivateKey) return 0;
+    try {
+        const { data: subscriptions, error } = await supabase
+            .from('ff_push_subscriptions')
+            .select('*');
+        if (error || !subscriptions || subscriptions.length === 0) return 0;
+
+        const payload = JSON.stringify({
+            title,
+            body,
+            icon: '/icon-192.png',
+            data: { url: urlPath }
+        });
+
+        let sentCount = 0;
+        const promises = subscriptions.map(sub => {
+            const pushSubscription = {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth }
+            };
+            return webPush.sendNotification(pushSubscription, payload)
+                .then(() => { sentCount++; })
+                .catch(async (err) => {
+                    if (err.statusCode === 410 || err.statusCode === 404) {
+                        await supabase.from('ff_push_subscriptions').delete().eq('id', sub.id);
+                    }
+                });
+        });
+        await Promise.all(promises);
+        return sentCount;
+    } catch (e) {
+        console.error('[PUSH-BROADCAST] Error:', e.message);
+        return 0;
+    }
+}
+
+let lastAutoPushKey = '';
+async function checkAndSendAutoPush() {
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Caracas',
+            weekday: 'short',
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: 'numeric', minute: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(new Date());
+        const map = {};
+        parts.forEach(p => map[p.type] = p.value);
+
+        const weekday = map.weekday;
+        const day = parseInt(map.day);
+        const hour = parseInt(map.hour);
+        const minute = parseInt(map.minute);
+
+        const pushKey = `${weekday}_${day}_${hour}_${Math.floor(minute / 15)}`;
+        if (lastAutoPushKey === pushKey) return;
+
+        let title = null;
+        let body = null;
+        let urlPath = '/';
+
+        // 1. Miércoles 10:00 AM y 5:55 PM VET -> Agenda Semanal Free Fire
+        if (weekday === 'Wed' && ((hour === 10 && minute < 15) || (hour === 17 && minute >= 54))) {
+            title = '🔥 ¡Llegó la Agenda Semanal de Free Fire!';
+            body = 'Nuevos eventos y skins disponibles. ¡Recarga tus diamantes al instante en recargasney.com! 💎⚡';
+        }
+        // 2. Viernes 6:00 PM VET -> Fin de Semana Gamer / Ruleta
+        else if (weekday === 'Fri' && hour === 18 && minute < 15) {
+            title = '🎮 ¡Fin de Semana Gamer en RECARGASNEY.COM!';
+            body = 'Recarga 24/7, acumula cashback y prueba tu suerte en la Ruleta de premios. 🏆💎';
+        }
+        // 3. Domingo 12:00 PM VET -> Recordatorio Sorteo Semanal
+        else if (weekday === 'Sun' && hour === 12 && minute < 15) {
+            title = '🎁 ¡Hoy es el Sorteo Semanal de Referidos!';
+            body = 'Invita a tus amigos antes de las 9:00 PM y gana diamantes gratis. 💎✨';
+        }
+        // 4. Día 15 y 30 a las 11:00 AM VET -> Quincena / Día de Cobro
+        else if ((day === 15 || day === 30) && hour === 11 && minute < 15) {
+            title = '💰 ¡Llegó la Quincena a RECARGASNEY.COM!';
+            body = 'Aprovecha y recarga tus diamantes o membresía al mejor precio. Entrega automática 24/7. 💎🚀';
+        }
+
+        if (title && body) {
+            lastAutoPushKey = pushKey;
+            console.log(`[PUSH-CRON] ⏰ Enviando notificación push programada: "${title}"`);
+            const sent = await sendBroadcastPush(title, body, urlPath);
+            console.log(`[PUSH-CRON] ✅ Notificación enviada a ${sent} dispositivos.`);
+        }
+    } catch (e) {
+        console.error('[PUSH-CRON] Error en scheduler:', e.message);
+    }
+}
+
+// Revisar cada 1 minuto automáticamente y ejecutar inmediatamente al arrancar
+checkAndSendAutoPush();
+setInterval(checkAndSendAutoPush, 1 * 60 * 1000);
+
 // =====================================================
 // 🏦 BDV AUTO-PAGO — SERVICIO PUPPETEER
 // Toggle ON/OFF: bdvAutoApproveEnabled (default: false)
@@ -258,6 +362,24 @@ const { bdvLogin, verificarPagoBDV, getBDVStatus, closeBDVBrowser } = require('.
 // 🔴 DESACTIVADO por defecto — activar desde el panel admin o con POST /admin/bdv-config
 let bdvAutoApproveEnabled = false;
 let bdvAutoApproveRunning = false; // mutex para evitar ciclos superpuestos
+
+// =====================================================
+// 🏦 BANESCO AUTO-PAGO — SERVICIO PUPPETEER
+// Toggle ON/OFF: banescoAutoApproveEnabled (default: false)
+// =====================================================
+const { banescoLogin, verificarPagoBanesco, getBanescoStatus, closeBanescoBrowser } = require('./banesco-service.js');
+let banescoAutoApproveEnabled = false;
+let banescoAutoApproveRunning = false; // mutex para evitar ciclos superpuestos
+
+// Wrapper de verificación Banesco
+async function verifyBanescoPayment(montoReportado, referencia) {
+    try {
+        return await verificarPagoBanesco(montoReportado, referencia);
+    } catch (e) {
+        console.error('[BANESCO] Error en verifyBanescoPayment:', e.message);
+        return { success: false, checked: false, pending: true };
+    }
+}
 
 // 💛 BINANCE PAY AUTO-APROBACIÓN
 // Toggle ON/OFF: binanceAutoApproveEnabled (default: true — se activa automáticamente)
@@ -587,41 +709,7 @@ async function getTodayAccumulatedProfit(tasa) {
 }
 
 async function sendAdminProfitNotification(order) {
-    try {
-        const tasa = settings.tasa_del_dia || 1;
-        const { profitUsdt, profitBs } = getOrderProfit(order, tasa);
-        const todayProfit = await getTodayAccumulatedProfit(tasa);
-
-        const nowStr = getVEString();
-        const msg =
-            `💰 *REPORTE DE GANANCIA* 💰\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
-            `👤 *Jugador:* ${order.name}\n` +
-            `💎 *Paquete:* ${order.pack}\n` +
-            `💵 *Precio:* ${order.price}\n` +
-            `📊 *Ganancia de esta recarga:*\n` +
-            `   • *USDT:* $${profitUsdt.toFixed(2)}\n` +
-            `   • *Bs:* ${profitBs.toFixed(2)} Bs.\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `📈 *Acumulado de hoy:*\n` +
-            `   • *USDT:* $${todayProfit.profitUsdt.toFixed(2)}\n` +
-            `   • *Bs:* ${todayProfit.profitBs.toFixed(2)} Bs.\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `⏰ *Hora:* ${nowStr}`;
-
-        const adminNum = '584243790757';
-        const msgId = `wa_admin_profit_${order.ref}`;
-        
-        if (whatsappQueue.some(item => item.id === msgId)) return;
-
-        const waItem = { id: msgId, number: adminNum, message: msg };
-        whatsappQueue.push(waItem);
-        await supabase.from('ff_wa_queue').insert(waItem);
-        console.log(`[PROFIT-NOTIFY] ✅ Reporte de ganancia encolado para admin ${adminNum} (ref: ${order.ref})`);
-    } catch (e) {
-        console.error('[PROFIT-NOTIFY] Error en sendAdminProfitNotification:', e.message);
-    }
+    return; // Reportes de ganancia al administrador desactivados a petición del usuario
 }
 
 // --- Helper para obtener el último WhatsApp registrado de un UID ---
@@ -653,6 +741,10 @@ let waBotQR = '';
 let pagosValidados = {};
 let users = {};
 let waContacts = {};
+// Clientes que consultaron el estado de su pedido via WA y esperan notificacion al cambiar.
+// clave: ref -> valor: numero WA del cliente que consulto (ej: '584121234567')
+const waWatchers = new Map();
+
 
 function normalizePhone(num) {
     if (!num) return null;
@@ -756,7 +848,8 @@ const defaultPublicidades = [
 ];
 
 let settings = {
-    tasa_del_dia: 812.00,
+    freefire_provider_option: "directas",
+    tasa_del_dia: 885.00,
     barra_informativa: "🔥 ¡Bienvenidos a RECARGASNEY.COM! 💎",
     precios: {
         "100":     { "usdt": 0.86,  "label": "100 + 10 Diamantes" },
@@ -824,11 +917,12 @@ let settings = {
         password: process.env.ADMIN_PASS || "123",
         session_token: null
     },
-    metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, binance: { id: "", nombre: "" } },
+    metodos_pago: { pagomovil: { banco: "", telefono: "", cedula: "" }, pagomovil_banesco: { banco: "Banesco Banco Universal (0134)", telefono: "", cedula: "", habilitado: false }, binance: { id: "", nombre: "" } },
     whatsapp: { soporte: "584125322412", bot: "584123491068", canal: "" },
     publicidades: defaultPublicidades,
     sorteo_semanal: { premio: "341 Diamantes", lastWinner: null }
 };
+global.settings = settings;
 
 // --- Carga inicial desde Supabase ---
 async function reloadPines() {
@@ -852,10 +946,138 @@ async function reloadPines() {
 
 async function loadFromSupabase() {
     try {
-        // Cargar Pines
+        // 1. Configuración (Cargar tasa_del_dia, precios y admin credentials INMEDIATAMENTE al iniciar)
+        const { data: settingsData, error: settingsError } = await supabase
+            .from('ff_settings')
+            .select('*')
+            .eq('id', 1)
+            .single();
+        if (settingsError) {
+            console.error('[SUPABASE] ❌ Error cargando settings:', settingsError.message);
+            try {
+                const backupPath = path.join(__dirname, 'winner_backup.json');
+                if (fs.existsSync(backupPath)) {
+                    const backupWinner = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+                    if (backupWinner && backupWinner.name) {
+                        if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
+                        settings.sorteo_semanal.lastWinner = backupWinner;
+                        console.log(`[SORTEO] 🔄 Ganador recuperado desde respaldo local: ${backupWinner.name} (${backupWinner.uid})`);
+                    }
+                }
+            } catch (bErr) {
+                console.error('[SORTEO] ⚠️ No se pudo leer respaldo local del ganador:', bErr.message);
+            }
+        } else if (settingsData) {
+            settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
+            settings.barra_informativa = settingsData.barra_informativa;
+            settings.freefire_provider_option = (settingsData.juegos && settingsData.juegos.freefire_provider_option) || settingsData.freefire_provider_option || settings.freefire_provider_option || 'directas';
+            if (!settings.admin) settings.admin = { username: 'admin', password: 'Sneyder12345*#' };
+            settings.admin.username = settingsData.admin_username || settings.admin.username || 'admin';
+            settings.admin.password = settingsData.admin_password || settings.admin.password || 'Sneyder12345*#';
+            if (settingsData.admin_session_token) {
+                settings.admin.session_token = settingsData.admin_session_token;
+            }
+            settings.metodos_pago = settingsData.metodos_pago;
+            if (settingsData.active_pagomovil_bank) settings.active_pagomovil_bank = settingsData.active_pagomovil_bank;
+            settings.whatsapp = settingsData.whatsapp_config;
+            settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades && settings.whatsapp.publicidades.length > 0) ? settings.whatsapp.publicidades : (settingsData.publicidades && settingsData.publicidades.length > 0 ? settingsData.publicidades : defaultPublicidades);
+            if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
+                settings.precios = settingsData.precios;
+            }
+            if (settingsData.juegos) {
+                settings.juegos = { ...settings.juegos, ...settingsData.juegos };
+                if (settings.juegos.sorteo_semanal) {
+                    settings.sorteo_semanal = Object.assign({}, settings.sorteo_semanal || {}, settings.juegos.sorteo_semanal);
+                }
+                if (!settings.juegos.mobilelegends) {
+                    settings.juegos.mobilelegends = {
+                        "nombre": "Mobile Legends US",
+                        "inputLabel": "ID de Jugador (User ID y Zone ID)",
+                        "inputPlaceholder": "Ej: 12345678 (1234)",
+                        "icono": "fa-shield-halved",
+                        "paquetes": {
+                            "51":   { "usdt": 0.90,  "label": "51 + 5 💎 Diamantes" },
+                            "102":  { "usdt": 1.85,  "label": "102 + 10 💎 Diamantes" },
+                            "253":  { "usdt": 4.69,  "label": "253 + 25 💎 Diamantes" },
+                            "505":  { "usdt": 9.33,  "label": "505 + 66 💎 Diamantes" },
+                            "1010": { "usdt": 18.94, "label": "1010 + 182 💎 Diamantes" },
+                            "1515": { "usdt": 28.60, "label": "1515 + 273 💎 Diamantes" }
+                        }
+                    };
+                }
+                if (settingsData.juegos.sorteo_semanal) {
+                    settings.sorteo_semanal = settingsData.juegos.sorteo_semanal;
+                    if (settings.sorteo_semanal) {
+                        delete settings.sorteo_semanal.lastResetTimestamp;
+                    }
+                }
+                if (settings.juegos.freefire) {
+                    settings.juegos.freefire.paquetes = Object.assign({}, settings.juegos.freefire.paquetes || {}, settingsData.precios || {});
+                }
+                if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
+                    settings.precios = Object.assign({}, settings.precios || {}, settingsData.precios);
+                }
+            }
+            console.log(`[SUPABASE] 🔑 Tasa cargada: ${settings.tasa_del_dia} Bs/USDT | Admin: '${settings.admin.username}'`);
+
+            if (settings.metodos_pago && settings.metodos_pago.pagomovil) {
+                bdvAutoApproveEnabled = !!settings.metodos_pago.pagomovil.auto_approve_enabled;
+            } else {
+                bdvAutoApproveEnabled = false;
+            }
+
+            // 🔐 Cargar credenciales BDV desde Supabase (sobreescribe .env si existen)
+            if (settingsData.bdv_credentials) {
+                const creds = settingsData.bdv_credentials;
+                if (creds.user)  process.env.BDV_USER   = creds.user;
+                if (creds.pass)  process.env.BDV_PASS   = creds.pass;
+                if (creds.cuenta) process.env.BDV_CUENTA = creds.cuenta;
+                console.log(`[BDV-STARTUP] 🔐 Credenciales BDV cargadas desde Supabase (usuario: ${creds.user || '?'}).`);
+            }
+
+            if (bdvAutoApproveEnabled) {
+                bdvLogin().then(ok => {
+                    if (ok) console.log('[BDV-STARTUP] ✅ Login BDV exitoso.');
+                    else console.error('[BDV-STARTUP] ❌ Login BDV falló.');
+                }).catch(e => console.error('[BDV-STARTUP] Error en login BDV:', e.message));
+            }
+
+            // 🔐 Cargar estado y credenciales Banesco desde Supabase
+            if (settingsData.banesco_auto_approve !== undefined) {
+                banescoAutoApproveEnabled = !!settingsData.banesco_auto_approve;
+            } else if (settings.metodos_pago && settings.metodos_pago.pagomovil_banesco) {
+                banescoAutoApproveEnabled = !!settings.metodos_pago.pagomovil_banesco.auto_approve_enabled;
+            }
+
+            if (settingsData.banesco_credentials) {
+                const creds = settingsData.banesco_credentials;
+                if (creds.user)        process.env.BANESCO_USER        = creds.user;
+                if (creds.pass)        process.env.BANESCO_PASS        = creds.pass;
+                if (creds.sec_perro)   process.env.BANESCO_SEC_PERRO   = creds.sec_perro;
+                if (creds.sec_carro)   process.env.BANESCO_SEC_CARRO   = creds.sec_carro;
+                if (creds.sec_pasatiempo) process.env.BANESCO_SEC_PASATIEMPO = creds.sec_pasatiempo;
+                if (creds.sec_apellido)   process.env.BANESCO_SEC_APELLIDO   = creds.sec_apellido;
+                console.log(`[BANESCO-STARTUP] 🔐 Credenciales Banesco cargadas desde Supabase (usuario: ${creds.user || '?'}).`);
+            }
+
+            if (banescoAutoApproveEnabled) {
+                banescoLogin().then(ok => {
+                    if (ok) console.log('[BANESCO-STARTUP] ✅ Login Banesco exitoso.');
+                    else console.error('[BANESCO-STARTUP] ❌ Login Banesco falló.');
+                }).catch(e => console.error('[BANESCO-STARTUP] Error en login Banesco:', e.message));
+            }
+
+            if (settings.metodos_pago && settings.metodos_pago.binance && typeof settings.metodos_pago.binance.auto_approve_enabled !== 'undefined') {
+                binanceAutoApproveEnabled = !!settings.metodos_pago.binance.auto_approve_enabled;
+            } else {
+                binanceAutoApproveEnabled = true;
+            }
+        }
+
+        // 2. Cargar Pines
         await reloadPines();
         
-        // Usuarios con paginación para evitar el límite de 1000 filas
+        // 3. Usuarios con paginación para evitar el límite de 1000 filas
         let page = 0;
         const pageSize = 1000;
         let hasMore = true;
@@ -895,13 +1117,13 @@ async function loadFromSupabase() {
         }
         console.log(`[SUPABASE] 📥 ${loadedCount} usuarios cargados en memoria.`);
 
-        // Pedidos Pendientes
+        // 4. Pedidos Pendientes
         const { data: ordersData } = await supabase.from('ff_orders').select('*').eq('status', 'pending');
         if (ordersData) {
             ordersData.forEach(o => { orders[o.ref] = { ...o, time: o.time }; });
         }
 
-        // Contactos WhatsApp (ff_wa_contacts + backfill automático desde ff_orders y ff_users)
+        // 5. Contactos WhatsApp
         try {
             const { data: contactsData } = await supabase.from('ff_wa_contacts').select('*');
             if (contactsData) {
@@ -909,7 +1131,6 @@ async function loadFromSupabase() {
             }
         } catch (_) {}
 
-        // Sincronizar números de TODOS los pedidos históricos (ff_orders) y usuarios (ff_users)
         try {
             const { data: allOrdersWA } = await supabase.from('ff_orders').select('uid, name, wa, time').not('wa', 'is', null);
             if (allOrdersWA) {
@@ -925,106 +1146,6 @@ async function loadFromSupabase() {
             if (u.phone) saveWaContact(u.phone, u.name, u.uid || null, 'web_user');
         });
         console.log(`[SUPABASE] 📇 ${Object.keys(waContacts).length} contactos de WhatsApp sincronizados.`);
-        
-        // Configuración
-        const { data: settingsData, error: settingsError } = await supabase
-            .from('ff_settings')
-            .select('*')
-            .eq('id', 1)
-            .single();
-        if (settingsError) {
-            console.error('[SUPABASE] ❌ Error cargando settings:', settingsError.message);
-            // 🔒 Intentar recuperar el ganador desde respaldo local
-            try {
-                const backupPath = path.join(__dirname, 'winner_backup.json');
-                if (fs.existsSync(backupPath)) {
-                    const backupWinner = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
-                    if (backupWinner && backupWinner.name) {
-                        if (!settings.sorteo_semanal) settings.sorteo_semanal = {};
-                        settings.sorteo_semanal.lastWinner = backupWinner;
-                        console.log(`[SORTEO] 🔄 Ganador recuperado desde respaldo local: ${backupWinner.name} (${backupWinner.uid})`);
-                    }
-                }
-            } catch (bErr) {
-                console.error('[SORTEO] ⚠️ No se pudo leer respaldo local del ganador:', bErr.message);
-            }
-        } else if (settingsData) {
-            settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
-            settings.barra_informativa = settingsData.barra_informativa;
-            if (!settings.admin) settings.admin = { username: 'admin', password: 'Sneyder12345*#' };
-            settings.admin.username = settingsData.admin_username || settings.admin.username || 'admin';
-            settings.admin.password = settingsData.admin_password || settings.admin.password || 'Sneyder12345*#';
-            if (settingsData.admin_session_token) {
-                settings.admin.session_token = settingsData.admin_session_token;
-            }
-            settings.metodos_pago = settingsData.metodos_pago;
-            settings.whatsapp = settingsData.whatsapp_config;
-            settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades && settings.whatsapp.publicidades.length > 0) ? settings.whatsapp.publicidades : (settingsData.publicidades && settingsData.publicidades.length > 0 ? settingsData.publicidades : defaultPublicidades);
-            // Cargar precios y juegos directamente desde Supabase (source of truth)
-            if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
-                settings.precios = settingsData.precios;
-            }
-            if (settingsData.juegos) {
-                settings.juegos = { ...settings.juegos, ...settingsData.juegos };
-                if (settings.juegos.sorteo_semanal) {
-                    settings.sorteo_semanal = Object.assign({}, settings.sorteo_semanal || {}, settings.juegos.sorteo_semanal);
-                }
-                if (!settings.juegos.mobilelegends) {
-                    settings.juegos.mobilelegends = {
-                        "nombre": "Mobile Legends US",
-                        "inputLabel": "ID de Jugador (User ID y Zone ID)",
-                        "inputPlaceholder": "Ej: 12345678 (1234)",
-                        "icono": "fa-shield-halved",
-                        "paquetes": {
-                            "51":   { "usdt": 0.90,  "label": "51 + 5 💎 Diamantes" },
-                            "102":  { "usdt": 1.85,  "label": "102 + 10 💎 Diamantes" },
-                            "253":  { "usdt": 4.69,  "label": "253 + 25 💎 Diamantes" },
-                            "505":  { "usdt": 9.33,  "label": "505 + 66 💎 Diamantes" },
-                            "1010": { "usdt": 18.94, "label": "1010 + 182 💎 Diamantes" },
-                            "1515": { "usdt": 28.60, "label": "1515 + 273 💎 Diamantes" }
-                        }
-                    };
-                }
-                if (settingsData.juegos.sorteo_semanal) {
-                    settings.sorteo_semanal = settingsData.juegos.sorteo_semanal;
-                    if (settings.sorteo_semanal) {
-                        delete settings.sorteo_semanal.lastResetTimestamp;
-                    }
-                }
-                // Sincronizar paquetes de freefire combinando con precios globales sin perder los paquetes por defecto
-                if (settings.juegos.freefire) {
-                    settings.juegos.freefire.paquetes = Object.assign({}, settings.juegos.freefire.paquetes || {}, settingsData.precios || {});
-                }
-                // Actualizar precios globales sin borrar la lista completa
-                if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
-                    settings.precios = Object.assign({}, settings.precios || {}, settingsData.precios);
-                }
-            }
-            console.log(`[SUPABASE] 🔑 Credenciales admin cargadas: usuario='${settings.admin.username}'`);
-
-            // --- Inicializar estado del toggle bdvAutoApproveEnabled ---
-            if (settings.metodos_pago && settings.metodos_pago.pagomovil) {
-                bdvAutoApproveEnabled = !!settings.metodos_pago.pagomovil.auto_approve_enabled;
-            } else {
-                bdvAutoApproveEnabled = false;
-            }
-            console.log(`[SUPABASE] 🏦 Auto-aprobación BDV inicializada: ${bdvAutoApproveEnabled ? '✅ ACTIVADA' : '🔴 DESACTIVADA'}`);
-            if (bdvAutoApproveEnabled) {
-                console.log('[SUPABASE] 🏦 Iniciando login BDV en background...');
-                bdvLogin().then(ok => {
-                    if (ok) console.log('[BDV-STARTUP] ✅ Login BDV exitoso.');
-                    else console.error('[BDV-STARTUP] ❌ Login BDV falló.');
-                }).catch(e => console.error('[BDV-STARTUP] Error en login BDV:', e.message));
-            }
-
-            // --- Inicializar estado del toggle binanceAutoApproveEnabled ---
-            if (settings.metodos_pago && settings.metodos_pago.binance && typeof settings.metodos_pago.binance.auto_approve_enabled !== 'undefined') {
-                binanceAutoApproveEnabled = !!settings.metodos_pago.binance.auto_approve_enabled;
-            } else {
-                binanceAutoApproveEnabled = true; // Por defecto ON para Binance
-            }
-            console.log(`[SUPABASE] 💛 Auto-aprobación Binance inicializada: ${binanceAutoApproveEnabled ? '✅ ACTIVADA' : '🔴 DESACTIVADA'}`);
-        }
         
         // Intentar cargar el token de sesión por separado (requiere columna admin_session_token)
         try {
@@ -1204,38 +1325,12 @@ function isExcludedAdmin(num) {
 // 🚨 ALERTA DE ERROR JADH.SHOP → Admin (WhatsApp + acción requerida)
 // ─────────────────────────────────────────────────────────
 function notifyAdminsJadhError(order, errorMsg, source = 'Automático') {
-    const now = getVEString();
-    const msg =
-        `🚨 *ERROR EN RECARGA JADH.SHOP* 🚨\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
-        `👤 *Jugador:* ${order.name}\n` +
-        `🆔 *ID/Usuario:* ${order.uid}\n` +
-        `💎 *Paquete:* ${order.pack}\n` +
-        `💰 *Monto:* ${order.price || 'N/A'}\n` +
-        `📝 *Referencia:* \`${order.ref}\`\n` +
-        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `❌ *Motivo del error:* ${errorMsg}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🔧 *Fuente:* ${source}\n` +
-        `⏰ *Hora:* ${now}\n\n` +
-        `⚠️ _El pedido quedó en estado PENDIENTE. Recarga manualmente o usa "Reintentar" en el panel._`;
-
-    for (const adminNumber of ADMIN_WA_NUMBERS) {
-        if (isExcludedAdmin(adminNumber)) continue;
-        const msgId = `wa_admin_jadh_err_${order.ref}_${adminNumber.slice(-4)}`;
-        if (whatsappQueue.some(i => i.id === msgId)) continue;
-        const waItem = { id: msgId, number: adminNumber, message: msg };
-        whatsappQueue.push(waItem);
-        supabase.from('ff_wa_queue').insert(waItem)
-            .then(({ error }) => { if (error && error.code !== '23505') console.error('[JADH-ERR-NOTIFY] Error:', error.message); });
-        console.log(`[JADH-ERR-NOTIFY] 🚨 Alerta de error Jadh encolada para admin ${adminNumber} (ref: ${order.ref})`);
-    }
+    return; // Notificaciones de WhatsApp al administrador desactivadas a petición del usuario
 }
 
 function notifyAdminsNewOrder(order) {
     const now = getVEString();
+    const adminNumber = '584243790757'; // Número principal de administración
     const msg =
         `🛒 *NUEVO PEDIDO RECIBIDO* 🛒\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -1254,105 +1349,28 @@ function notifyAdminsNewOrder(order) {
         `👉 *Aprobar* (para procesar recarga)\n` +
         `👉 *Rechazar* (para cancelar y notificar al cliente)`;
 
-    for (const adminNumber of ADMIN_WA_NUMBERS) {
-        if (isExcludedAdmin(adminNumber)) continue;
-        const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
-        // Evitar duplicado si ya está en cola
-        if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
+    const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
+    if (whatsappQueue.some(item => item.id === adminMsgId)) return;
 
-        const waItem = { id: adminMsgId, number: adminNumber, message: msg };
-        whatsappQueue.push(waItem);
-        supabase.from('ff_wa_queue').insert(waItem)
-            .then(({ error }) => {
-                if (error && error.code !== '23505') {
-                    console.error(`[WA-ADMIN] Error encolando alerta para ${adminNumber}:`, error.message);
-                }
-            });
-        console.log(`[WA-ADMIN] 📲 Alerta de nuevo pedido encolada para admin: ${adminNumber} (ref: ${order.ref})`);
-    }
+    const waItem = { id: adminMsgId, number: adminNumber, message: msg };
+    whatsappQueue.push(waItem);
+    supabase.from('ff_wa_queue').insert(waItem)
+        .then(({ error }) => {
+            if (error && error.code !== '23505') {
+                console.error(`[WA-ADMIN] Error encolando alerta para ${adminNumber}:`, error.message);
+            }
+        });
+    console.log(`[WA-ADMIN] 📲 Alerta de nuevo pedido encolada para admin: ${adminNumber} (ref: ${order.ref})`);
 }
 
 // --- NOTIFICACIÓN A ADMINS: Canje de puntos recibido ---
 function notifyAdminsNewCanje(order) {
-    const now = getVEString();
-    const pointCosts = { 
-        "100": 500, "310": 1500, "520": 2500,
-        "basica": 400, "semanal": 1500, "booyah": 2300, "mensual": 7500
-    };
-    const cost = pointCosts[order.pack] || 0;
-    const usdtCost = (cost * 0.003).toFixed(2);
-
-    const msg =
-        `🎁 *SOLICITUD DE CANJE DE PUNTOS* 🎁\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `👤 *Jugador:* ${order.name}\n` +
-        `🆔 *ID Garena:* ${order.uid}\n` +
-        `💎 *Paquete:* ${order.pack}\n` +
-        `📉 *Monto de Canje:* $${usdtCost} USDT\n` +
-        `💳 *Método:* Canje de Cashback 🎁\n` +
-        `📝 *Referencia:* \`${order.ref}\`\n` +
-        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `⏰ *Hora:* ${now}\n` +
-        `\n💡 *Responde a este mensaje con:*\n` +
-        `👉 *Aprobar* (para procesar recarga)\n` +
-        `👉 *Rechazar* (para cancelar y devolver puntos)`;
-
-    for (const adminNumber of ADMIN_WA_NUMBERS) {
-        if (isExcludedAdmin(adminNumber)) continue;
-        const adminMsgId = `wa_admin_${order.ref}_${adminNumber.slice(-4)}`;
-        if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
-
-        const waItem = { id: adminMsgId, number: adminNumber, message: msg };
-        whatsappQueue.push(waItem);
-        Promise.resolve(supabase.from('ff_wa_queue').insert(waItem)).catch(() => {});
-    }
+    return; // Notificaciones de WhatsApp al administrador desactivadas a petición del usuario
 }
 
 // --- NOTIFICACIÓN A ADMINS: Pedido aprobado o rechazado ---
 function notifyAdminsOrderStatus(order, isApproved, source = 'sistema') {
-    const now = getVEString();
-    const statusEmoji = isApproved ? '✅' : '❌';
-    const statusText  = isApproved ? 'APROBADO' : 'RECHAZADO';
-    const isCanje = order.method === 'canje';
-    const msgType = isCanje ? 'CANJE' : 'PEDIDO';
-    
-    let msg =
-        `${statusEmoji} *${msgType} ${statusText}* ${statusEmoji}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🎮 *Juego:* ${order.juego ? order.juego.toUpperCase() : 'FREEFIRE'}\n` +
-        `👤 *Jugador:* ${order.name}\n` +
-        `🆔 *ID/Usuario:* ${order.uid}\n` +
-        `💎 *Paquete:* ${order.pack}\n` +
-        `💰 *Total:* ${order.price || 'N/A'}\n` +
-        `📝 *Referencia:* \`${order.ref}\`\n` +
-        `📱 *WA Cliente:* +${order.wa && order.wa !== 'No provisto' ? order.wa : 'No indicado'}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n`;
-        
-    if (!isApproved && order.reason) {
-        msg += `❌ *Motivo:* ${order.reason}\n` +
-               `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    }
-    
-    msg +=
-        `🔧 *Fuente:* ${source}\n` +
-        `⏰ *Hora:* ${now}`;
-
-    for (const adminNumber of ADMIN_WA_NUMBERS) {
-        if (isExcludedAdmin(adminNumber)) continue;
-        const adminMsgId = `wa_admin_status_${order.ref}_${isApproved ? 'ok' : 'ko'}_${adminNumber.slice(-4)}`;
-        if (whatsappQueue.some(item => item.id === adminMsgId)) continue;
-
-        const waItem = { id: adminMsgId, number: adminNumber, message: msg };
-        whatsappQueue.push(waItem);
-        supabase.from('ff_wa_queue').insert(waItem)
-            .then(({ error }) => {
-                if (error && error.code !== '23505') {
-                    console.error(`[WA-ADMIN-STATUS] Error encolando para ${adminNumber}:`, error.message);
-                }
-            });
-        console.log(`[WA-ADMIN-STATUS] 📲 Notificación de estado encolada para admin: ${adminNumber} (ref: ${order.ref}, estado: ${statusText})`);
-    }
+    return; // Notificaciones de WhatsApp al administrador desactivadas a petición del usuario
 }
 
 // Programa un mensaje con el link de referidos 15 min después de una recarga aprobada
@@ -1488,8 +1506,9 @@ async function addPoints(uid, amountUsdt, name = null) {
     const pointsToAdd = Math.floor(amountUsdt * (10 / 3));
     userObj.points = (userObj.points || 0) + pointsToAdd;
     if (name) {
-        const currentName = (userObj.name || '').trim();
-        if (!currentName || currentName === 'Jugador' || currentName === '—' || currentName === '-') {
+        const currentName = (userObj.name || '').trim().toLowerCase();
+        const genericList = ['jugador', 'cliente', 'player', 'pruebaff', '—', '-', ''];
+        if (!currentName || genericList.includes(currentName)) {
             userObj.name = name;
         }
     }
@@ -1562,7 +1581,65 @@ function updateOrderStatus(ref, status, pin = null, reason = null) {
     orders[ref].status = status;
     if (pin) orders[ref].pin = pin;
     orders[ref].reason = reason;
-    
+
+    // ============================================================
+    // 🔔 WA-WATCHER: Notificar al cliente via WA al cambiar estado
+    //    Si el cliente consultó previamente o indicó su número en el pedido.
+    // ============================================================
+    const hasWatcher = waWatchers.has(ref);
+    let order = orders[ref];
+    let watcherNumber = hasWatcher ? waWatchers.get(ref) : (order && order.wa && order.wa !== 'No provisto' ? order.wa.trim() : null);
+
+    if (!watcherNumber && ref) {
+        const cleanRef = ref.trim();
+        for (const k in orders) {
+            const parts = k.split(',').map(p => p.trim());
+            if (parts.includes(cleanRef)) {
+                if (orders[k].wa && orders[k].wa !== 'No provisto') {
+                    watcherNumber = orders[k].wa.trim();
+                    order = orders[k];
+                    break;
+                }
+            }
+        }
+    }
+
+    if ((status === 'approved' || status === 'rejected') && watcherNumber) {
+        if (hasWatcher) waWatchers.delete(ref); // limpiar si estaba en memoria
+
+        const orderName = (order && order.name) ? order.name : 'Cliente';
+        const orderPack = (order && order.pack) ? order.pack : 'tu recarga';
+
+        let watcherMsg = '';
+        if (status === 'approved') {
+            watcherMsg =
+                `✅ *¡TU RECARGA FUE APROBADA!* 🚀\n\n` +
+                `¡Hola, *${orderName}*! Te confirmamos que tu pedido de *${orderPack}* fue verificado y procesado con éxito. 💪\n\n` +
+                `¡Gracias por confiar en *RECARGASNEY*! Si necesitas algo más, escríbenos. 🤝`;
+        } else {
+            const rawSupport = (settings && settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
+            const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+            watcherMsg =
+                `❌ *AVISO SOBRE TU RECARGA* ❌\n\n` +
+                `Hola *${orderName}*, lamentamos informarte que tu pedido de *${orderPack}* no pudo ser procesado.\n\n` +
+                `*Motivo:* ${reason || 'Error en la verificación del pago. Revisa el monto y la referencia.'}\n\n` +
+                `Envía captura de tu pago a soporte: *${supportNum}* 🛠️\n\n` +
+                `¡Estamos aquí para ayudarte! 🤝`;
+        }
+
+        const watcherWaItem = {
+            id: `wa_watcher_${ref}_${Date.now()}`,
+            number: watcherNumber,
+            message: watcherMsg,
+            delay: 1000
+        };
+        whatsappQueue.push(watcherWaItem);
+        supabase.from('ff_wa_queue').insert(watcherWaItem).then(({ error: wErr }) => {
+            if (wErr) console.error(`[WA-WATCHER] Error encolando para ${watcherNumber}:`, wErr.message);
+            else console.log(`[WA-WATCHER] ✅ Notificación encolada para ${watcherNumber} (ref: ${ref}, estado: ${status})`);
+        });
+    }
+
     const update = { status, reason };
     if (pin) update.pin = pin;
         
@@ -2179,12 +2256,12 @@ async function runAutoApprovalCycle() {
                         if (bdvResult.checked) {
                             const orderTime = new Date(order.time);
                             const diffMin = (NOW - orderTime) / (1000 * 60);
-                            if (diffMin > 2) {
-                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 2 min. Auto-rechazando...`);
+                            if (diffMin >= 5) {
+                                console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras 5 min. Auto-rechazando...`);
                                 
                                 orders[ref].status = 'rejected';
-                                orders[ref].reason = 'Pago no encontrado en el banco tras 2 minutos';
-                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 2 minutos');
+                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
+                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
 
                                 // Notificar cliente por WhatsApp (Rechazo)
                                 queueWhatsAppMessage({ ...orders[ref], ref }, false);
@@ -2205,7 +2282,7 @@ async function runAutoApprovalCycle() {
                                 updateTelegramStatus(ref);
                             }
                         } else {
-                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} no se pudo verificar en BDV (bot inactivo o error). Se mantiene PENDIENTE.`);
+                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} no se pudo verificar en BDV (banco lento o timeout). Se mantiene PENDIENTE para reintentar en el próximo ciclo.`);
                         }
                     }
                 }
@@ -2218,8 +2295,152 @@ async function runAutoApprovalCycle() {
     }
     // ─────────────────────────────────────────────────────────────────────────
     // NOTA: El flujo de aprobación MANUAL sigue igual, sin cambios.
-    // Los admins pueden seguir respondiendo "Aprobar/Rechazar" por WhatsApp
-    // o usando el panel admin, independientemente de si BDV-AUTO está ON o OFF.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── BANESCO AUTO-APROBACIÓN (solo si el toggle está ON) ──────────────────
+    if (banescoAutoApproveEnabled && !banescoAutoApproveRunning) {
+        const pendingBanesco = Object.entries(orders).filter(
+            ([, o]) => o.status === 'pending' && o.method === 'pagomovil_banesco'
+        );
+
+        if (pendingBanesco.length > 0) {
+            banescoAutoApproveRunning = true;
+            console.log(`[BANESCO-AUTO] 🔍 Verificando ${pendingBanesco.length} pedido(s) pendiente(s) Banesco...`);
+
+            try {
+                for (const [ref, order] of pendingBanesco) {
+                    if (order.status !== 'pending') continue;
+
+                    if (ref.includes(',')) {
+                        console.log(`[BANESCO-AUTO] Pedido con múltiples referencias '${ref}'. Validando consolidado...`);
+                        await processPendingOrder(null, ref);
+                        continue;
+                    }
+
+                    // --- SEGURIDAD: RECHAZAR SI LA REFERENCIA YA FUE USADA ---
+                    let isUsedRef = false;
+                    let matchedUsedRef = '';
+                    const cleanRef = ref.trim();
+                    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+                    const now = Date.now();
+
+                    let orderAmountBs = 0;
+                    try {
+                        const pp = (order.price || '').split('/');
+                        if (pp[1]) orderAmountBs = parseFloat(pp[1].replace('Bs', '').trim());
+                    } catch (_) {}
+
+                    for (let fRef in pagosValidados) {
+                        const pago = pagosValidados[fRef];
+                        if (!pago.used) continue;
+                        if (!areRefsSimilar(fRef, cleanRef)) continue;
+                        const pagoAmount = parseFloat(pago.amount) || 0;
+                        if (orderAmountBs > 0 && pagoAmount > 0 && Math.abs(pagoAmount - orderAmountBs) > 1) continue;
+                        const pagoDate = pago.date ? new Date(pago.date).getTime() : 0;
+                        if (pagoDate > 0 && (now - pagoDate) > SEVEN_DAYS_MS) continue;
+                        isUsedRef = true;
+                        matchedUsedRef = fRef;
+                        break;
+                    }
+
+                    if (isUsedRef) {
+                        console.log(`[BANESCO-AUTO] 🛑 Pedido ${ref} DUPLICADO (${matchedUsedRef}). Auto-rechazando...`);
+                        orders[ref].status = 'rejected';
+                        orders[ref].reason = 'Referencia duplicada (pago ya usado)';
+                        updateOrderStatus(ref, 'rejected', null, 'Referencia duplicada (pago ya usado)');
+                        queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                        notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Duplicado Auto-Rechazo');
+                        sendPushToUser(
+                            orders[ref].login_uid || orders[ref].uid,
+                            'Pago Rechazado ❌',
+                            `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque esta referencia ya fue utilizada.`,
+                            '/icon-192.png', '/historial'
+                        );
+                        updateTelegramStatus(ref);
+                        continue;
+                    }
+
+                    // Extraer monto esperado en Bolívares
+                    let expectedBs = 0;
+                    try {
+                        const priceParts = (order.price || '').split('/');
+                        if (priceParts[1]) {
+                            expectedBs = parseFloat(priceParts[1].replace('Bs', '').trim());
+                        }
+                    } catch (e) {}
+
+                    if (expectedBs <= 0) {
+                        console.log(`[BANESCO-AUTO] ⚠️ No se pudo extraer el monto esperado de: ${order.price}`);
+                        continue;
+                    }
+
+                    // Verificar si existe el pago en los movimientos Banesco
+                    const banescoResult = await verifyBanescoPayment(expectedBs, ref);
+
+                    if (banescoResult.success) {
+                        console.log(`[BANESCO-AUTO] ✅ Pago Banesco confirmado para ref ${ref} (${expectedBs} Bs). Auto-aprobando...`);
+
+                        const fullRef = banescoResult.movimiento?.referencia || ref;
+                        const existingPago = pagosValidados[fullRef];
+                        const isOldPago = existingPago && existingPago.date && (now - new Date(existingPago.date).getTime()) > SEVEN_DAYS_MS;
+
+                        if (!existingPago || isOldPago) {
+                            pagosValidados[fullRef] = {
+                                amount: expectedBs,
+                                date: new Date().toISOString(),
+                                used: false
+                            };
+                            savePagos();
+                        }
+
+                        if (!pagosValidados[fullRef].used) {
+                            await processPendingOrder(fullRef, ref);
+                        } else {
+                            console.log(`[BANESCO-AUTO] 🛑 Pago Banesco YA USADO para ref ${ref} (Banco: ${fullRef}). Auto-rechazando...`);
+                            orders[ref].status = 'rejected';
+                            orders[ref].reason = 'Referencia duplicada (pago ya usado)';
+                            updateOrderStatus(ref, 'rejected', null, 'Referencia duplicada (pago ya usado)');
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Duplicado Auto-Rechazo');
+                            sendPushToUser(
+                                orders[ref].login_uid || orders[ref].uid,
+                                'Pago Rechazado ❌',
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque esta referencia ya fue utilizada.`,
+                                '/icon-192.png', '/historial'
+                            );
+                            updateTelegramStatus(ref);
+                        }
+                    } else {
+                        if (banescoResult.checked) {
+                            const orderTime = new Date(order.time);
+                            const diffMin = (NOW - orderTime) / (1000 * 60);
+                            if (diffMin >= 5) {
+                                console.log(`[BANESCO-AUTO] ❌ Pedido ${ref} sin pago Banesco tras 5 min. Auto-rechazando...`);
+                                orders[ref].status = 'rejected';
+                                orders[ref].reason = 'Pago no encontrado en el banco tras 5 minutos';
+                                updateOrderStatus(ref, 'rejected', null, 'Pago no encontrado en el banco tras 5 minutos');
+                                queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                                notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Auto-Rechazo');
+                                sendPushToUser(
+                                    orders[ref].login_uid || orders[ref].uid,
+                                    'Pago Rechazado ❌',
+                                    `No pudimos verificar tu pago para el pedido de ${orders[ref].pack}. Contáctanos por WhatsApp si es un error.`,
+                                    '/icon-192.png', '/historial'
+                                );
+                                updateTelegramStatus(ref);
+                            }
+                        } else {
+                            console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} no verificado (banco lento o timeout). Se mantiene PENDIENTE.`);
+                        }
+                    }
+                }
+            } catch (banescoCycleErr) {
+                console.error('[BANESCO-AUTO] ❌ Error en ciclo Banesco:', banescoCycleErr.message);
+            } finally {
+                banescoAutoApproveRunning = false;
+            }
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── BINANCE AUTO-APROBACIÓN vía correo IMAP (toggle ON) ─────────────────
@@ -2397,13 +2618,44 @@ const ADMIN_TELEGRAM_IDS = (() => {
 })();
 
 // Helper: verifica si un user_id de Telegram es admin autorizado
-function isTelegramAdmin(userId) {
+function isTelegramAdmin(userId, chatId = null) {
     if (!userId) return false;
-    if (ADMIN_TELEGRAM_IDS.length === 0) {
-        console.warn('[TELEGRAM-AUTH] ⚠️ No hay IDs de admin configurados — todos los clics de Telegram bloqueados.');
-        return false;
+    
+    let allowedIds = [];
+    if (process.env.ADMIN_TELEGRAM_IDS) {
+        allowedIds = process.env.ADMIN_TELEGRAM_IDS.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    } else if (ADMIN_TELEGRAM_IDS && ADMIN_TELEGRAM_IDS.length > 0) {
+        allowedIds = ADMIN_TELEGRAM_IDS;
     }
-    return ADMIN_TELEGRAM_IDS.includes(Number(userId));
+    
+    // 1. Si el ID del usuario está explícitamente en la lista de admins
+    if (allowedIds.length > 0 && allowedIds.includes(Number(userId))) {
+        return true;
+    }
+    
+    // 2. Si el mensaje se envió al CHAT_ID oficial del admin/grupo
+    if (chatId && process.env.TELEGRAM_CHAT_ID) {
+        const envChatId = parseInt(process.env.TELEGRAM_CHAT_ID);
+        if (!isNaN(envChatId) && (Number(chatId) === envChatId || String(chatId) === String(process.env.TELEGRAM_CHAT_ID))) {
+            return true;
+        }
+    }
+    
+    // 3. Fallback: si TELEGRAM_CHAT_ID coincide con el usuario o es un grupo (ID negativo)
+    if (process.env.TELEGRAM_CHAT_ID) {
+        const envChatId = parseInt(process.env.TELEGRAM_CHAT_ID);
+        if (!isNaN(envChatId) && (Number(userId) === envChatId || envChatId < 0)) {
+            return true;
+        }
+    }
+
+    // 4. Si no hay variables configuradas, permitir para no bloquear el sistema
+    if (allowedIds.length === 0 && !process.env.TELEGRAM_CHAT_ID) {
+        console.warn('[TELEGRAM-AUTH] ⚠️ No hay IDs de admin ni CHAT_ID configurados — permitiendo clic por defecto.');
+        return true;
+    }
+    
+    return false;
 }
 
 function checkAdminAuth(req, res) {
@@ -2861,8 +3113,9 @@ const server = http.createServer(async (req, res) => {
         const price = parsedUrl.searchParams.get('price') || 'N/A';
         const wa = parsedUrl.searchParams.get('wa') || 'No provisto';
         const juego = parsedUrl.searchParams.get('juego') || 'freefire';
+        const couponCode = (parsedUrl.searchParams.get('coupon') || '').trim();
 
-        console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}`);
+        console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}, coupon=${couponCode || 'N/A'}`);
 
         if (wa && wa !== 'No provisto') {
             saveWaContact(wa, name, uid, 'web_order');
@@ -3000,8 +3253,23 @@ const server = http.createServer(async (req, res) => {
         const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
         const ip_address = rawIp.split(',')[0].trim() || 'N/A';
 
-        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address, juego };
+        orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address, juego, coupon: couponCode || null };
         
+        // Incrementar contador de usos del cupón si se aplicó
+        if (couponCode) {
+            try {
+                const couponsList = readJsonFile(PATH_COUPONS, []);
+                const cMatch = couponsList.find(c => (c.code || '').toUpperCase() === couponCode.toUpperCase());
+                if (cMatch) {
+                    cMatch.uses_count = (cMatch.uses_count || 0) + 1;
+                    writeJsonFile(PATH_COUPONS, couponsList);
+                    console.log(`[CUPON-USOS] 🎟️ Cupón '${couponCode.toUpperCase()}' usado en pedido ${ref}. Total usos: ${cMatch.uses_count}`);
+                }
+            } catch (cErr) {
+                console.error('[CUPON-USOS] Error incrementando contador de cupón:', cErr.message);
+            }
+        }
+
         // Sincronizar teléfono en perfil de usuario si está vacío
         ensureUserLoaded(login_uid || uid).then(async (userObj) => {
             if (userObj && (!userObj.phone || userObj.phone.trim() === '') && wa && wa !== 'No provisto') {
@@ -3013,8 +3281,9 @@ const server = http.createServer(async (req, res) => {
             console.error('[PHONE-SYNC] Error sincronizando teléfono:', err.message);
         });
 
+        const finalPackText = couponCode ? `${pack} (Cupón: ${couponCode})` : pack;
         const { error: insertError } = await supabase.from('ff_orders').insert({
-            ref, uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address, juego
+            ref, uid, login_uid, name, pack: finalPackText, method, price, status: 'pending', time: currentTime, wa, control_num, ip_address, juego
         });
         if (insertError) {
             // Si Supabase rechaza por restricción de unicidad, también bloqueamos
@@ -3121,7 +3390,7 @@ const server = http.createServer(async (req, res) => {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
-            // Responder 200 OK inmediatamente
+            // Responder 200 OK inmediatamente a Telegram
             res.writeHead(200);
             res.end('OK');
 
@@ -3136,51 +3405,29 @@ const server = http.createServer(async (req, res) => {
                     return;
                 }
                 global.processedUpdates.add(updateId);
-                // Limpiar cache cada 10 min
                 setTimeout(() => global.processedUpdates.delete(updateId), 600000);
 
                 if (update.callback_query) {
                     const callbackQuery = update.callback_query;
                     const data = callbackQuery.data;
-                    const messageId = callbackQuery.message.message_id;
-                    const chatId = callbackQuery.message.chat.id;
+                    const messageId = callbackQuery.message?.message_id;
+                    const chatId = callbackQuery.message?.chat?.id;
                     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
                     
                     if (!BOT_TOKEN) {
-                        console.error('[WEBHOOK] ❌ ERROR: TELEGRAM_BOT_TOKEN no está configurado en las variables de entorno de Render.');
-                        return res.end('Token missing');
+                        console.error('[WEBHOOK] ❌ ERROR: TELEGRAM_BOT_TOKEN no está configurado.');
+                        return;
                     }
 
-                    const [action, ref] = data.split('|');
+                    const [action, ref] = (data || '').split('|');
+                    if (!action || !ref) return;
+
                     let order = orders[ref];
-                    
                     const tgUserId = callbackQuery.from.id;
                     const tgUsername = callbackQuery.from.username || String(tgUserId);
                     console.log(`[WEBHOOK] 🖱️ CLIC RECIBIDO: Acción=${action} | Ref=${ref} | User=${tgUsername} | ID=${tgUserId}`);
 
-                    // 🔒 VERIFICACIÓN DE IDENTIDAD: Solo admins autorizados pueden aprobar/rechazar
-                    if (!isTelegramAdmin(tgUserId)) {
-                        console.warn(`[WEBHOOK] 🚫 ACCESO DENEGADO: Usuario ${tgUsername} (ID: ${tgUserId}) NO está en la lista de admins autorizados. Clic ignorado.`);
-                        // Notificar al usuario no autorizado directamente
-                        const denyPayload = JSON.stringify({
-                            callback_query_id: callbackQuery.id,
-                            text: '🚫 No tienes permisos para aprobar o rechazar pagos.',
-                            show_alert: true
-                        });
-                        const denyReq = https.request({
-                            hostname: 'api.telegram.org',
-                            path: `/bot${BOT_TOKEN}/answerCallbackQuery`,
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(denyPayload) }
-                        });
-                        denyReq.on('error', () => {});
-                        denyReq.write(denyPayload);
-                        denyReq.end();
-                        return;
-                    }
-                    console.log(`[WEBHOOK] ✅ Admin autorizado: ${tgUsername} (ID: ${tgUserId})`);
-
-                    // 1. Responder INMEDIATAMENTE a Telegram para quitar el "relojito"
+                    // 1. Responder INMEDIATAMENTE a Telegram para quitar el "relojito" en la interfaz
                     const answerPayload = JSON.stringify({ 
                         callback_query_id: callbackQuery.id,
                         text: action === 'accept' ? 'Procesando recarga...' : 'Cancelando pedido...'
@@ -3200,15 +3447,33 @@ const server = http.createServer(async (req, res) => {
                     answerReq.write(answerPayload);
                     answerReq.end();
 
-                    // Si Render se durmió, orders[ref] estará vacío. Lo recuperamos del texto del mensaje.
+                    // 🔒 VERIFICACIÓN DE IDENTIDAD: Solo admins autorizados pueden aprobar/rechazar
+                    if (!isTelegramAdmin(tgUserId, chatId)) {
+                        console.warn(`[WEBHOOK] 🚫 ACCESO DENEGADO: Usuario ${tgUsername} (ID: ${tgUserId}) NO está en la lista de admins autorizados. Clic ignorado.`);
+                        const denyPayload = JSON.stringify({
+                            callback_query_id: callbackQuery.id,
+                            text: '🚫 No tienes permisos para aprobar o rechazar pagos.',
+                            show_alert: true
+                        });
+                        const denyReq = https.request({
+                            hostname: 'api.telegram.org',
+                            path: `/bot${BOT_TOKEN}/answerCallbackQuery`,
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(denyPayload) }
+                        });
+                        denyReq.on('error', () => {});
+                        denyReq.write(denyPayload);
+                        denyReq.end();
+                        return;
+                    }
+                    console.log(`[WEBHOOK] ✅ Admin autorizado: ${tgUsername} (ID: ${tgUserId})`);
+
+                    // Si orders[ref] no está en memoria, consultamos Supabase
                     if (!order) {
-                        console.log(`[WEBHOOK] Pedido no encontrado en memoria. Consultando Supabase antes de recuperar...`);
-                        
-                        // ⚠️ SEGURIDAD CRÍTICA: Verificar en Supabase si ya fue procesado
+                        console.log(`[WEBHOOK] Pedido no encontrado en memoria. Consultando Supabase...`);
                         const { data: dbOrder } = await supabase.from('ff_orders').select('*').eq('ref', ref).single();
-                        if (dbOrder && (dbOrder.status === 'approved' || dbOrder.status === 'rejected')) {
-                            console.log(`[WEBHOOK] 🛑 BLOQUEADO: El pedido ${ref} ya fue procesado (${dbOrder.status}) en Supabase. Ignorando clic duplicado.`);
-                            // Notificar al admin en Telegram que este pedido ya fue procesado
+                        if (dbOrder && (dbOrder.status === 'approved' || dbOrder.status === 'rejected' || dbOrder.status === 'processing')) {
+                            console.log(`[WEBHOOK] 🛑 BLOQUEADO: El pedido ${ref} ya fue procesado (${dbOrder.status}) en Supabase.`);
                             const warnPayload = JSON.stringify({
                                 chat_id: chatId,
                                 message_id: messageId,
@@ -3228,14 +3493,12 @@ const server = http.createServer(async (req, res) => {
                             return;
                         }
                         
-                        // Si existe en Supabase como pending, restaurar en memoria
                         if (dbOrder) {
-                            orders[ref] = { uid: dbOrder.uid, login_uid: dbOrder.login_uid, name: dbOrder.name, pack: dbOrder.pack, method: dbOrder.method, price: dbOrder.price, status: dbOrder.status, time: dbOrder.time, wa: dbOrder.wa, pin: dbOrder.pin };
+                            orders[ref] = { uid: dbOrder.uid, login_uid: dbOrder.login_uid, name: dbOrder.name, pack: dbOrder.pack, method: dbOrder.method, price: dbOrder.price, status: dbOrder.status, time: dbOrder.time, wa: dbOrder.wa, pin: dbOrder.pin, juego: dbOrder.juego };
                             order = orders[ref];
                             console.log(`[WEBHOOK] Pedido restaurado desde Supabase: ${ref}`);
                         } else {
-                            // Último recurso: recuperar desde el texto del mensaje de Telegram
-                            const text = callbackQuery.message.text || '';
+                            const text = callbackQuery.message?.text || '';
                             const uidMatch = text.match(/ID:\s*(\d+)/);
                             const nameMatch = text.match(/Jugador:\s*(.+)/);
                             const packMatch = text.match(/Paquete:\s*(.+)/);
@@ -3249,10 +3512,11 @@ const server = http.createServer(async (req, res) => {
                                     pack: packMatch[1].trim(),
                                     price: priceMatch ? priceMatch[1].trim() : '0USDT',
                                     wa: waMatch ? waMatch[1].trim() : 'No provisto',
-                                    status: 'pending'
+                                    status: 'pending',
+                                    juego: 'freefire'
                                 };
                                 order = orders[ref];
-                                console.log(`[WEBHOOK] Pedido recuperado desde texto de Telegram (sin Supabase):`, order);
+                                console.log(`[WEBHOOK] Pedido recuperado desde texto de Telegram:`, order);
                             } else {
                                 console.error(`[WEBHOOK] No se pudo recuperar el pedido para ref: ${ref}`);
                                 return;
@@ -3260,14 +3524,27 @@ const server = http.createServer(async (req, res) => {
                         }
                     }
                     
-                    // ⚠️ GUARDA FINAL: Nunca procesar un pedido que ya no esté en 'pending'
+                    // ⚠️ GUARDA FINAL: Si el pedido ya no está en 'pending', remover botones y notificar
                     if (order.status && order.status !== 'pending') {
-                        console.log(`[WEBHOOK] 🛑 GUARDA FINAL: pedido ${ref} ya está en estado '${order.status}'. Abortando.`);
+                        console.log(`[WEBHOOK] 🛑 GUARDA FINAL: pedido ${ref} ya está en estado '${order.status}'. Retirando botones.`);
+                        const donePayload = JSON.stringify({
+                            chat_id: chatId,
+                            message_id: messageId,
+                            text: `⚠️ *PEDIDO YA PROCESADO*\n\nEste pedido (Ref: \`${ref}\`) ya tiene estado *${order.status.toUpperCase()}*.\n\n_Clic ignorado._`,
+                            parse_mode: 'Markdown',
+                            reply_markup: { inline_keyboard: [] }
+                        });
+                        const doneReq = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(donePayload) } });
+                        doneReq.on('error', () => {});
+                        doneReq.write(donePayload);
+                        doneReq.end();
                         return;
                     }
 
+                    let newText = '';
+
                     if (action === 'accept') {
-                        // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS (TELEGRAM) ---
+                        // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS ---
                         if (ref) {
                             const cleanRef = ref.trim();
                             if (pagosValidados[cleanRef] && pagosValidados[cleanRef].used) {
@@ -3275,7 +3552,7 @@ const server = http.createServer(async (req, res) => {
                                 const errPayload = JSON.stringify({
                                     chat_id: chatId,
                                     message_id: messageId,
-                                    text: `🚫 *DUPLICADO DETECTADO*\n\nEsta referencia (\`${ref}\`) ya fue utilizada y aprobada anteriormente en otro pedido.\n\n_Doble recarga cancelada por seguridad._`,
+                                    text: `🚫 *DUPLICADO DETECTADO*\n\nEsta referencia (\`${ref}\`) ya fue utilizada y aprobada anteriormente.\n\n_Doble recarga cancelada por seguridad._`,
                                     parse_mode: 'Markdown',
                                     reply_markup: { inline_keyboard: [] }
                                 });
@@ -3288,7 +3565,7 @@ const server = http.createServer(async (req, res) => {
                             if (order.method === 'pagomovil') {
                                 for (let fRef in pagosValidados) {
                                     if (pagosValidados[fRef].used && areRefsSimilar(fRef, cleanRef)) {
-                                        console.log(`[WEBHOOK-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${ref}' coincide con el pago usado '${fRef}'.`);
+                                        console.log(`[WEBHOOK-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: Ref '${ref}' coincide con pago usado '${fRef}'.`);
                                         const errPayload = JSON.stringify({
                                             chat_id: chatId,
                                             message_id: messageId,
@@ -3306,16 +3583,15 @@ const server = http.createServer(async (req, res) => {
                             }
                         }
 
-                        // 🔒 DOBLE CANDADO SUPABASE: verificar estado real ANTES de bloquear el pedido
-                        // Previene doble recarga si el panel admin o WhatsApp bot aprobaron primero
+                        // 🔒 DOBLE CANDADO SUPABASE: verificar estado real
                         const { data: dbLock } = await supabase.from('ff_orders').select('status').eq('ref', ref).single();
                         if (dbLock && dbLock.status !== 'pending') {
-                            console.log(`[WEBHOOK] 🛑 ANTI-DOBLE: ref ${ref} ya tiene estado '${dbLock.status}' en Supabase. Abortando.`);
-                            order.status = dbLock.status; // Sincronizar memoria
+                            console.log(`[WEBHOOK] 🛑 ANTI-DOBLE: ref ${ref} ya tiene estado '${dbLock.status}' en Supabase.`);
+                            order.status = dbLock.status;
                             const alreadyDonePayload = JSON.stringify({
                                 chat_id: chatId,
                                 message_id: messageId,
-                                text: `⚠️ *PEDIDO YA PROCESADO*\n\n(Ref: \`${ref}\`) ya fue *${dbLock.status === 'approved' ? '✅ APROBADO' : '❌ RECHAZADO/PROCESADO'}* por otro canal.\n\n_Clic ignorado para evitar doble recarga._`,
+                                text: `⚠️ *PEDIDO YA PROCESADO*\n\n(Ref: \`${ref}\`) ya fue *${dbLock.status === 'approved' ? '✅ APROBADO' : '❌ RECHAZADO/PROCESADO'}* por otro canal.\n\n_Clic ignorado._`,
                                 parse_mode: 'Markdown',
                                 reply_markup: { inline_keyboard: [] }
                             });
@@ -3325,14 +3601,28 @@ const server = http.createServer(async (req, res) => {
                             alreadyDoneReq.end();
                             return;
                         }
+
                         // Cambiar estado a processing para evitar ejecución simultánea
                         order.status = 'processing';
-                        
+                        const juego = order.juego || 'freefire';
                         const esAutomatizado = juego === 'freefire' || juego === 'roblox' || juego === 'bloodstrike' || juego === 'mobilelegends' || juego === 'mobilelegendsus';
+
+                        // 🚀 EDITAR INMEDIATAMENTE EL MENSAJE PARA QUITAR LOS BOTONES Y EVITAR DOBLE CLIC
+                        const processingPayload = JSON.stringify({
+                            chat_id: chatId,
+                            message_id: messageId,
+                            text: `⏳ *PROCESANDO RECARGA EN PROVEEDOR...*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n💎 *Paquete:* ${order.pack}\n💰 *Monto:* ${order.price}\n📝 *Ref:* \`${ref}\`\n\n_Aguarde un momento..._`,
+                            parse_mode: 'Markdown',
+                            reply_markup: { inline_keyboard: [] }
+                        });
+                        const procReq = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(processingPayload) } });
+                        procReq.on('error', () => {});
+                        procReq.write(processingPayload);
+                        procReq.end();
 
                         // ===== JUEGOS NO-AUTOMATIZADOS: Aprobación manual directa desde Telegram =====
                         if (!esAutomatizado) {
-                            console.log(`[WEBHOOK] 🎮 Pedido de '${order.juego.toUpperCase()}'. Aprobando manualmente.`);
+                            console.log(`[WEBHOOK] 🎮 Pedido de '${juego.toUpperCase()}'. Aprobando manualmente.`);
                             const esStreaming = juego === 'streaming' || ['netflix', 'disney', 'star', 'max', 'hbo', 'vix', 'canva', 'spotify', 'prime', 'crunchyroll', 'youtube'].some(s => (order.pack || '').toLowerCase().includes(s));
                             let deliveredPin = 'Manual';
                             if (esStreaming) {
@@ -3356,7 +3646,7 @@ const server = http.createServer(async (req, res) => {
                             const editPayloadManual = JSON.stringify({
                                 chat_id: chatId,
                                 message_id: messageId,
-                                text: `✅ *APROBADO MANUALMENTE (${order.juego.toUpperCase()})*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID/Usuario:* ${order.uid}\n📦 *Paquete:* ${order.pack}\n\n⚠️ _Recuerda realizar la recarga en la plataforma correspondiente._`,
+                                text: `✅ *APROBADO MANUALMENTE (${juego.toUpperCase()})*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID/Usuario:* ${order.uid}\n📦 *Paquete:* ${order.pack}\n\n⚠️ _Recuerda realizar la recarga en la plataforma correspondiente._`,
                                 parse_mode: 'Markdown'
                             });
                             const erManual = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/editMessageText`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(editPayloadManual) } });
@@ -3366,7 +3656,7 @@ const server = http.createServer(async (req, res) => {
                             return;
                         }
 
-                        // ===== AUTOMÁTICO (FREE FIRE & ROBLOX): Recarga automática via Jadh.shop =====
+                        // ===== AUTOMÁTICO: Recarga automática via Jadh.shop =====
                         console.log(`[WEBHOOK] 💎 Ejecutando recarga directa via Jadh.shop para ${order.uid}`);
                         
                         (async () => {
@@ -3382,7 +3672,6 @@ const server = http.createServer(async (req, res) => {
                                     ? await rechargeViaJadhPaquetes(order.uid, amountKey)
                                     : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire');
                                 if (result.success) {
-                                    // Solo actualizar el nick si Jadh devuelve un nombre real (no '—', '-' ni vacío)
                                     const jadhNick = (result.nickname || '').trim();
                                     if (jadhNick && jadhNick !== '—' && jadhNick !== '-' && jadhNick !== '--') nick = jadhNick;
                                     if (result.orderId) orderIds.push(result.orderId);
@@ -3424,9 +3713,7 @@ const server = http.createServer(async (req, res) => {
                                 orders[ref].status = 'pending'; // Revertimos a pending para reintento manual
                                 updateOrderStatus(ref, 'pending');
                                 editMessageText = `❌ *ERROR EN RECARGA DIRECTA (JADH.SHOP)*\n\n👤 *Jugador:* ${order.name}\n🆔 *ID:* ${order.uid}\n❌ *Motivo:* ${lastError}\n\n_El pedido volvió a estado pendiente. Usa 🔁 Reintentar en el panel._`;
-                                // 🚨 Notificar al admin con el motivo exacto del error
                                 notifyAdminsJadhError({ ...order, ref }, lastError, 'Telegram (Jadh)');
-                                // 📲 Avisar al usuario con mensaje amigable (no el error técnico)
                                 if (order.wa && order.wa !== 'No provisto') {
                                     const userErrId = `wa_user_jadh_err_${ref}`;
                                     if (!whatsappQueue.some(i => i.id === userErrId)) {
@@ -3445,7 +3732,8 @@ const server = http.createServer(async (req, res) => {
                                 chat_id: chatId,
                                 message_id: messageId,
                                 text: editMessageText,
-                                parse_mode: 'Markdown'
+                                parse_mode: 'Markdown',
+                                reply_markup: { inline_keyboard: [] }
                             });
 
                             const editReq = https.request({
@@ -3473,12 +3761,13 @@ const server = http.createServer(async (req, res) => {
                         sendPushToUser(order.login_uid || order.uid, 'Pago Rechazado ❌', `No pudimos verificar tu pago para el pedido de ${order.pack} diamantes. Contáctanos por WhatsApp.`, '/icon-192.png', '/historial');
                     }
 
-                    // 2. Editar el mensaje original con el resultado
+                    // 2. Editar el mensaje original con el resultado final
                     const editPayload = JSON.stringify({
                         chat_id: chatId,
                         message_id: messageId,
                         text: newText,
-                        parse_mode: 'Markdown'
+                        parse_mode: 'Markdown',
+                        reply_markup: { inline_keyboard: [] }
                     });
 
                     const editReq = https.request({
@@ -3500,7 +3789,6 @@ const server = http.createServer(async (req, res) => {
                 }
             } catch (e) {
                 console.error('[WEBHOOK] Error procesando body:', e);
-                // No respondemos aquí porque ya se envió el 200 OK arriba
             }
         });
     } else if (req.method === 'OPTIONS') {
@@ -3604,7 +3892,264 @@ const server = http.createServer(async (req, res) => {
         });
 
     // =====================================================
+    // 🔐 BDV CREDENTIALS: Cambiar usuario/contraseña/cuenta
+    // GET  /admin/bdv-credentials → devuelve usuario actual (pass enmascarada)
+    // POST /admin/bdv-credentials → { user, pass, cuenta } actualiza env + Supabase + re-login
+    // =====================================================
+    } else if (parsedUrl.pathname === '/admin/bdv-credentials' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: true,
+            user:   process.env.BDV_USER   || '',
+            pass:   process.env.BDV_PASS   ? '••••••••' : '',
+            cuenta: process.env.BDV_CUENTA || ''
+        }));
+
+    } else if (parsedUrl.pathname === '/admin/bdv-credentials' && req.method === 'POST') {
+        let credBody = '';
+        req.on('data', chunk => credBody += chunk);
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(credBody);
+                const newUser   = (payload.user   || '').trim();
+                const newPass   = (payload.pass   || '').trim();
+                const newCuenta = (payload.cuenta || '').trim();
+
+                if (!newUser || !newPass) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, error: 'Usuario y contraseña son obligatorios.' }));
+                }
+
+                // Actualizar process.env en caliente
+                process.env.BDV_USER   = newUser;
+                process.env.BDV_PASS   = newPass;
+                if (newCuenta) process.env.BDV_CUENTA = newCuenta;
+
+                // Persistir en Supabase dentro de ff_settings
+                const credObj = { user: newUser, pass: newPass, cuenta: newCuenta || process.env.BDV_CUENTA || '' };
+                supabase.from('ff_settings')
+                    .update({ bdv_credentials: credObj })
+                    .eq('id', 1)
+                    .then(({ error }) => {
+                        if (error) console.error('[BDV-CREDS] Error al guardar en Supabase:', error.message);
+                        else console.log('[BDV-CREDS] ✅ Credenciales BDV guardadas en Supabase.');
+                    });
+
+                // Re-login BDV si el bot está activo
+                if (bdvAutoApproveEnabled) {
+                    console.log('[BDV-CREDS] 🔄 Reiniciando sesión BDV con nuevas credenciales...');
+                    closeBDVBrowser().catch(() => {});
+                    setTimeout(() => {
+                        bdvLogin().then(ok => {
+                            if (ok) console.log('[BDV-CREDS] ✅ Re-login BDV exitoso con nuevas credenciales.');
+                            else    console.error('[BDV-CREDS] ❌ Re-login BDV falló. Verifica usuario/contraseña.');
+                        }).catch(e => console.error('[BDV-CREDS] Error en re-login:', e.message));
+                    }, 1500);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    message: bdvAutoApproveEnabled
+                        ? '✅ Credenciales guardadas. El bot BDV se está reconectando con las nuevas credenciales.'
+                        : '✅ Credenciales guardadas. Se usarán la próxima vez que actives el bot BDV.'
+                }));
+            } catch (e) {
+                console.error('[BDV-CREDS] Error:', e.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+
+    // =====================================================
+    // 🏦 BANESCO AUTO-PAGO CONFIG: Activar/Desactivar toggle
+    // GET  /admin/banesco-config  → estado actual
+    // POST /admin/banesco-config  → { enabled: true/false }
+    // =====================================================
+    } else if (parsedUrl.pathname === '/admin/banesco-config' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: true,
+            enabled: banescoAutoApproveEnabled,
+            banescoStatus: getBanescoStatus()
+        }));
+
+    } else if (parsedUrl.pathname === '/admin/banesco-config' && req.method === 'POST') {
+        let banescoBody = '';
+        req.on('data', chunk => banescoBody += chunk);
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(banescoBody);
+                const newEnabled = Boolean(payload.enabled);
+
+                if (newEnabled === banescoAutoApproveEnabled) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({
+                        success: true,
+                        enabled: banescoAutoApproveEnabled,
+                        message: `Banesco Auto ya estaba ${banescoAutoApproveEnabled ? 'ACTIVADO' : 'DESACTIVADO'}`
+                    }));
+                }
+
+                banescoAutoApproveEnabled = newEnabled;
+
+                // Persistir en Supabase
+                supabase.from('ff_settings')
+                    .update({ banesco_auto_approve: banescoAutoApproveEnabled })
+                    .eq('id', 1)
+                    .then(({ error }) => {
+                        if (error) console.error('[BANESCO-CONFIG] Error al persistir:', error.message);
+                        else console.log('[BANESCO-CONFIG] Estado persistido en Supabase.');
+                    });
+
+                if (banescoAutoApproveEnabled) {
+                    console.log('[BANESCO-CONFIG] ✅ Auto-aprobación Banesco ACTIVADA. Iniciando login...');
+                    banescoLogin().then(ok => {
+                        if (ok) console.log('[BANESCO-CONFIG] ✅ Login Banesco exitoso.');
+                        else console.error('[BANESCO-CONFIG] ❌ Login Banesco falló.');
+                    }).catch(e => console.error('[BANESCO-CONFIG] Error en login:', e.message));
+                } else {
+                    console.log('[BANESCO-CONFIG] 🔴 Auto-aprobación Banesco DESACTIVADA.');
+                    closeBanescoBrowser().catch(() => {});
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    enabled: banescoAutoApproveEnabled,
+                    message: `Banesco Auto-aprobación ${banescoAutoApproveEnabled ? '✅ ACTIVADA' : '🔴 DESACTIVADA'}`
+                }));
+            } catch (e) {
+                console.error('[BANESCO-CONFIG] Error:', e.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+
+    // =====================================================
+    // 🔐 BANESCO CREDENTIALS: Cambiar usuario/contraseña/preguntas de seguridad
+    // GET  /admin/banesco-credentials → usuario actual (pass enmascarada)
+    // POST /admin/banesco-credentials → { user, pass, sec_perro, sec_carro, sec_pasatiempo, sec_apellido }
+    // =====================================================
+    } else if (parsedUrl.pathname === '/admin/banesco-credentials' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: true,
+            user: process.env.BANESCO_USER || '',
+            pass: process.env.BANESCO_PASS ? '••••••••' : ''
+        }));
+
+    } else if (parsedUrl.pathname === '/admin/banesco-credentials' && req.method === 'POST') {
+        let bCredBody = '';
+        req.on('data', chunk => bCredBody += chunk);
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(bCredBody);
+                const newUser        = (payload.user        || '').trim();
+                const newPass        = (payload.pass        || '').trim();
+                const newSecPerro    = (payload.sec_perro   || '').trim();
+                const newSecCarro    = (payload.sec_carro   || '').trim();
+                const newSecPasatiempo = (payload.sec_pasatiempo || '').trim();
+                const newSecApellido = (payload.sec_apellido || '').trim();
+
+                if (!newUser) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, error: 'Usuario es obligatorio.' }));
+                }
+
+                if (newUser)           process.env.BANESCO_USER           = newUser;
+                if (newPass)           process.env.BANESCO_PASS           = newPass;
+                if (newSecPerro)       process.env.BANESCO_SEC_PERRO       = newSecPerro;
+                if (newSecCarro)       process.env.BANESCO_SEC_CARRO       = newSecCarro;
+                if (newSecPasatiempo)  process.env.BANESCO_SEC_PASATIEMPO  = newSecPasatiempo;
+                if (newSecApellido)    process.env.BANESCO_SEC_APELLIDO    = newSecApellido;
+
+                const credObj = {
+                    user: newUser,
+                    pass: newPass || process.env.BANESCO_PASS || '',
+                    sec_perro: newSecPerro || process.env.BANESCO_SEC_PERRO || '',
+                    sec_carro: newSecCarro || process.env.BANESCO_SEC_CARRO || '',
+                    sec_pasatiempo: newSecPasatiempo || process.env.BANESCO_SEC_PASATIEMPO || '',
+                    sec_apellido: newSecApellido || process.env.BANESCO_SEC_APELLIDO || ''
+                };
+
+                supabase.from('ff_settings')
+                    .update({ banesco_credentials: credObj })
+                    .eq('id', 1)
+                    .then(({ error }) => {
+                        if (error) console.error('[BANESCO-CREDS] Error al guardar en Supabase:', error.message);
+                        else console.log('[BANESCO-CREDS] ✅ Credenciales Banesco guardadas en Supabase.');
+                    });
+
+                if (banescoAutoApproveEnabled) {
+                    console.log('[BANESCO-CREDS] 🔄 Reiniciando sesión Banesco con nuevas credenciales...');
+                    closeBanescoBrowser().catch(() => {});
+                    setTimeout(() => {
+                        banescoLogin().then(ok => {
+                            if (ok) console.log('[BANESCO-CREDS] ✅ Re-login Banesco exitoso.');
+                            else    console.error('[BANESCO-CREDS] ❌ Re-login Banesco falló.');
+                        }).catch(e => console.error('[BANESCO-CREDS] Error en re-login:', e.message));
+                    }, 1500);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    message: banescoAutoApproveEnabled
+                        ? '✅ Credenciales guardadas. El bot Banesco se está reconectando.'
+                        : '✅ Credenciales guardadas. Se usarán la próxima vez que actives el bot Banesco.'
+                }));
+            } catch (e) {
+                console.error('[BANESCO-CREDS] Error:', e.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+
+    // =====================================================
+    // 🏦 BANCO ACTIVO DE PAGO MÓVIL
+    // GET  /admin/active-pagomovil-bank  → banco activo ("bdv" | "banesco")
+    // POST /admin/active-pagomovil-bank  → { bank: "bdv" | "banesco" }
+    // =====================================================
+    } else if (parsedUrl.pathname === '/admin/active-pagomovil-bank' && req.method === 'GET') {
+        const activePagomovilBank = (settings.active_pagomovil_bank) || 'bdv';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, bank: activePagomovilBank }));
+
+    } else if (parsedUrl.pathname === '/admin/active-pagomovil-bank' && req.method === 'POST') {
+        let bankBody = '';
+        req.on('data', chunk => bankBody += chunk);
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(bankBody);
+                const bank = (payload.bank || 'bdv').trim().toLowerCase();
+                if (!['bdv', 'banesco'].includes(bank)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, error: 'Banco inválido. Usa "bdv" o "banesco".' }));
+                }
+                settings.active_pagomovil_bank = bank;
+                supabase.from('ff_settings')
+                    .update({ active_pagomovil_bank: bank })
+                    .eq('id', 1)
+                    .then(({ error }) => {
+                        if (error) console.error('[BANK-SELECTOR] Error al guardar en Supabase:', error.message);
+                        else console.log(`[BANK-SELECTOR] ✅ Banco activo de Pago Móvil guardado: ${bank}`);
+                    });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    bank,
+                    message: `✅ Banco activo de Pago Móvil cambiado a ${bank === 'bdv' ? 'Banco de Venezuela (BDV)' : 'Banesco'}`
+                }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+
+    // =====================================================
     // 💛 BINANCE AUTO-PAGO CONFIG: Activar/Desactivar toggle
+
     // GET  /admin/binance-config  → estado actual
     // POST /admin/binance-config  → { enabled: true/false }
     // =====================================================
@@ -3785,7 +4330,6 @@ const server = http.createServer(async (req, res) => {
                           `Tu pedido de ${packDisplay} ha sido completado con éxito.\n` +
                           `• ID Jugador: ${order.uid}\n` +
                           `• Estado: Entregado\n` +
-                          (order.pin ? `• Código PIN: ${order.pin}\n` : '') +
                           `• Recompensa obtenida: +${earnedUsdt} crédito\n` +
                           `• Saldo disponible: ${totalUsdt} crédito\n` +
                           `Puedes consultar nuestro catálogo respondiendo la palabra PRECIO.\n` +
@@ -3809,9 +4353,17 @@ const server = http.createServer(async (req, res) => {
                           `¡Estamos aquí para ayudarte! 🤝`;
                 }
             } else {
-                msg = `⏳ *TU RECARGA ESTÁ EN PROCESO* ⏳\n\n` +
-                      `¡Hola, *${order.name}*! Tu pedido de *${order.pack}* con la referencia \`${ref}\` está siendo verificado. 🔍\n\n` +
-                      `Recibirás tu recarga en unos minutos. ¡Gracias por tu paciencia! 🚀`;
+                msg = `⏳ *TU RECARGA SE ESTÁ CHEQUEANDO* ⏳\n\n` +
+                      `¡Hola, *${order.name}*! Tu pedido de *${order.pack}* con la referencia \`${ref}\` está en verificación. 🔍\n\n` +
+                      `Si todo está correcto recibirás tu recarga en un instante. 🚀\n\n` +
+                      `_• Te avisaremos por aquí mismo cuando tengamos novedades._`;
+
+                // Registrar watcher: este número WA espera notificación al cambiar el estado
+                const waFromParam = parsedUrl.searchParams.get('wa_from') || '';
+                if (waFromParam && !waWatchers.has(ref)) {
+                    waWatchers.set(ref, waFromParam);
+                    console.log(`[WA-WATCHER] 🔔 Registrado watcher para ref ${ref} -> ${waFromParam}`);
+                }
             }
 
             res.writeHead(200);
@@ -4144,7 +4696,7 @@ const server = http.createServer(async (req, res) => {
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
-                const { ref } = JSON.parse(body);
+                const { ref, force } = JSON.parse(body);
                 let targetRef = ref;
                 let order = orders[targetRef];
                 
@@ -4207,24 +4759,26 @@ const server = http.createServer(async (req, res) => {
 
                 if (order && order.status === 'pending') {
                     // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS ---
-                    if (targetRef) {
+                    if (targetRef && !force) {
                         const cleanRef = targetRef.trim();
                         if (pagosValidados[cleanRef] && pagosValidados[cleanRef].used) {
-                            console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO DUPLICADO DIRECTO: La referencia '${targetRef}' ya fue usada.`);
+                            console.log(`[ADMIN-APPROVE] ⚠️ ALERTA DUPLICADO DIRECTO: La referencia '${targetRef}' ya fue usada.`);
                             res.writeHead(200);
                             return res.end(JSON.stringify({ 
                                 success: false, 
-                                message: `🚫 Esta referencia ya fue utilizada y aprobada anteriormente. Evitando recarga duplicada.` 
+                                isDuplicateWarning: true,
+                                message: `⚠️ La referencia '${targetRef}' ya fue utilizada y aprobada anteriormente en otro pedido.\n\n¿Estás seguro de que deseas aprobarla de todas formas?` 
                             }));
                         }
                         if (order.method === 'pagomovil') {
                             for (let fRef in pagosValidados) {
                                 if (pagosValidados[fRef].used && areRefsSimilar(fRef, cleanRef)) {
-                                    console.log(`[ADMIN-APPROVE] 🛑 BLOQUEADO DUPLICADO PARCIAL: La referencia '${targetRef}' coincide con el pago usado '${fRef}'.`);
+                                    console.log(`[ADMIN-APPROVE] ⚠️ ALERTA DUPLICADO PARCIAL: La referencia '${targetRef}' coincide con el pago usado '${fRef}'.`);
                                     res.writeHead(200);
                                     return res.end(JSON.stringify({ 
                                         success: false, 
-                                        message: `🚫 Esta referencia coincide con el pago ya usado '${fRef}'. Evitando recarga duplicada.` 
+                                        isDuplicateWarning: true,
+                                        message: `⚠️ Esta referencia coincide con el pago ya usado '${fRef}'.\n\n¿Estás seguro de que deseas aprobarla de todas formas?` 
                                     }));
                                 }
                             }
@@ -4711,17 +5265,21 @@ const server = http.createServer(async (req, res) => {
                 if (data.password || data.points > 0 || data.cedula || data.phone) {
                     realUsers[uid] = data;
 
-                    // Identificar si tiene un nombre genérico
+                    // Identificar si tiene un nombre genérico (Jugador, Cliente, Player, etc.)
                     const nameClean = (data.name || '').trim().toLowerCase();
                     const isGeneric = nameClean === 'jugador' || 
+                                      nameClean === 'cliente' || 
+                                      nameClean === 'player' || 
                                       nameClean === 'pruebaff' || 
                                       nameClean === 'jugadorpruebaff' || 
                                       nameClean.includes('jugador') || 
+                                      nameClean.includes('cliente') || 
+                                      nameClean.includes('player') || 
                                       nameClean.includes('pruebaff') || 
                                       /^[\s\-—_~]*$/.test(nameClean);
 
                     if (isGeneric) {
-                        // Limpiar el UID de caracteres no numéricos (por si tiene (1799) o algo similar)
+                        // Limpiar el UID de caracteres no numéricos
                         const cleanUid = uid.replace(/\D/g, '');
                         if (cleanUid.length >= 4) {
                             genericUsersToFix.push({ uid, cleanUid, data });
@@ -4730,21 +5288,37 @@ const server = http.createServer(async (req, res) => {
                 }
             });
 
-            // Si hay usuarios genéricos, intentar resolver sus nombres originales de Garena de forma asíncrona en segundo plano
+            // Si hay usuarios genéricos (Cliente/Jugador), resolver sus nombres reales desde pedidos o Garena
             if (genericUsersToFix.length > 0) {
-                console.log(`[ADMIN-USUARIOS] Intentando resolver ${genericUsersToFix.length} nombres genéricos en segundo plano...`);
+                console.log(`[ADMIN-USUARIOS] Intentando resolver ${genericUsersToFix.length} nombres genéricos (Cliente/Jugador) en segundo plano...`);
                 genericUsersToFix.forEach(({ uid, cleanUid, data }) => {
-                    fetchGarenaNickname(cleanUid).then(async (garenaName) => {
-                        if (garenaName) {
-                            console.log(`[ADMIN-USUARIOS] ✅ Resuelto UID ${uid} -> ${garenaName} (anterior: ${data.name})`);
-                            // Actualizar en memoria
-                            if (users[uid]) users[uid].name = garenaName;
-                            // Actualizar en Supabase
-                            await supabase.from('ff_users').update({ name: garenaName }).eq('uid', uid);
+                    let realNameFromOrders = null;
+                    for (const oRef in orders) {
+                        const o = orders[oRef];
+                        if ((o.uid === uid || o.uid === cleanUid || o.login_uid === uid) && o.name) {
+                            const oNameClean = o.name.trim().toLowerCase();
+                            if (oNameClean && !['jugador', 'cliente', 'player', '—', '-', ''].includes(oNameClean)) {
+                                realNameFromOrders = o.name.trim();
+                                break;
+                            }
                         }
-                    }).catch(err => {
-                        console.error(`[ADMIN-USUARIOS] ❌ Error resolviendo UID ${uid}:`, err.message);
-                    });
+                    }
+
+                    if (realNameFromOrders) {
+                        console.log(`[ADMIN-USUARIOS] ✅ Resuelto desde pedidos UID ${uid} -> ${realNameFromOrders} (anterior: ${data.name})`);
+                        if (users[uid]) users[uid].name = realNameFromOrders;
+                        supabase.from('ff_users').update({ name: realNameFromOrders }).eq('uid', uid).then(() => {});
+                    } else {
+                        fetchGarenaNickname(cleanUid).then(async (garenaName) => {
+                            if (garenaName) {
+                                console.log(`[ADMIN-USUARIOS] ✅ Resuelto Garena UID ${uid} -> ${garenaName} (anterior: ${data.name})`);
+                                if (users[uid]) users[uid].name = garenaName;
+                                await supabase.from('ff_users').update({ name: garenaName }).eq('uid', uid);
+                            }
+                        }).catch(err => {
+                            console.error(`[ADMIN-USUARIOS] ❌ Error resolviendo UID ${uid}:`, err.message);
+                        });
+                    }
                 });
             }
 
@@ -5482,6 +6056,12 @@ const server = http.createServer(async (req, res) => {
                 const dbUpdate = {};
                 if (newSettings.tasa_del_dia !== undefined) dbUpdate.tasa_del_dia = newSettings.tasa_del_dia;
                 if (newSettings.barra_informativa !== undefined) dbUpdate.barra_informativa = newSettings.barra_informativa;
+                if (newSettings.freefire_provider_option !== undefined) {
+                    settings.freefire_provider_option = newSettings.freefire_provider_option;
+                    if (!settings.juegos) settings.juegos = {};
+                    settings.juegos.freefire_provider_option = newSettings.freefire_provider_option;
+                    dbUpdate.juegos = settings.juegos;
+                }
                 if (newSettings.metodos_pago !== undefined) {
                     // Preservar auto_approve_enabled si ya estaba configurado en memoria
                     if (settings.metodos_pago && settings.metodos_pago.pagomovil && settings.metodos_pago.pagomovil.auto_approve_enabled !== undefined) {
@@ -5496,6 +6076,7 @@ const server = http.createServer(async (req, res) => {
                 }
                 if (newSettings.precios !== undefined) dbUpdate.precios = newSettings.precios;
                 if (newSettings.juegos !== undefined) {
+                    newSettings.juegos.freefire_provider_option = settings.freefire_provider_option;
                     dbUpdate.juegos = newSettings.juegos;
                     if (newSettings.juegos.freefire && newSettings.juegos.freefire.paquetes) {
                         dbUpdate.precios = newSettings.juegos.freefire.paquetes;
@@ -5549,6 +6130,7 @@ const server = http.createServer(async (req, res) => {
             streaming_catalog: getStreamingCatalog(),
             streaming_prices: (settings.juegos && settings.juegos.streaming_prices) ? settings.juegos.streaming_prices : {},
             metodos_pago: settings.metodos_pago,
+            active_pagomovil_bank: settings.active_pagomovil_bank || 'bdv',
             whatsapp: settings.whatsapp,
             publicidades: settings.publicidades || [],
             stock: Object.keys(settings.precios).reduce((acc, amount) => {
@@ -6349,9 +6931,9 @@ const server = http.createServer(async (req, res) => {
         }
 
     // ============================================================
-    // INFLUENCER PROGRAM API ROUTES (LOCAL VPS STORAGE)
+    // INFLUENCER & COUPONS PROGRAM API ROUTES (LOCAL VPS STORAGE)
     // ============================================================
-    } else if (parsedUrl.pathname.startsWith('/api/influencers') || parsedUrl.pathname.startsWith('/api/admin/influencer')) {
+    } else if (parsedUrl.pathname.startsWith('/api/influencers') || parsedUrl.pathname.startsWith('/api/admin/influencer') || parsedUrl.pathname.startsWith('/api/coupons') || parsedUrl.pathname.startsWith('/api/admin/coupons')) {
         const corsHeaders = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
         // GET /api/influencers/rates — Tarifas públicas
@@ -6371,34 +6953,36 @@ const server = http.createServer(async (req, res) => {
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { username, email, password, tiktok_handle, followers_count, ff_uid } = JSON.parse(body);
-                    if (!username || !email || !password || !tiktok_handle) {
+                    const { username, phone, email, password, tiktok_handle, followers_count, ff_uid } = JSON.parse(body);
+                    const normPhone = (phone || '').toString().replace(/\D/g, '');
+                    if (!username || !normPhone || !password || !tiktok_handle) {
                         res.writeHead(400, corsHeaders);
-                        return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
+                        return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios (Usuario, Teléfono, Contraseña y TikTok)' }));
                     }
                     if (password.length < 6) {
                         res.writeHead(400, corsHeaders);
                         return res.end(JSON.stringify({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' }));
                     }
                     const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                    const normEmail = email.trim().toLowerCase();
+                    const normEmail = (email || `${normPhone}@influencer.local`).trim().toLowerCase();
                     const normUser = username.trim().toLowerCase();
                     const normTk = tiktok_handle.replace('@','').trim().toLowerCase();
 
                     const existing = influencers.find(i => 
-                        (i.email || '').toLowerCase() === normEmail ||
+                        (i.phone || '') === normPhone ||
                         (i.username || '').toLowerCase() === normUser ||
                         (i.tiktok_handle || '').toLowerCase() === normTk
                     );
                     if (existing) {
                         res.writeHead(400, corsHeaders);
-                        return res.end(JSON.stringify({ success: false, message: 'Ya existe una cuenta con ese correo, usuario o TikTok' }));
+                        return res.end(JSON.stringify({ success: false, message: 'Ya existe una cuenta con ese teléfono, usuario o TikTok' }));
                     }
 
                     const nextId = influencers.reduce((max, i) => Math.max(max, i.id || 0), 0) + 1;
                     const newInf = {
                         id: nextId,
                         username: username.trim(),
+                        phone: normPhone,
                         email: normEmail,
                         password: password,
                         tiktok_handle: tiktok_handle.replace('@','').trim(),
@@ -6407,7 +6991,6 @@ const server = http.createServer(async (req, res) => {
                         status: 'pending',
                         dollars_balance: 0,
                         total_dollars_earned: 0,
-                        // Legacy fields kept for compatibility
                         diamonds_balance: 0,
                         total_diamonds_earned: 0,
                         admin_notes: null,
@@ -6418,7 +7001,7 @@ const server = http.createServer(async (req, res) => {
                     influencers.push(newInf);
                     writeJsonFile(PATH_INFLUENCERS, influencers);
 
-                    console.log(`[INFLUENCER-LOCAL] 🎬 Nueva solicitud: @${newInf.tiktok_handle} (${newInf.email}) | FF UID: ${newInf.ff_uid || 'no indicado'}`);
+                    console.log(`[INFLUENCER-LOCAL] 🎬 Nueva solicitud: @${newInf.tiktok_handle} | Teléfono: ${newInf.phone} | FF UID: ${newInf.ff_uid || 'no indicado'}`);
                     res.writeHead(200, corsHeaders);
                     res.end(JSON.stringify({ success: true, message: 'Solicitud enviada correctamente' }));
                 } catch(e) {
@@ -6427,22 +7010,33 @@ const server = http.createServer(async (req, res) => {
                 }
             });
 
-        // POST /api/influencers/login — Login de influencer
+        // POST /api/influencers/login — Login de influencer (acepta teléfono, usuario o email)
         } else if (parsedUrl.pathname === '/api/influencers/login' && req.method === 'POST') {
             let body = '';
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { email, password } = JSON.parse(body);
-                    if (!email || !password) {
+                    const { login, phone, email, username, password } = JSON.parse(body);
+                    const rawIdentifier = (login || phone || email || username || '').toString().trim();
+                    if (!rawIdentifier || !password) {
                         res.writeHead(400, corsHeaders);
-                        return res.end(JSON.stringify({ success: false, message: 'Correo y contraseña son requeridos' }));
+                        return res.end(JSON.stringify({ success: false, message: 'Usuario/Teléfono y contraseña son requeridos' }));
                     }
+                    const cleanPhone = rawIdentifier.replace(/\D/g, '');
+                    const normIdent = rawIdentifier.toLowerCase();
+
                     const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                    const inf = influencers.find(i => (i.email || '').toLowerCase() === email.trim().toLowerCase() && i.password === password);
+                    const inf = influencers.find(i => 
+                        (i.password === password) && (
+                            (cleanPhone && i.phone === cleanPhone) ||
+                            (i.username || '').toLowerCase() === normIdent ||
+                            (i.email || '').toLowerCase() === normIdent ||
+                            (i.tiktok_handle || '').toLowerCase() === normIdent
+                        )
+                    );
                     if (!inf) {
                         res.writeHead(401, corsHeaders);
-                        return res.end(JSON.stringify({ success: false, message: 'Correo o contraseña incorrectos' }));
+                        return res.end(JSON.stringify({ success: false, message: 'Usuario, teléfono o contraseña incorrectos' }));
                     }
 
                     inf.last_login = new Date().toISOString();
@@ -6461,13 +7055,23 @@ const server = http.createServer(async (req, res) => {
         } else if (parsedUrl.pathname === '/api/influencers/profile' && req.method === 'GET') {
             try {
                 const id = parseInt(parsedUrl.searchParams.get('id'));
-                const email = parsedUrl.searchParams.get('email');
-                if (!id || !email) {
+                const ident = (parsedUrl.searchParams.get('phone') || parsedUrl.searchParams.get('email') || '').trim();
+                if (!id) {
                     res.writeHead(400, corsHeaders);
                     return res.end(JSON.stringify({ success: false }));
                 }
                 const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                const cleanIdent = ident.replace(/\D/g, '');
+                const normIdent = ident.toLowerCase();
+
+                const inf = influencers.find(i => 
+                    i.id === id && (
+                        !ident ||
+                        (cleanIdent && i.phone === cleanIdent) ||
+                        (i.email || '').toLowerCase() === normIdent ||
+                        (i.username || '').toLowerCase() === normIdent
+                    )
+                );
                 if (!inf) {
                     res.writeHead(404, corsHeaders);
                     return res.end(JSON.stringify({ success: false }));
@@ -6486,13 +7090,13 @@ const server = http.createServer(async (req, res) => {
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { influencer_id, email, tiktok_url, title, views_submitted, screenshot_data, screenshot_filename } = JSON.parse(body);
-                    if (!influencer_id || !email || !tiktok_url || !screenshot_data) {
+                    const { influencer_id, phone, email, tiktok_url, title, views_submitted, screenshot_data, screenshot_filename } = JSON.parse(body);
+                    if (!influencer_id || !tiktok_url || !screenshot_data) {
                         res.writeHead(400, corsHeaders);
                         return res.end(JSON.stringify({ success: false, message: 'Faltan campos obligatorios' }));
                     }
                     const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                    const inf = influencers.find(i => i.id === parseInt(influencer_id) && (i.email || '').toLowerCase() === email.toLowerCase());
+                    const inf = influencers.find(i => i.id === parseInt(influencer_id));
                     if (!inf) {
                         res.writeHead(401, corsHeaders);
                         return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
@@ -6548,13 +7152,12 @@ const server = http.createServer(async (req, res) => {
         } else if (parsedUrl.pathname === '/api/influencers/submissions' && req.method === 'GET') {
             try {
                 const id = parseInt(parsedUrl.searchParams.get('id'));
-                const email = parsedUrl.searchParams.get('email');
-                if (!id || !email) {
+                if (!id) {
                     res.writeHead(400, corsHeaders);
                     return res.end(JSON.stringify({ success: false }));
                 }
                 const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                const inf = influencers.find(i => i.id === id);
                 if (!inf) {
                     res.writeHead(401, corsHeaders);
                     return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
@@ -6576,13 +7179,12 @@ const server = http.createServer(async (req, res) => {
         } else if (parsedUrl.pathname === '/api/influencers/payments' && req.method === 'GET') {
             try {
                 const id = parseInt(parsedUrl.searchParams.get('id'));
-                const email = parsedUrl.searchParams.get('email');
-                if (!id || !email) {
+                if (!id) {
                     res.writeHead(400, corsHeaders);
                     return res.end(JSON.stringify({ success: false }));
                 }
                 const influencers = readJsonFile(PATH_INFLUENCERS, []);
-                const inf = influencers.find(i => i.id === id && (i.email || '').toLowerCase() === email.toLowerCase());
+                const inf = influencers.find(i => i.id === id);
                 if (!inf) {
                     res.writeHead(401, corsHeaders);
                     return res.end(JSON.stringify({ success: false, message: 'Sesión inválida' }));
@@ -6648,6 +7250,100 @@ const server = http.createServer(async (req, res) => {
                 }
             });
 
+        // PUT /api/admin/influencers/:id — Editar datos completos del influencer
+        } else if (/^\/api\/admin\/influencers\/(\d+)$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const infId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencers\/(\d+)/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { username, phone, tiktok_handle, followers_count, ff_uid, dollars_balance, status } = JSON.parse(body);
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => i.id === infId);
+                    if (!inf) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Influencer no encontrado' }));
+                    }
+
+                    if (username) inf.username = username.trim();
+                    if (phone) inf.phone = phone.replace(/\D/g, '');
+                    if (tiktok_handle) inf.tiktok_handle = tiktok_handle.replace('@','').trim();
+                    if (followers_count !== undefined) inf.followers_count = parseInt(followers_count) || 0;
+                    if (ff_uid !== undefined) inf.ff_uid = ff_uid ? ff_uid.trim() : null;
+                    if (dollars_balance !== undefined) {
+                        inf.dollars_balance = parseFloat(dollars_balance) || 0;
+                        inf.diamonds_balance = inf.dollars_balance;
+                    }
+                    if (status && ['pending','approved','rejected','suspended'].includes(status)) {
+                        inf.status = status;
+                    }
+
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+                    console.log(`[INFLUENCER-ADMIN-LOCAL] ✏️ Influencer ID ${infId} editado por el admin`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, message: 'Influencer actualizado correctamente', influencer: inf }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
+                }
+            });
+
+        // PUT /api/admin/influencers/:id/password — Cambiar contraseña de influencer
+        } else if (/^\/api\/admin\/influencers\/(\d+)\/password$/.test(parsedUrl.pathname) && req.method === 'PUT') {
+            if (!checkAdminAuth(req, res)) return;
+            const infId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencers\/(\d+)\/password/)[1]);
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { new_password } = JSON.parse(body);
+                    if (!new_password || new_password.trim().length < 6) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' }));
+                    }
+                    const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                    const inf = influencers.find(i => i.id === infId);
+                    if (!inf) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Influencer no encontrado' }));
+                    }
+
+                    inf.password = new_password.trim();
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    console.log(`[INFLUENCER-ADMIN-LOCAL] 🔑 Contraseña de influencer ID ${infId} actualizada por admin`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, message: 'Contraseña cambiada exitosamente' }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
+                }
+            });
+
+        // DELETE /api/admin/influencers/:id — Eliminar influencer
+        } else if (/^\/api\/admin\/influencers\/(\d+)$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
+            if (!checkAdminAuth(req, res)) return;
+            const infId = parseInt(parsedUrl.pathname.match(/\/api\/admin\/influencers\/(\d+)/)[1]);
+            try {
+                let influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const exists = influencers.some(i => i.id === infId);
+                if (!exists) {
+                    res.writeHead(404, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'Influencer no encontrado' }));
+                }
+
+                influencers = influencers.filter(i => i.id !== infId);
+                writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                console.log(`[INFLUENCER-ADMIN-LOCAL] 🗑️ Influencer ID ${infId} eliminado por admin`);
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, message: 'Influencer eliminado correctamente' }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, message: 'Error interno: ' + e.message }));
+            }
+
         // GET /api/admin/influencer-submissions — Todas las submissions (admin)
         } else if (parsedUrl.pathname === '/api/admin/influencer-submissions' && req.method === 'GET') {
             if (!checkAdminAuth(req, res)) return;
@@ -6702,7 +7398,7 @@ const server = http.createServer(async (req, res) => {
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { status, views_verified, diamonds_awarded, admin_notes } = JSON.parse(body);
+                    const { status, views_verified, diamonds_awarded, dollars_awarded, admin_notes } = JSON.parse(body);
                     if (!['approved','rejected','paid'].includes(status)) {
                         res.writeHead(400, corsHeaders);
                         return res.end(JSON.stringify({ success: false, message: 'Estado inválido' }));
@@ -6715,9 +7411,12 @@ const server = http.createServer(async (req, res) => {
                         return res.end(JSON.stringify({ success: false, message: 'Submission no encontrada' }));
                     }
 
+                    const dollarsAwardedVal = parseFloat(dollars_awarded !== undefined ? dollars_awarded : (diamonds_awarded || 0)) || 0;
+
                     sub.status = status;
                     sub.views_verified = parseInt(views_verified) || 0;
-                    sub.diamonds_awarded = parseInt(diamonds_awarded) || 0;
+                    sub.dollars_awarded = dollarsAwardedVal;
+                    sub.diamonds_awarded = dollarsAwardedVal;
                     if (admin_notes !== undefined) sub.admin_notes = admin_notes || null;
                     sub.reviewed_at = new Date().toISOString();
 
@@ -6727,8 +7426,8 @@ const server = http.createServer(async (req, res) => {
 
                     writeJsonFile(PATH_SUBMISSIONS, submissions);
 
-                    if (status === 'paid' && parseInt(dollars_awarded) > 0) {
-                        const dollars = parseFloat(dollars_awarded);
+                    if (status === 'paid' && dollarsAwardedVal > 0) {
+                        const dollars = dollarsAwardedVal;
                         // Convert dollars to points (1 point = $0.003 USDT, so 1 dollar = ~333 points)
                         const pointsToAdd = Math.round(dollars / 0.003);
 
@@ -6919,6 +7618,199 @@ const server = http.createServer(async (req, res) => {
                 }
             });
 
+        // ─── RUTAS DE CUPONES DE DESCUENTO (1era Recarga) ────────────────────────
+        // GET /api/admin/coupons — Listar cupones
+        } else if (parsedUrl.pathname === '/api/admin/coupons' && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            try {
+                const coupons = readJsonFile(PATH_COUPONS, []);
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, coupons }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // POST /api/admin/coupons/create — Crear o generar cupón
+        } else if (parsedUrl.pathname === '/api/admin/coupons/create' && req.method === 'POST') {
+            if (!checkAdminAuth(req, res)) return;
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { code, discount_percent, influencer_id, influencer_name } = JSON.parse(body);
+                    const percent = parseFloat(discount_percent);
+                    if (isNaN(percent) || percent <= 0 || percent > 100) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'El porcentaje de descuento debe ser entre 1% y 100%.' }));
+                    }
+
+                    const coupons = readJsonFile(PATH_COUPONS, []);
+                    let finalCode = (code || '').toString().trim().toUpperCase();
+                    
+                    // Si no se proporcionó código, generar automático
+                    if (!finalCode) {
+                        const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                        finalCode = `NEYS-${randomSuffix}`;
+                    }
+
+                    // Verificar duplicado
+                    if (coupons.some(c => (c.code || '').toUpperCase() === finalCode)) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: `El código "${finalCode}" ya existe.` }));
+                    }
+
+                    const nextId = coupons.reduce((max, c) => Math.max(max, c.id || 0), 0) + 1;
+                    const newCoupon = {
+                        id: nextId,
+                        code: finalCode,
+                        discount_percent: percent,
+                        influencer_id: influencer_id ? parseInt(influencer_id) : null,
+                        influencer_name: influencer_name ? influencer_name.trim() : null,
+                        is_active: true,
+                        uses_count: 0,
+                        created_at: new Date().toISOString()
+                    };
+
+                    coupons.push(newCoupon);
+                    writeJsonFile(PATH_COUPONS, coupons);
+
+                    console.log(`[COUPONS-ADMIN] 🎟️ Cupón creado: ${finalCode} (${percent}% desc.) | Influencer: ${newCoupon.influencer_name || 'General'}`);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, coupon: newCoupon }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        // POST /api/admin/coupons/update — Editar % o activar/desactivar
+        } else if (parsedUrl.pathname === '/api/admin/coupons/update' && req.method === 'POST') {
+            if (!checkAdminAuth(req, res)) return;
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { id, discount_percent, is_active } = JSON.parse(body);
+                    const coupons = readJsonFile(PATH_COUPONS, []);
+                    const coupon = coupons.find(c => c.id === parseInt(id));
+
+                    if (!coupon) {
+                        res.writeHead(404, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, message: 'Cupón no encontrado.' }));
+                    }
+
+                    if (discount_percent !== undefined) {
+                        const percent = parseFloat(discount_percent);
+                        if (!isNaN(percent) && percent > 0 && percent <= 100) {
+                            coupon.discount_percent = percent;
+                        }
+                    }
+
+                    if (is_active !== undefined) {
+                        coupon.is_active = !!is_active;
+                    }
+
+                    writeJsonFile(PATH_COUPONS, coupons);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true, coupon }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        // POST /api/admin/coupons/delete — Eliminar cupón
+        } else if (parsedUrl.pathname === '/api/admin/coupons/delete' && req.method === 'POST') {
+            if (!checkAdminAuth(req, res)) return;
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { id } = JSON.parse(body);
+                    let coupons = readJsonFile(PATH_COUPONS, []);
+                    coupons = coupons.filter(c => c.id !== parseInt(id));
+                    writeJsonFile(PATH_COUPONS, coupons);
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({ success: true }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, error: e.message }));
+                }
+            });
+
+        // POST /api/coupons/validate — Validación pública de cupón para checkout (1era recarga)
+        } else if (parsedUrl.pathname === '/api/coupons/validate' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { code, uid, amount } = JSON.parse(body);
+                    const cleanCode = (code || '').toString().trim().toUpperCase();
+                    const cleanUid = (uid || '').toString().trim();
+                    const baseAmount = parseFloat(amount) || 0;
+
+                    if (!cleanCode) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, valid: false, message: 'Por favor ingresa un código de descuento.' }));
+                    }
+
+                    if (!cleanUid) {
+                        res.writeHead(400, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, valid: false, message: 'Ingresa tu Player ID / UID para validar el código.' }));
+                    }
+
+                    const coupons = readJsonFile(PATH_COUPONS, []);
+                    const coupon = coupons.find(c => (c.code || '').toUpperCase() === cleanCode && c.is_active !== false);
+
+                    if (!coupon) {
+                        res.writeHead(200, corsHeaders);
+                        return res.end(JSON.stringify({ success: false, valid: false, message: 'El código de descuento no existe o ha sido desactivado.' }));
+                    }
+
+                    // Verificar en Supabase si el UID tiene compras previas aprobadas/completadas
+                    const { data: previousOrders, error: ordersErr } = await supabase
+                        .from('ff_orders')
+                        .select('id, status')
+                        .eq('uid', cleanUid)
+                        .in('status', ['approved', 'completed']);
+
+                    if (ordersErr) {
+                        console.error('[COUPON-VALIDATE] Error al consultar historial del usuario:', ordersErr.message);
+                    }
+
+                    if (previousOrders && previousOrders.length > 0) {
+                        res.writeHead(200, corsHeaders);
+                        return res.end(JSON.stringify({
+                            success: false,
+                            valid: false,
+                            message: '⚠️ Este código de descuento es válido únicamente para tu PRIMERA recarga.'
+                        }));
+                    }
+
+                    // Calcular monto con descuento
+                    const discountPercent = parseFloat(coupon.discount_percent) || 0;
+                    const savings = parseFloat((baseAmount * (discountPercent / 100)).toFixed(2));
+                    const finalAmount = Math.max(0, parseFloat((baseAmount - savings).toFixed(2)));
+
+                    res.writeHead(200, corsHeaders);
+                    res.end(JSON.stringify({
+                        success: true,
+                        valid: true,
+                        code: coupon.code,
+                        discount_percent: discountPercent,
+                        original_amount: baseAmount,
+                        savings: savings,
+                        final_amount: finalAmount,
+                        influencer_id: coupon.influencer_id || null,
+                        influencer_name: coupon.influencer_name || null
+                    }));
+                } catch(e) {
+                    res.writeHead(500, corsHeaders);
+                    res.end(JSON.stringify({ success: false, valid: false, error: e.message }));
+                }
+            });
+
         } else {
             res.writeHead(404, corsHeaders);
             res.end(JSON.stringify({ success: false, message: 'Ruta no encontrada' }));
@@ -7030,15 +7922,17 @@ const server = http.createServer(async (req, res) => {
 if (process.env.VERCEL) {
     module.exports = server;
 } else {
-    server.listen(PORT, async () => {
+    (async () => {
         console.log('=========================================');
         console.log('  RECARGASNEY.COM - Servidor');
-        console.log(`  Corriendo en: http://localhost:${PORT}`);
+        console.log(`  Puerto: ${PORT}`);
         console.log('  Cargando datos desde Supabase...');
         console.log('=========================================');
         await loadFromSupabase();
         initLocalInfluencerStorage();
-        console.log('[SERVER] ✅ Listo para recibir solicitudes.');
-    });
+        server.listen(PORT, () => {
+            console.log(`[SERVER] ✅ Listo en http://localhost:${PORT} — Supabase cargado correctamente.`);
+        });
+    })();
 }
 

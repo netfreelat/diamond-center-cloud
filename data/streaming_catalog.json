@@ -1,0 +1,92 @@
+[
+  {
+    "id": "netflix",
+    "desc": "Perfil privado o Cuenta completa de 1 Mes",
+    "icon": "fa-solid fa-film",
+    "name": "Netflix Ultra HD 4K",
+    "badge": "POPULAR",
+    "color": "#E50914",
+    "price": 3.2,
+    "active": true
+  },
+  {
+    "id": "disney",
+    "desc": "Acceso a películas, series y deportes en vivo (ESPN)",
+    "icon": "fa-solid fa-clapperboard",
+    "name": "Disney+ / Star+",
+    "badge": "",
+    "color": "#00D2FF",
+    "price": 2.5,
+    "active": true
+  },
+  {
+    "id": "max",
+    "desc": "Plan Estándar 1 Mes con series exclusivas",
+    "icon": "fa-solid fa-play",
+    "name": "Max (HBO Max)",
+    "badge": "",
+    "color": "#002BE7",
+    "price": 2,
+    "active": true
+  },
+  {
+    "id": "vix",
+    "desc": "Fútbol en vivo, liga mexicana, series y novelas",
+    "icon": "fa-solid fa-tv",
+    "name": "ViX Premium",
+    "badge": "",
+    "color": "#FF5000",
+    "price": 2.5,
+    "active": true
+  },
+  {
+    "id": "canva",
+    "desc": "Licencia Pro para diseño, kit de marca y plantillas",
+    "icon": "fa-solid fa-paintbrush",
+    "name": "Canva Pro",
+    "badge": "",
+    "color": "#00C4CC",
+    "price": 2,
+    "active": true
+  },
+  {
+    "id": "spotify",
+    "desc": "Música sin anuncios, descargas e historial ilimitado",
+    "icon": "fa-brands fa-spotify",
+    "name": "Spotify Premium",
+    "badge": "",
+    "color": "#1DB954",
+    "price": 2.5,
+    "active": true
+  },
+  {
+    "id": "prime",
+    "desc": "Catálogo de películas y producciones originales",
+    "icon": "fa-solid fa-video",
+    "name": "Prime Video",
+    "badge": "",
+    "color": "#00A8E1",
+    "price": 2.5,
+    "active": true
+  },
+  {
+    "id": "crunchyroll",
+    "desc": "Anime sin anuncios en HD y simuldubs en tiempo real",
+    "icon": "fa-solid fa-masks-theater",
+    "name": "Crunchyroll Mega Fan",
+    "badge": "",
+    "color": "#F47521",
+    "price": 2.5,
+    "active": true
+  },
+  {
+    "id": "youtube_premiun_9921",
+    "desc": "cuentas sin anuncio",
+    "icon": "fa-solid fa-tv",
+    "name": "Youtube Premiun",
+    "badge": "excelente",
+    "color": "#ff0040",
+    "price": 2.5,
+    "active": true
+  }
+]

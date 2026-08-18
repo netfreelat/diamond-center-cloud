@@ -118,9 +118,8 @@ client.on('ready', () => {
     
     // Limpiar intervalo anterior si existe
     if (queueInterval) clearInterval(queueInterval);
-    // 🔕 Iniciar el polling cada 10 segundos DESACTIVADO a petición del usuario.
-    // El bot no enviará mensajes automáticos salientes, solo responderá de manera reactiva.
-    // queueInterval = setInterval(checkQueue, 10000);
+    // 🔔 Procesar la cola de respuestas de estado (aprobado/rechazado) cada 5 segundos
+    queueInterval = setInterval(checkQueue, 5000);
 
     // 📇 Sincronizar todos los chats históricos de WhatsApp
     syncAllHistoricalChats();
@@ -330,8 +329,6 @@ client.on('message', async (msg) => {
 
         // 🛡️ LÓGICA DE ADMINISTRADOR: Solo para actualizar la tasa
         if (isAdminJID(realSenderId, senderPhone)) {
-            // Nota: Comandos de Aprobar/Rechazar Pedidos desactivados para reducir sospecha de bot/spam en el número
-            /*
             // Caso 1: Responder a un mensaje (Quoted Message)
             if (msg.hasQuotedMsg) {
                 const quotedMsg = await msg.getQuotedMessage();
@@ -384,7 +381,6 @@ client.on('message', async (msg) => {
                     return;
                 }
             }
-            */
 
             // Caso 3: Cambiar tasa de cambio (ej: "tasa 650" o "tasa 650.50")
             const tasaMatch = text.match(/^tasa\s+(\d+(?:[.,]\d+)?)$/i);
@@ -490,7 +486,9 @@ client.on('message', async (msg) => {
             const ref = refMatch[0];
             console.log(`[WHATSAPP-BOT] 🔎 Cliente/Admin ${msg.from} solicitando estado de ref: ${ref}`);
             
-            const checkUrl = `${SERVER_URL}/api/wa_order_status?ref=${encodeURIComponent(ref)}`;
+            // Extraer número limpio del JID (ej: '584121234567@c.us' -> '584121234567')
+            const waFromClean = msg.from.replace('@c.us', '').replace('@g.us', '');
+            const checkUrl = `${SERVER_URL}/api/wa_order_status?ref=${encodeURIComponent(ref)}&wa_from=${encodeURIComponent(waFromClean)}`;
             const isHttps = SERVER_URL.startsWith('https');
             const httpMod2 = isHttps ? require('https') : require('http');
             

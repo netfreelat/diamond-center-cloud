@@ -47,8 +47,9 @@ async function jadhLogin(page, email, password, prefix = '[JADH]') {
  * @param {string} packAmount - Cantidad del paquete (ej: "100", "10 USD", etc.)
  * @param {string} game - El juego ("freefire" o "roblox")
  */
-async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
-    console.log(`[JADH-BOT] 🚀 Iniciando proceso de recarga directa | Juego: ${game} | ID: ${uid} | Paquete: ${packAmount}`);
+async function rechargeViaJadh(uid, packAmount, game = 'freefire', providerOption = null) {
+    const activeProvider = providerOption || (global.settings && global.settings.freefire_provider_option) || process.env.FREEFIRE_PROVIDER_OPTION || 'directas';
+    console.log(`[JADH-BOT] 🚀 Iniciando proceso de recarga directa | Juego: ${game} | ID: ${uid} | Paquete: ${packAmount} | Ruta Jadh: ${activeProvider}`);
     
     const email = process.env.JADH_EMAIL || 'jmnetfreelat@gmail.com';
     const password = process.env.JADH_PASSWORD || 'Clifor1988';
@@ -64,20 +65,34 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         // Limpiar packAmount para obtener el identificador base (ej: "100" de "100 + 10 (x1)")
         amountKey = amountKey.split(' ')[0].replace(',', '').replace('.', '').trim();
         
-        // Mapear paquetes de diamantes a IDs de jadh.shop (freefire-auto)
-        const packMap = {
-            "100": "156",  // 110 💎
-            "310": "157",  // 341 💎
-            "520": "158",  // 572 💎
-            "1060": "159", // 1166 💎
-            "2180": "160", // 2376 💎
-            "5600": "161"  // 6138 💎
-        };
+        if (activeProvider === 'auto') {
+            // Mapear paquetes de diamantes a IDs de jadh.shop (freefire-auto)
+            const packMapAuto = {
+                "100":  "156",  // 110 💎
+                "310":  "157",  // 341 💎
+                "520":  "158",  // 572 💎
+                "1060": "159",  // 1166 💎
+                "2180": "160",  // 2376 💎
+                "5600": "161"   // 6138 💎
+            };
+            packageId = packMapAuto[amountKey];
+        } else {
+            // Mapear paquetes de diamantes a IDs de jadh.shop (freefire-recargas-directas)
+            const packMapDirectas = {
+                "100":  "269",  // 100+10 💎
+                "310":  "270",  // 310+31 💎
+                "520":  "271",  // 520+52 💎
+                "1060": "272",  // 1060+106 💎
+                "2160": "273",  // 2160+218 💎
+                "2180": "273",  // 2160+218 💎
+                "5600": "274"   // 5600+560 💎
+            };
+            packageId = packMapDirectas[amountKey];
+        }
 
-        packageId = packMap[amountKey];
         if (!packageId) {
-            console.error(`[JADH-BOT] ❌ Error: Paquete no mapeado para el monto: ${amountKey}`);
-            return { success: false, message: `El paquete de ${amountKey} diamantes no está mapeado para recarga directa.` };
+            console.error(`[JADH-BOT] ❌ Error: Paquete no mapeado para el monto: ${amountKey} (Opción: ${activeProvider})`);
+            return { success: false, message: `El paquete de ${amountKey} diamantes no está mapeado en Jadh (${activeProvider}).` };
         }
     } else if (game === 'bloodstrike') {
         // Limpiar amountKey para obtener el identificador base
@@ -147,13 +162,18 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         const page = await browser.newPage();
         await page.setDefaultNavigationTimeout(60000);
 
+        const freefireUrl = activeProvider === 'auto'
+            ? 'https://jadh.shop/producto/freefire-auto'
+            : 'https://jadh.shop/producto/freefire-recargas-directas';
+
         const productUrlMap = {
+            'freefire':        freefireUrl,
             'roblox':          'https://jadh.shop/producto/roblox-usa',
             'bloodstrike':     'https://jadh.shop/producto/bloodstrike',
             'mobilelegends':   'https://jadh.shop/producto/mobile-legends-us',
             'mobilelegendsus': 'https://jadh.shop/producto/mobile-legends-us'
         };
-        const productUrl = productUrlMap[game] || 'https://jadh.shop/producto/freefire-auto';
+        const productUrl = productUrlMap[game] || freefireUrl;
         // 1. Navegar directamente al producto (Jadh redirige a /auth si no hay sesión)
         console.log(`[JADH-BOT] 📡 Navegando al producto ${productUrl}...`);
         await page.goto(productUrl, { waitUntil: 'networkidle2' });
@@ -248,7 +268,9 @@ async function rechargeViaJadh(uid, packAmount, game = 'freefire') {
         } else if (game !== 'roblox') {
             console.log('[JADH-BOT] 📝 Ingresando ID del jugador...');
             const inputSelector = await page.evaluate(() => {
-                // jadh.shop usa #gameAccountId en freefire-auto, o input[name^="gp_"] en otros productos
+                // jadh.shop usa #pcrPlayerId en freefire-recargas-directas, #gameAccountId en freefire-auto, o input[name="player_id"] / input[name^="gp_"]
+                const pcrEl = document.querySelector('#pcrPlayerId') || document.querySelector('input[name="player_id"]');
+                if (pcrEl) return pcrEl.id ? '#' + pcrEl.id : 'input[name="player_id"]';
                 const newEl = document.querySelector('#gameAccountId');
                 if (newEl) return '#gameAccountId';
                 const legacyEl = document.querySelector('input[name^="gp_"]');

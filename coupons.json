@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "code": "NEYS-TEST10",
+    "discount_percent": 10,
+    "influencer_id": null,
+    "influencer_name": "General Test",
+    "is_active": true,
+    "uses_count": 0,
+    "created_at": "2026-08-12T22:01:43.761Z"
+  }
+]

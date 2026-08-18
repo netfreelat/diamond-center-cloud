@@ -959,8 +959,8 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Correo electrónico</label>
-        <input type="email" class="form-control" id="loginEmail" placeholder="tucorreo@email.com">
+        <label class="form-label">Usuario o Número de Teléfono</label>
+        <input type="text" class="form-control" id="loginUser" placeholder="Ej: GamerPro_FF o 04121234567">
       </div>
       <div class="form-group">
         <label class="form-label">Contraseña</label>
@@ -995,8 +995,8 @@
         <input type="text" class="form-control" id="regUsername" placeholder="Ej: GamerPro_FF">
       </div>
       <div class="form-group">
-        <label class="form-label">Correo electrónico</label>
-        <input type="email" class="form-control" id="regEmail" placeholder="tucorreo@email.com">
+        <label class="form-label">📱 Número de Teléfono / WhatsApp</label>
+        <input type="tel" class="form-control" id="regPhone" placeholder="Ej: 04121234567 o 584121234567" inputmode="numeric">
       </div>
       <div class="form-group">
         <label class="form-label">Contraseña</label>
@@ -1155,6 +1155,33 @@
       </div>
     </div>
 
+    <!-- Tabla de Tarifas y Ganancias por Video (Visible para Mini Influencers) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-tags" style="color:#00FF94"></i> Tabla de Tarifas y Ganancias por Video</div>
+        <div style="font-size:12px;color:var(--text-muted)">Ganancias por vistas</div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+          Recompensas acumulables en $ USD que ganarás según la cantidad de visualizaciones alcanzadas en cada video enviado:
+        </p>
+        <div class="rates-table" style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Nivel</th>
+                <th>Visualizaciones Requeridas</th>
+                <th>Pago por Video ($ USDT)</th>
+              </tr>
+            </thead>
+            <tbody id="dashRatesTableBody">
+              <tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px;">Cargando tarifas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Submissions History -->
     <div class="card">
       <div class="card-header">
@@ -1224,9 +1251,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (saved) {
     try {
       const data = JSON.parse(saved);
-      if (data && data.id && data.email) {
+      if (data && data.id) {
         // Revalidar con el servidor
-        const res = await fetch(`/api/influencers/profile?id=${data.id}&email=${encodeURIComponent(data.email)}`);
+        const identifier = data.phone || data.email || data.username || '';
+        const res = await fetch(`/api/influencers/profile?id=${data.id}&phone=${encodeURIComponent(identifier)}&email=${encodeURIComponent(identifier)}`);
         if (res.ok) {
           const profile = await res.json();
           if (profile.success) {
@@ -1285,6 +1313,7 @@ function showDashboard() {
   updateDashboard();
   loadSubmissions();
   loadPayments();
+  loadRates();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1315,7 +1344,7 @@ function updateDashboard() {
   }
 
   if (inf.status === 'approved') {
-    // Mostrar saldo en $ USDT (1 punto = $0.003)
+    // Mostrar saldo en $ USDT
     const balanceUsdt = ((inf.dollars_balance || 0)).toFixed(2);
     const totalUsdt = ((inf.total_dollars_earned || 0)).toFixed(2);
     document.getElementById('statBalance').textContent = '$' + balanceUsdt + ' USDT';
@@ -1345,20 +1374,27 @@ async function loadRates() {
     const res = await fetch('/api/influencers/rates');
     const data = await res.json();
     const tbody = document.getElementById('ratesTableBody');
+    const tbodyDash = document.getElementById('dashRatesTableBody');
+    const emptyMsg = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px;">No hay tarifas configuradas aún</td></tr>';
+
     if (!data.success || !data.rates || data.rates.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px;">No hay tarifas configuradas aún</td></tr>';
+      if (tbody) tbody.innerHTML = emptyMsg;
+      if (tbodyDash) tbodyDash.innerHTML = emptyMsg;
       return;
     }
-    tbody.innerHTML = data.rates.map(r => `
+    const html = data.rates.map(r => `
       <tr>
         <td><strong>${escHtml(r.label)}</strong></td>
         <td>${Number(r.min_views).toLocaleString()} ${r.max_views ? '— ' + Number(r.max_views).toLocaleString() : '+'} vistas</td>
-        <td><span class="diamond-amount" style="color:#00FF94;font-weight:700;">$${Number(r.dollars_reward || r.diamonds_reward || 0).toFixed(2)} USDT</span></td>
+        <td><span class="diamond-amount" style="color:#00FF94;font-weight:800;">+$${Number(r.dollars_reward || r.diamonds_reward || 0).toFixed(2)} USDT</span></td>
       </tr>
     `).join('');
+    if (tbody) tbody.innerHTML = html;
+    if (tbodyDash) tbodyDash.innerHTML = html;
   } catch(e) {
-    document.getElementById('ratesTableBody').innerHTML =
-      '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Error al cargar tarifas</td></tr>';
+    const errMsg = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Error al cargar tarifas</td></tr>';
+    if (document.getElementById('ratesTableBody')) document.getElementById('ratesTableBody').innerHTML = errMsg;
+    if (document.getElementById('dashRatesTableBody')) document.getElementById('dashRatesTableBody').innerHTML = errMsg;
   }
 }
 
@@ -1366,15 +1402,14 @@ async function loadRates() {
 // AUTH - LOGIN
 // ==============================
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
+  const loginInput = document.getElementById('loginUser') || document.getElementById('loginEmail');
+  const loginVal = loginInput ? loginInput.value.trim() : '';
   const password = document.getElementById('loginPassword').value;
-  const errEl = document.getElementById('loginError');
-  const errMsg = document.getElementById('loginErrorMsg');
   const btn = document.getElementById('btnLogin');
 
   hideAlert('loginError');
 
-  if (!email || !password) {
+  if (!loginVal || !password) {
     showAlert('loginError', 'Por favor completa todos los campos.');
     return;
   }
@@ -1386,7 +1421,7 @@ async function doLogin() {
     const res = await fetch('/api/influencers/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ login: loginVal, email: loginVal, phone: loginVal, password })
     });
     const data = await res.json();
 
@@ -1394,7 +1429,12 @@ async function doLogin() {
       showAlert('loginError', data.message || 'Credenciales incorrectas.');
     } else {
       currentInfluencer = data.influencer;
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ id: data.influencer.id, email: data.influencer.email }));
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        id: data.influencer.id,
+        phone: data.influencer.phone || '',
+        username: data.influencer.username,
+        email: data.influencer.email || ''
+      }));
       showDashboard();
     }
   } catch(e) {
@@ -1410,7 +1450,8 @@ async function doLogin() {
 // ==============================
 async function doRegister() {
   const username = document.getElementById('regUsername').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
+  const phoneEl = document.getElementById('regPhone');
+  const phone = phoneEl ? phoneEl.value.trim() : '';
   const password = document.getElementById('regPassword').value;
   const tiktok = document.getElementById('regTiktok').value.trim().replace('@','');
   const followers = parseInt(document.getElementById('regFollowers').value) || 0;
@@ -1420,16 +1461,18 @@ async function doRegister() {
   hideAlert('registerError');
   hideAlert('registerSuccess');
 
-  if (!username || !email || !password || !tiktok) {
-    showAlert('registerError', 'Por favor completa todos los campos obligatorios.');
+  if (!username || !phone || !password || !tiktok) {
+    showAlert('registerError', 'Por favor completa todos los campos obligatorios (Usuario, Teléfono, Contraseña y TikTok).');
     return;
   }
   if (password.length < 6) {
     showAlert('registerError', 'La contraseña debe tener al menos 6 caracteres.');
     return;
   }
-  if (!email.includes('@')) {
-    showAlert('registerError', 'Ingresa un correo electrónico válido.');
+  const cleanPhone = phone.replace(/\D/g, '');
+  if (cleanPhone.length < 7) {
+    showAlert('registerError', 'Ingresa un número de teléfono / WhatsApp válido (solo números).');
+    if (phoneEl) phoneEl.focus();
     return;
   }
   if (!ff_uid || !/^[0-9]{6,12}$/.test(ff_uid)) {
@@ -1445,7 +1488,7 @@ async function doRegister() {
     const res = await fetch('/api/influencers/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password, tiktok_handle: tiktok, followers_count: followers, ff_uid })
+      body: JSON.stringify({ username, phone: cleanPhone, password, tiktok_handle: tiktok, followers_count: followers, ff_uid })
     });
     const data = await res.json();
 
@@ -1453,7 +1496,7 @@ async function doRegister() {
       showAlert('registerError', data.message || 'Error al registrar.');
     } else {
       document.getElementById('regUsername').value = '';
-      document.getElementById('regEmail').value = '';
+      if (phoneEl) phoneEl.value = '';
       document.getElementById('regPassword').value = '';
       document.getElementById('regTiktok').value = '';
       document.getElementById('regFollowers').value = '';
@@ -1567,7 +1610,8 @@ async function submitVideo() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         influencer_id: currentInfluencer.id,
-        email: currentInfluencer.email,
+        phone: currentInfluencer.phone || '',
+        email: currentInfluencer.email || '',
         tiktok_url: url,
         title,
         views_submitted: views,
@@ -1603,7 +1647,8 @@ async function loadSubmissions() {
   const container = document.getElementById('submissionsList');
 
   try {
-    const res = await fetch(`/api/influencers/submissions?id=${currentInfluencer.id}&email=${encodeURIComponent(currentInfluencer.email)}`);
+    const infIdent = encodeURIComponent(currentInfluencer.phone || currentInfluencer.email || currentInfluencer.username || '');
+    const res = await fetch(`/api/influencers/submissions?id=${currentInfluencer.id}&phone=${infIdent}&email=${infIdent}`);
     const data = await res.json();
     const list = document.getElementById('submissionsList');
     const countEl = document.getElementById('statSubmissions');
@@ -1621,11 +1666,12 @@ async function loadSubmissions() {
         pending: '<span class="status-badge status-pending" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-pending" style="width:6px;height:6px;"></div> Pendiente</span>',
         approved: '<span class="status-badge status-approved" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-approved" style="width:6px;height:6px;"></div> Aprobado</span>',
         rejected: '<span class="status-badge status-rejected" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-rejected" style="width:6px;height:6px;"></div> Rechazado</span>',
-        paid: '<span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-paid" style="width:6px;height:6px;"></div> Pagado 💎</span>',
+        paid: '<span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;"><div class="stat-dot dot-paid" style="width:6px;height:6px;"></div> Pagado 💵</span>',
       };
       const date = new Date(s.submitted_at).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
       const url = escHtml(s.tiktok_url || '');
       const shortUrl = url.length > 45 ? url.slice(0, 45) + '...' : url;
+      const earnAmount = s.dollars_awarded !== undefined ? parseFloat(s.dollars_awarded) : (parseFloat(s.diamonds_awarded) || 0);
 
       return `
       <div class="submission-item">
@@ -1639,7 +1685,7 @@ async function loadSubmissions() {
           ${s.admin_notes ? `<p style="font-size:12px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-comment"></i> ${escHtml(s.admin_notes)}</p>` : ''}
         </div>
         <div class="submission-right">
-          ${s.diamonds_awarded ? `<div class="submission-diamonds">+${Number(s.diamonds_awarded).toLocaleString()} 💎</div>` : ''}
+          ${earnAmount > 0 ? `<div class="submission-diamonds" style="color:#00FF94;font-size:17px;font-weight:800;">+$${Number(earnAmount).toFixed(2)} USDT</div>` : ''}
           ${statusMap[s.status] || ''}
         </div>
       </div>`;
@@ -1657,29 +1703,32 @@ async function loadPayments() {
   if (!currentInfluencer) return;
 
   try {
-    const res = await fetch(`/api/influencers/payments?id=${currentInfluencer.id}&email=${encodeURIComponent(currentInfluencer.email)}`);
+    const infIdent = encodeURIComponent(currentInfluencer.phone || currentInfluencer.email || currentInfluencer.username || '');
+    const res = await fetch(`/api/influencers/payments?id=${currentInfluencer.id}&phone=${infIdent}&email=${infIdent}`);
     const data = await res.json();
     const list = document.getElementById('paymentsList');
 
     if (!data.success || !data.payments || data.payments.length === 0) {
-      list.innerHTML = '<div class="empty-state"><i class="fas fa-gem"></i><p>Aún no has recibido pagos</p></div>';
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-dollar-sign"></i><p>Aún no has recibido pagos</p></div>';
       return;
     }
 
     list.innerHTML = data.payments.map(p => {
       const date = new Date(p.paid_at).toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
+      const pAmount = p.dollars_amount !== undefined ? parseFloat(p.dollars_amount) : (parseFloat(p.diamonds_amount) || 0);
+
       return `
       <div class="submission-item">
         <div class="submission-info">
-          <h4>${p.week_label ? escHtml(p.week_label) : 'Pago de Diamantes'}</h4>
+          <h4>${p.week_label ? escHtml(p.week_label) : 'Pago de Video Recibido'}</h4>
           <div class="submission-meta">
             <span><i class="fas fa-calendar-check"></i> ${date}</span>
             ${p.note ? `<span><i class="fas fa-comment"></i> ${escHtml(p.note)}</span>` : ''}
           </div>
         </div>
         <div class="submission-right">
-          <div class="submission-diamonds">+${Number(p.diamonds_amount).toLocaleString()} 💎</div>
-          <span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;">Pagado</span>
+          <div class="submission-diamonds" style="color:#00FF94;font-size:17px;font-weight:800;">+$${Number(pAmount).toFixed(2)} USDT</div>
+          <span class="status-badge status-paid" style="font-size:11px;padding:4px 10px;">Pagado 💵</span>
         </div>
       </div>`;
     }).join('');

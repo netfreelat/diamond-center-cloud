@@ -16,16 +16,16 @@
         if ('serviceWorker' in navigator) {
             caches.keys().then(names => {
                 for (let name of names) {
-                    if (name !== 'diamond-center-v35') caches.delete(name);
+                    if (name !== 'recargasney-v77') caches.delete(name);
                 }
             });
-            navigator.serviceWorker.register('/sw.js?v=3.5.0')
+            navigator.serviceWorker.register('/sw.js?v=4.0.5')
                 .then(reg => { reg.update(); });
         }
     </script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css?v=3.5.0">
+    <link rel="stylesheet" href="style.css?v=4.0.5">
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -113,6 +113,35 @@
             <div class="ads-slider-dots" id="ads-slider-dots"></div>
         </div>
 
+        <!-- Barra de Progreso Gamificada: Canje Directo por Diamantes Gratis -->
+        <div id="reward-progress-container" class="reward-progress-card" style="display: none;">
+            <div class="reward-progress-header">
+                <div class="reward-title-group">
+                    <span class="reward-badge-icon"><i class="fa-solid fa-gift"></i></span>
+                    <div>
+                        <strong class="reward-card-title">Progreso a tu Premio Gratis</strong>
+                        <span class="reward-card-sub" id="reward-target-label">Meta: Tarjeta Básica / 100 Diamantes ($0.80 USDT)</span>
+                    </div>
+                </div>
+                <div class="reward-percent-badge" id="reward-percent-badge">0%</div>
+            </div>
+
+            <div class="reward-bar-wrapper">
+                <div class="reward-bar-fill" id="reward-bar-fill" style="width: 0%;">
+                    <div class="reward-bar-glow"></div>
+                </div>
+            </div>
+
+            <div class="reward-progress-footer">
+                <span class="reward-status-text" id="reward-status-text">
+                    Cargando progreso...
+                </span>
+                <button id="reward-claim-btn" class="reward-claim-btn" style="display: none;">
+                    <i class="fa-solid fa-crown"></i> Reclamar Premio
+                </button>
+            </div>
+        </div>
+
         <!-- Banner de Bienvenida para nuevos usuarios -->
         <div id="new-user-banner" style="display: none; background: rgba(157, 0, 255, 0.05); border: 1px dashed var(--primary); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; animation: pulse 2s infinite;">
             <h3 style="color: var(--secondary); margin-bottom: 5px; font-family: 'Montserrat', sans-serif;">¡Hola! Gana premios gratis 💎</h3>
@@ -160,6 +189,15 @@
                     <i class="fa-solid fa-star"></i> Favoritos
                 </button>
             </div>
+
+            <!-- Botón Llamativo MINI INFLUENCER (PRÓXIMAMENTE) -->
+            <button id="mini-influencer-btn" class="btn-mini-influencer-highlight" type="button">
+                <div class="mini-inf-left">
+                    <span class="mini-inf-icon"><i class="fa-brands fa-tiktok"></i></span>
+                    <span class="mini-inf-text">MINI INFLUENCER</span>
+                </div>
+                <span class="mini-inf-tag">PRÓXIMAMENTE</span>
+            </button>
 
             <!-- WhatsApp Channel Button (Compact) -->
             <a href="#" target="_blank" class="whatsapp-btn" id="wa-canal-link">
@@ -210,8 +248,8 @@
                 </div>
 
 
-                <!-- 🍿 BANNER DE SERVICIOS STREAMING & CUENTAS PREMIUM -->
-                <div id="streaming-main-banner" class="btn-streaming-trigger" style="margin-top: 15px; margin-bottom: 15px; background: linear-gradient(135deg, rgba(229, 9, 20, 0.15), rgba(157, 0, 255, 0.15)); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 14px; padding: 16px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.2); cursor: pointer;">
+                <!-- 🍿 BANNER DE SERVICIOS STREAMING & CUENTAS PREMIUM (OCULTO A PETICION DEL USUARIO) -->
+                <div id="streaming-main-banner" class="btn-streaming-trigger" style="display: none !important; margin-top: 15px; margin-bottom: 15px; background: linear-gradient(135deg, rgba(229, 9, 20, 0.15), rgba(157, 0, 255, 0.15)); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 14px; padding: 16px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.2); cursor: pointer;">
                     <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #E50914, #FF5000); color: #fff; font-size: 0.65rem; font-weight: 900; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;">ENTREGA INMEDIATA</div>
                     <div style="font-size: 2.2rem; margin-bottom: 4px;">🍿🎬</div>
                     <h3 style="color: #fff; font-family: 'Montserrat', sans-serif; font-size: 1.15rem; font-weight: 800; margin: 0 0 4px 0;">Cuentas de Streaming & Licencias</h3>
@@ -256,8 +294,8 @@
                     </button>
                 </div>
 
-                <!-- 🎟️ GRAN SORTEO SEMANAL DE REFERIDOS -->
-                <div id="weekly-raffle-card" class="weekly-raffle-card">
+                <!-- 🎟️ GRAN SORTEO SEMANAL DE REFERIDOS (Oculto temporalmente) -->
+                <div id="weekly-raffle-card" class="weekly-raffle-card" style="display: none !important;">
                     <div class="raffle-header-badge">🎟️ SORTEO EN VIVO</div>
                     <h3 class="raffle-title">Gran Sorteo Semanal</h3>
                     <div class="raffle-prize-banner">
@@ -409,7 +447,11 @@
                 <div class="payment-methods">
                     <div class="payment-method-card" data-method="pagomovil">
                         <i class="fa-solid fa-mobile-screen-button"></i>
-                        <span>Pago Móvil</span>
+                        <span>Pago Móvil BDV</span>
+                    </div>
+                    <div class="payment-method-card" data-method="pagomovil_banesco" id="pm-card-banesco" style="display:none;">
+                        <i class="fa-solid fa-building-columns"></i>
+                        <span>Pago Móvil Banesco</span>
                     </div>
                     <div class="payment-method-card" data-method="binance">
                         <i class="fa-brands fa-bitcoin"></i>
@@ -446,6 +488,23 @@
                     </div>
                 </div>
 
+                <!-- Pago Móvil Banesco Details -->
+                <div id="details-pagomovil_banesco" class="method-details" style="display: none;">
+                    <div class="info-box" style="border-color: rgba(0, 200, 255, 0.3);">
+                        <p><strong>Banco:</strong> <span id="display-banesco-banco">Cargando...</span></p>
+                        <p><strong>Teléfono:</strong> <span id="display-banesco-telefono">Cargando...</span></p>
+                        <p><strong>Cédula/RIF:</strong> <span id="display-banesco-cedula">Cargando...</span></p>
+                        <button class="btn-copy" onclick="copyData('pagomovil_banesco')"><i class="fa-solid fa-copy"></i> Copiar Datos de Pago</button>
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label for="amount-pagomovil_banesco" style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 5px; display: block; text-align: left; padding-left: 10px;">Monto exacto a transferir:</label>
+                        <input type="text" id="amount-pagomovil_banesco" placeholder="Monto Transferido (Bs)" readonly style="background: rgba(0, 240, 255, 0.05); border-color: rgba(0, 240, 255, 0.3); color: var(--secondary); font-size: 1.3rem;">
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <input type="text" id="ref-pagomovil_banesco" placeholder="Ve a tu banco, haz el pago y pega la referencia aquí">
+                    </div>
+                </div>
+
                 <!-- Binance Details -->
                 <div id="details-binance" class="method-details" style="display: none;">
                     <div class="info-box">
@@ -462,11 +521,25 @@
                     </div>
                 </div>
 
+                <!-- CÓDIGO DE DESCUENTO (1ERA RECARGA) -->
+                <div class="coupon-section" style="margin-top: 18px; background: rgba(157, 0, 255, 0.08); padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(157, 0, 255, 0.3);">
+                    <label style="font-size: 0.85rem; color: #b0a8c0; margin-bottom: 6px; display: block; text-align: left; font-weight: 600;">
+                        <i class="fa-solid fa-ticket" style="color:#9D00FF; margin-right:4px;"></i> ¿Tienes un código de descuento?
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="coupon-code-input" placeholder="Ej: BIENVENIDA10" style="flex: 1; background: rgba(20, 10, 35, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; padding: 10px; font-size: 0.95rem; font-weight: 700; text-transform: uppercase; outline: none;">
+                        <button type="button" id="apply-coupon-btn" onclick="window.applyCouponCode()" style="background: linear-gradient(135deg, #9D00FF, #00D4FF); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.85rem; white-space: nowrap; box-shadow: 0 4px 12px rgba(157,0,255,0.3);">
+                            Aplicar
+                        </button>
+                    </div>
+                    <div id="coupon-message" style="margin-top: 8px; font-size: 0.82rem; text-align: left; display: none;"></div>
+                </div>
+
                 <!-- WhatsApp Input para notificaciones -->
                 <div class="whatsapp-input-section" style="margin-top: 20px; background: rgba(37, 211, 102, 0.1); padding: 15px; border-radius: 10px; border: 1px dashed #25D366;">
                     <label style="font-size: 0.85rem; color: #25D366; margin-bottom: 8px; display: block; text-align: left; font-weight: 600;"><i class="fa-brands fa-whatsapp"></i> Tu WhatsApp (Para enviarte el comprobante):</label>
                     <div style="display: flex; gap: 10px;">
-                        <select id="country-code" style="width: 80px; background: rgba(20, 10, 35, 0.8); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; padding: 10px; font-size: 0.9rem; outline: none;">
+                        <select id="country-code" style="width: 110px; background: rgba(20, 10, 35, 0.8); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; padding: 10px 6px 10px 10px; font-size: 0.9rem; outline: none;">
                             <option value="58">🇻🇪 +58</option>
                             <option value="57">🇨🇴 +57</option>
                             <option value="56">🇨🇱 +56</option>
@@ -481,7 +554,7 @@
                     </div>
                 </div>
 
-                <button id="finish-btn" class="btn-primary" style="margin-top: 20px;">
+                <button id="finish-btn" class="btn-primary" onclick="confirmarPagoDirecto()" style="margin-top: 20px;">
                     Confirmar Pago
                 </button>
                 <button id="back-btn" class="btn-secondary"
@@ -536,21 +609,24 @@
         <i class="fa-solid fa-hand-pointer"></i> ¡Paquete seleccionado! Toca <strong>Pagar ahora</strong> para continuar
     </div>
 
-    <!-- Smart PWA Floating Install Banner -->
+    <!-- Smart PWA Floating Install & WhatsApp Banner -->
     <div id="pwa-install-banner" class="pwa-install-banner" style="display: none;">
         <div class="pwa-banner-content">
             <div class="pwa-banner-icon">
                 <img src="/icon-192.png" alt="RecargasNey App">
             </div>
             <div class="pwa-banner-text">
-                <strong>Instala RecargasNey App</strong>
-                <span>Recargas más rápidas y notificaciones</span>
+                <strong>Instala la App y Canal</strong>
+                <span>Alertas al instante y ofertas exclusivo</span>
             </div>
         </div>
         <div class="pwa-banner-actions">
             <button id="pwa-install-action-btn" class="pwa-install-btn">
-                <i class="fa-solid fa-download"></i> INSTALAR
+                <i class="fa-solid fa-download"></i> App
             </button>
+            <a href="#" target="_blank" id="pwa-wa-canal-btn" class="pwa-install-btn" style="background: linear-gradient(135deg, #25D366, #128C7E); box-shadow: 0 4px 12px rgba(37,211,102,0.3); text-decoration: none;">
+                <i class="fa-brands fa-whatsapp"></i> Canal
+            </a>
             <button id="pwa-close-banner-btn" class="pwa-close-btn" title="Cerrar">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -584,11 +660,14 @@
     <!-- ========================================== -->
     <div id="streaming-services-modal" class="streaming-modal" style="display: none;">
         <div class="streaming-modal-content">
-            <button id="streaming-modal-close" class="streaming-modal-close-btn">&times;</button>
+            <button id="streaming-modal-close" class="streaming-modal-close-btn" aria-label="Cerrar">&times;</button>
 
             <div class="streaming-modal-header">
                 <div class="streaming-header-badge">🍿 CATÁLOGO PREMIUM</div>
-                <h2>Servicios de Streaming</h2>
+                <div class="streaming-header-title-wrapper">
+                    <img src="img/streaming_logo.png" alt="Streaming Logo" class="streaming-modal-logo-img">
+                    <h2>Servicios de Streaming</h2>
+                </div>
                 <p>Cuentas, perfiles y licencias digitales con entrega inmediata</p>
             </div>
 
@@ -600,8 +679,8 @@
             </div>
 
             <!-- Historial de Compras Streaming -->
-            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
-                <button id="streaming-history-btn" onclick="document.getElementById('streaming-services-modal').style.display='none'; setTimeout(()=>window.showMyHistory && window.showMyHistory(), 100);" style="background: rgba(157,0,255,0.12); border: 1px solid rgba(157,0,255,0.35); color: #c084fc; border-radius: 10px; padding: 10px 22px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='rgba(157,0,255,0.25)'" onmouseout="this.style.background='rgba(157,0,255,0.12)'">
+            <div class="streaming-modal-footer">
+                <button id="streaming-history-btn" onclick="document.getElementById('streaming-services-modal').style.display='none'; setTimeout(()=>window.showMyHistory && window.showMyHistory(), 100);" class="btn-streaming-history">
                     <i class="fa-solid fa-receipt"></i> Ver Mis Compras
                 </button>
             </div>
@@ -609,7 +688,7 @@
     </div>
 
     <!-- Custom Script -->
-    <script src="script.js?v=3.7.1"></script>
+    <script src="script.js?v=4.0.5"></script>
 
     <!-- Splash Screen Auto-Dismiss -->
     <script>

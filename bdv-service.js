@@ -124,8 +124,6 @@ async function launchBrowser() {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--no-zygote',
-            '--single-process',
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
@@ -158,6 +156,9 @@ async function launchBrowser() {
 // ============================================================
 // LOGIN EN BDV EN LÍNEA (Angular Material - 2 pasos)
 // ============================================================
+let lastFailedLoginTime = 0;
+const LOGIN_RETRY_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos de espera si el banco falló/está lento
+
 async function bdvLogin() {
     if (bdvLoginInProgress) {
         console.log('[BDV] ⏳ Login ya en progreso...');
@@ -166,6 +167,13 @@ async function bdvLogin() {
             if (!bdvLoginInProgress) break;
         }
         return bdvSessionActive;
+    }
+
+    // Si el banco falló recientemente, esperar 5 minutos antes del próximo reintento de login
+    if (lastFailedLoginTime && (Date.now() - lastFailedLoginTime) < LOGIN_RETRY_INTERVAL_MS) {
+        const remainingMin = Math.ceil((LOGIN_RETRY_INTERVAL_MS - (Date.now() - lastFailedLoginTime)) / 60000);
+        console.log(`[BDV] ⏳ El banco estuvo lento/caído. Reintentando login automáticamente en ~${remainingMin} min...`);
+        return false;
     }
 
     bdvLoginInProgress = true;
@@ -182,8 +190,12 @@ async function bdvLogin() {
         await launchBrowser();
 
         console.log('[BDV] 🔐 Navegando al BDV en línea...');
-        await bdvPage.goto(BDV_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-        await sleep(2000);
+        try {
+            await bdvPage.goto(BDV_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        } catch (eGoto) {
+            console.warn('[BDV] ⚠️ Warning navegando a BDV (continuando igual):', eGoto.message);
+        }
+        await sleep(2500);
 
         const currentUrl = bdvPage.url();
         console.log(`[BDV] 📍 URL actual: ${currentUrl}`);
@@ -330,6 +342,7 @@ async function bdvLogin() {
                     console.log('[BDV] ✅ LOGIN EXITOSO tras aceptar sesión activa.');
                     bdvSessionActive = true;
                     lastLoginTime = Date.now();
+                    lastFailedLoginTime = 0;
                     loggedIn = true;
                     return true;
                 }
@@ -340,6 +353,7 @@ async function bdvLogin() {
                 console.log('[BDV] ✅ LOGIN EXITOSO. Dashboard cargado.');
                 bdvSessionActive = true;
                 lastLoginTime = Date.now();
+                lastFailedLoginTime = 0;
                 loggedIn = true;
                 return true;
             } else {
@@ -353,12 +367,15 @@ async function bdvLogin() {
         if (!loggedIn) {
             console.error('[BDV] ❌ Login falló tras agotar los intentos.');
             await takeDebugScreenshot('bdv_login_failed_final');
+            lastFailedLoginTime = Date.now();
             return false;
         }
 
     } catch (e) {
         console.error('[BDV] ❌ Error inesperado en bdvLogin:', e.message);
         bdvSessionActive = false;
+        lastFailedLoginTime = Date.now();
+        try { await closeBDVBrowser(); } catch (_) {}
         return false;
     } finally {
         bdvLoginInProgress = false;
@@ -657,21 +674,48 @@ async function verificarPagoBDV(montoBs, ref4) {
         }
 
         const stripZ = (s) => s.replace(/^0+/, '') || '0';
+        const parseMontoBs = (importeStr) => {
+            if (!importeStr) return 0;
+            let clean = importeStr.toString().replace(/[^0-9.,-]/g, '').trim();
+            if (!clean) return 0;
+            if (clean.includes(',')) {
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            }
+            return parseFloat(clean) || 0;
+        };
         const sigReported = stripZ(cleanRefReported);
 
-        // ── LOG DE DIAGNÓSTICO: mostrar todas las refs del BDV para comparar ──
-        const abonosEncontrados = movimientos.filter(m => {
+        // Limpiar prefijos de banco comunes (0108 para Provincial, 0169 o UBII para Ubii App)
+        let cleanRefUnprefixed = cleanRefReported;
+        if (cleanRefUnprefixed.startsWith('0108') && cleanRefUnprefixed.length > 6) {
+            cleanRefUnprefixed = cleanRefUnprefixed.slice(4);
+        } else if (cleanRefUnprefixed.startsWith('0169') && cleanRefUnprefixed.length > 6) {
+            cleanRefUnprefixed = cleanRefUnprefixed.slice(4);
+        } else if (cleanRefUnprefixed.toLowerCase().startsWith('ubii') && cleanRefUnprefixed.length > 6) {
+            cleanRefUnprefixed = cleanRefUnprefixed.slice(4);
+        }
+        const sigReportedUnprefixed = stripZ(cleanRefUnprefixed);
+
+        // Helper para determinar si un movimiento es crédito/abono recibido
+        const esMovimientoAbono = (m) => {
             const ind = (m.indicadorCargoAbono || '').trim().toUpperCase();
             const desc = (m.descripcion || '').toLowerCase();
-            return ind === 'A' || ind === 'ABONO' ||
-                   desc.includes('abono') || desc.includes('crédito') || desc.includes('recib');
-        });
+            const imp = (m.importe || '0').toString();
+            if (ind === 'A' || ind === 'ABONO' || ind === 'CREDITO' || ind === 'CRÉDITO') return true;
+            if (desc.includes('abono') || desc.includes('crédito') || desc.includes('credito') || desc.includes('recib')) return true;
+            if (desc.includes('pago movil') || desc.includes('pagomovil') || desc.includes('provincial') || desc.includes('ubii') || desc.includes('interbancario') || desc.includes('c2p')) return true;
+            if (!imp.startsWith('-') && ind !== 'D' && ind !== 'DEBITO' && ind !== 'DÉBITO') return true;
+            return false;
+        };
+
+        // ── LOG DE DIAGNÓSTICO: mostrar todas las refs del BDV para comparar ──
+        const abonosEncontrados = movimientos.filter(esMovimientoAbono);
         console.log(`[BDV] 🔍 Buscando ref="${cleanRefReported}" (sig="${sigReported}") monto≈${montoBs}Bs`);
         console.log(`[BDV] 📋 ${abonosEncontrados.length} abonos en BDV:`);
         abonosEncontrados.forEach(m => {
             const ref = (m.referencia || '').replace(/\s/g, '');
             const imp = (m.importe || '0').toString();
-            const montoMov = parseFloat(imp.replace(/\./g, '').replace(',', '.'));
+            const montoMov = parseMontoBs(imp);
             console.log(`[BDV]   • Ref=${ref} | Monto=${imp} (${montoMov}Bs) | Desc=${m.descripcion}`);
         });
         // ────────────────────────────────────────────────────────────────────
@@ -683,18 +727,10 @@ async function verificarPagoBDV(montoBs, ref4) {
             const importe = (mov.importe || '0').toString();
 
             // Solo abonos (créditos recibidos)
-            const esAbono = indicador === 'A' ||
-                            indicador === 'ABONO' ||
-                            descripcion.toLowerCase().includes('abono') ||
-                            descripcion.toLowerCase().includes('crédito') ||
-                            descripcion.toLowerCase().includes('recib');
-
-            if (!esAbono) continue;
+            if (!esMovimientoAbono(mov)) continue;
 
             // Calcular monto del movimiento
-            const montoMov = parseFloat(
-                importe.replace(/\./g, '').replace(',', '.')
-            );
+            const montoMov = parseMontoBs(importe);
 
             const sigBank = stripZ(referencia);
 
@@ -705,7 +741,7 @@ async function verificarPagoBDV(montoBs, ref4) {
             // ============================================================
             // Problema real: cada banco muestra la referencia de forma distinta.
             //   • BDV (emisor/receptor):  genera su propia ref interna.
-            //   • Provincial, Mercantil, Banesco etc. muestran la ref que ELLOS generan.
+            //   • Provincial, Mercantil, Banesco, Ubii etc. muestran la ref que ELLOS generan.
             // Las refs pueden compartir sufijos pero NO ser idénticas.
             //
             // Estrategia en capas:
@@ -713,33 +749,33 @@ async function verificarPagoBDV(montoBs, ref4) {
             //   2. Sufijo con múltiples longitudes (3..8 dígitos de cleanRefReported)
             //      y también de sigReported — para manejar refs con ceros iniciales
             //      como "000000969" cuya sig es solo "969".
-            //   3. Si la ref es muy corta (≤4 sig), depender MÁS del monto (±1 Bs)
-            //   4. Para transferencias/traspasos: últimos 8 sig.
-            //   5. Ref larga (>8 sig): últimos 7 sig de ambas.
+            //   3. Para transferencias/traspasos: últimos 8 sig.
+            //   4. Ref larga (>8 sig): últimos 7 sig de ambas.
+            //   5. Especial Provincial (0108) y Ubii App (0169): Búsqueda en DESCRIPCIÓN.
             // ============================================================
 
             // Capa 1: Coincidencia exacta
-            if (referencia === cleanRefReported || sigBank === sigReported) {
+            if (referencia === cleanRefReported || sigBank === sigReported ||
+                referencia === cleanRefUnprefixed || sigBank === sigReportedUnprefixed) {
                 refMatch = true;
             }
 
             // Capa 2: Sufijo múltiple — busca que la ref del BDV TERMINE en
             // alguno de los sufijos de la ref reportada (desde 3 hasta 8 dígitos).
-            // Se prueba tanto con la ref COMPLETA como con la ref SIG (sin ceros).
             if (!refMatch) {
-                // Generar candidatos de sufijo: de la ref completa Y de la sig
                 const candidatosSufijo = new Set();
-                // Desde la ref completa (ej: "000000969" → sufijos: "969", "0969", "00969", ...)
                 for (let n = 3; n <= Math.min(cleanRefReported.length, 10); n++) {
                     candidatosSufijo.add(cleanRefReported.slice(-n));
                 }
-                // Desde la sig (ej: "969" → sufijos: "969", "96", ...) — ya cubiertos arriba normalmente
                 for (let n = 3; n <= Math.min(sigReported.length, 8); n++) {
                     candidatosSufijo.add(sigReported.slice(-n));
                 }
+                for (let n = 3; n <= Math.min(sigReportedUnprefixed.length, 8); n++) {
+                    candidatosSufijo.add(sigReportedUnprefixed.slice(-n));
+                }
 
                 for (const sufijo of candidatosSufijo) {
-                    if (sufijo.length < 3) continue; // nunca menos de 3
+                    if (sufijo.length < 3) continue;
                     if (referencia.endsWith(sufijo) || sigBank.endsWith(sufijo)) {
                         console.log(`[BDV] 🔗 Match por sufijo "${sufijo}" | BDVRef=${referencia} | ClienteRef=${cleanRefReported}`);
                         refMatch = true;
@@ -770,6 +806,30 @@ async function verificarPagoBDV(montoBs, ref4) {
                 if (sigR.length >= 3 && sigB === sigR) {
                     console.log(`[BDV] 🔗 Match por sig7: sigR="${sigR}" sigB="${sigB}"`);
                     refMatch = true;
+                }
+            }
+
+            // Capa 5: Búsqueda en DESCRIPCIÓN (Especial para Provincial 0108 y Ubii App 0169)
+            // En pagos interbancarios de Provincial o Ubii, BDV a menudo guarda el nro de ref del cliente en la descripción.
+            if (!refMatch) {
+                const candidatosDesc = new Set([
+                    cleanRefReported,
+                    sigReported,
+                    cleanRefUnprefixed,
+                    sigReportedUnprefixed
+                ]);
+
+                for (let n = 4; n <= Math.min(sigReportedUnprefixed.length, 8); n++) {
+                    candidatosDesc.add(sigReportedUnprefixed.slice(-n));
+                }
+
+                for (const cand of candidatosDesc) {
+                    if (!cand || cand.length < 3) continue;
+                    if (descripcion.includes(cand) || referencia.includes(cand) || sigBank.includes(cand)) {
+                        console.log(`[BDV] 🔗 Match por ref/descripción "${cand}" | BDVRef=${referencia} | Desc="${descripcion}" | ClienteRef=${cleanRefReported}`);
+                        refMatch = true;
+                        break;
+                    }
                 }
             }
 

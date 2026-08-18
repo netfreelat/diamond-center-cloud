@@ -91,33 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
             list.appendChild(btn);
         });
 
-        // Botón de Streaming en la barra de juegos (arriba), con badge semi-transparente
+        // Botón de Streaming en la barra de juegos (arriba), solo la imagen del logo
         const streamingTab = document.createElement('button');
         streamingTab.id = 'streaming-btn';
         streamingTab.className = 'btn-secondary-outline game-btn btn-streaming-highlight';
-        streamingTab.style.cssText = 'position: relative; background: rgba(157, 0, 255, 0.12); border: 1px solid rgba(157, 0, 255, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 6px 12px; display: flex; align-items: center; gap: 5px;';
+        streamingTab.style.cssText = 'position: relative; background: rgba(157, 0, 255, 0.12); border: 1px solid rgba(157, 0, 255, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 4px 10px;';
         streamingTab.innerHTML = `
-            <span style="
-                position: absolute;
-                top: -10px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(157, 0, 255, 0.25);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                border: 1px solid rgba(200, 150, 255, 0.35);
-                color: rgba(240, 220, 255, 0.95);
-                font-size: 0.48rem;
-                font-weight: 900;
-                padding: 2px 6px;
-                border-radius: 20px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                white-space: nowrap;
-                pointer-events: none;
-            ">⏳ PRÓX.</span>
-            <i class="fa-solid fa-tv" style="color:#E50914; font-size:0.9rem;"></i>
-            <span style="font-weight:700; font-size:0.82rem; color:#fff;">Streaming</span>
+            <img src="img/streaming_logo.png" alt="Streaming" class="game-logo-img" style="height: 36px; width: auto; max-width: 70px; border-radius: 6px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(157, 0, 255, 0.7));">
         `;
         streamingTab.onclick = (e) => {
             e.preventDefault();
@@ -195,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                JSON.stringify(APP_CONFIG.publicidades) !== JSON.stringify(data.publicidades);
 
             APP_CONFIG = data;
+            window.APP_CONFIG = data;
             DOLAR_RATE = data.tasa_del_dia;
             window._tasaAdmin = data.tasa_del_dia;
 
@@ -213,19 +194,42 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.metodos_pago) {
                 const pm = data.metodos_pago.pagomovil;
                 const bin = data.metodos_pago.binance;
+                const ban = data.metodos_pago.pagomovil_banesco;
                 if (document.getElementById('display-pm-banco')) document.getElementById('display-pm-banco').innerText = pm.banco;
                 if (document.getElementById('display-pm-telefono')) document.getElementById('display-pm-telefono').innerText = pm.telefono;
                 if (document.getElementById('display-pm-cedula')) document.getElementById('display-pm-cedula').innerText = pm.cedula;
                 if (document.getElementById('display-bin-id')) document.getElementById('display-bin-id').innerText = bin.id;
                 if (document.getElementById('display-bin-nombre')) document.getElementById('display-bin-nombre').innerText = bin.nombre;
+                if (ban) {
+                    if (document.getElementById('display-banesco-banco')) document.getElementById('display-banesco-banco').innerText = ban.banco || 'Banesco Banco Universal';
+                    if (document.getElementById('display-banesco-telefono')) document.getElementById('display-banesco-telefono').innerText = ban.telefono || '';
+                    if (document.getElementById('display-banesco-cedula')) document.getElementById('display-banesco-cedula').innerText = ban.cedula || '';
+                }
+                // ── BANCO ACTIVO DE PAGO MÓVIL (controlado por admin) ──
+                // El admin elige BDV o Banesco — el cliente solo ve UNA opción
+                const activeBank = data.active_pagomovil_bank || 'bdv';
+                const bdvCard    = document.querySelector('.payment-method-card[data-method="pagomovil"]');
+                const banescoCard= document.getElementById('pm-card-banesco');
+                if (bdvCard)     bdvCard.style.display     = (activeBank === 'bdv')     ? '' : 'none';
+                if (banescoCard) banescoCard.style.display  = (activeBank === 'banesco') ? '' : 'none';
             }
 
-            // Actualizar Enlaces de WhatsApp
+            // Actualizar Enlaces de WhatsApp dinámicamente en todos los botones de la página
             if (data.whatsapp) {
                 const waSoporte = document.getElementById('wa-soporte-link');
-                const waCanal = document.getElementById('wa-canal-link');
-                if (waSoporte) waSoporte.href = `https://wa.me/${data.whatsapp.soporte}`;
-                if (waCanal) waCanal.href = data.whatsapp.canal;
+                if (waSoporte && data.whatsapp.soporte) {
+                    const cleanSoporte = data.whatsapp.soporte.replace(/\D/g, '');
+                    waSoporte.href = `https://wa.me/${cleanSoporte}`;
+                }
+
+                if (data.whatsapp.canal && data.whatsapp.canal.trim() !== '') {
+                    const canalUrl = data.whatsapp.canal.trim();
+                    // Actualizar todos los botones y enlaces del canal de WhatsApp en la página
+                    const selector = 'a[id*="wa-canal"], a[id*="pwa-wa-canal"], a[class*="wa-canal"], a[href*="whatsapp.com/channel"]';
+                    document.querySelectorAll(selector).forEach(el => {
+                        el.href = canalUrl;
+                    });
+                }
             }
         } catch (e) { console.error('Error cargando config:', e); }
     }
@@ -374,9 +378,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const disabledClass = '';
             const esEspecial = PAQUETES_ESPECIALES.includes(amount.toLowerCase());
 
-            // Etiqueta promocional
-            const promo = PROMO_TAGS[amount];
-            const promoTag = promo ? `<span class="promo-tag ${promo.className}">${promo.icon} ${promo.text}</span>` : '';
+            // Etiqueta promocional (personalizable desde admin)
+            let promoTag = '';
+            const customTag = (data.tag !== undefined) ? data.tag : data.badge;
+            const customIcon = data.tag_icon || data.badge_icon || '🔥';
+            if (customTag) {
+                promoTag = `<span class="promo-tag promo-popular">${customIcon} ${customTag}</span>`;
+            } else if (customTag === '') {
+                promoTag = '';
+            } else {
+                const promo = PROMO_TAGS[amount];
+                promoTag = promo ? `<span class="promo-tag ${promo.className}">${promo.icon} ${promo.text}</span>` : '';
+            }
 
             // Imagen 3D para paquetes especiales, ícono de gema para diamantes
             const specialImgs = {
@@ -404,8 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const bonusNum = (currentJuego === 'freefire' && !esEspecial) ? Math.round(parseInt(amount) * 0.1) : 0;
             const displayLabel = esEspecial ? data.label : data.label.replace(/ diamantes/gi, '');
             
+            const isSelected = selectedPackage && String(selectedPackage.amount) === String(amount);
+            const selectedClass = isSelected ? 'selected' : '';
+
             grid.innerHTML += `
-                <div class="package-card ${disabledClass}" data-amount="${amount}" data-bonus="${bonusNum}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
+                <div class="package-card ${disabledClass} ${selectedClass}" data-amount="${amount}" data-bonus="${bonusNum}" data-price="${data.usdt}" ${!isAvailable ? 'style="pointer-events:none; opacity:0.6;"' : ''}>
                     ${stockLabel}
                     ${promoTag}
                     ${iconHtml}
@@ -451,10 +467,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.showOrderTicket = (ref) => {
-        const order = currentPlayerHistory.find(o => o.ref === ref);
-        if (!order) return;
+        let order = (currentPlayerHistory || []).find(o => o.ref === ref);
+        if (!order) {
+            const localOrders = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
+            order = localOrders.find(o => o.ref === ref);
+        }
+        if (!order && window._lastHistoryOrders) {
+            order = window._lastHistoryOrders.find(o => o.ref === ref);
+        }
+        if (!order) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'No encontrado',
+                text: 'No se encontró el detalle de la compra.',
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                confirmButtonColor: '#9D00FF'
+            });
+        }
 
         const isRoblox = order.juego === 'roblox';
+        const isStreaming = order.juego === 'streaming' || (order.pack || '').toLowerCase().includes('netflix') || (order.pack || '').toLowerCase().includes('disney') || (order.pack || '').toLowerCase().includes('max') || (order.pack || '').toLowerCase().includes('vix') || (order.pack || '').toLowerCase().includes('canva') || (order.pack || '').toLowerCase().includes('spotify') || (order.pack || '').toLowerCase().includes('prime') || (order.pack || '').toLowerCase().includes('crunchyroll');
         const statusText  = order.status === 'approved' ? 'APROBADO' : (order.status === 'rejected' ? 'RECHAZADO' : 'PENDIENTE');
         const dateStr     = order.time ? new Date(order.time).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/D';
         const juegoName   = isRoblox ? 'Roblox' : (order.juego ? (order.juego.charAt(0).toUpperCase() + order.juego.slice(1)) : 'Free Fire');
@@ -476,21 +509,79 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3 style="margin: 0; color: #9D00FF; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px;">${isRoblox ? 'ROBLOX' : 'RECARGASNEY.COM'}</h3>
                     <p style="font-size: 0.72rem; color: #888; margin: 4px 0 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Comprobante de Pago</p>
                 </div>
-                <div style="display: grid; gap: 9px; font-size: 0.82rem; margin-bottom: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 14px;">
+                ${isStreaming ? (() => {
+                    const purchaseDate = order.date ? new Date(order.date) : new Date();
+                    const expDate = new Date(purchaseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                    const dayE = String(expDate.getDate()).padStart(2, '0');
+                    const monthE = String(expDate.getMonth() + 1).padStart(2, '0');
+                    const yearE = expDate.getFullYear();
+                    const formattedExpireDate = `${dayE}-${monthE}-${yearE}`;
+
+                    let packType = order.pack || 'Perfil';
+                    if ((order.pack || '').toLowerCase().includes('perfil')) packType = 'Perfil';
+                    else if ((order.pack || '').toLowerCase().includes('pantalla')) packType = 'Pantalla';
+                    else if ((order.pack || '').toLowerCase().includes('cuenta')) packType = 'Cuenta Completa';
+
+                    let credsHtml = '';
+                    if (order.pin && order.status === 'approved') {
+                        const pinLines = order.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
+                        credsHtml = pinLines.map(line => {
+                            if (line.includes(':')) {
+                                const idx = line.indexOf(':');
+                                const k = line.substring(0, idx).trim();
+                                const v = line.substring(idx + 1).trim();
+                                return `<div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.84rem;"><span style="color:#aaa;">${k}:</span><strong style="color:#00FF94; font-family:monospace; word-break:break-all;">${v}</strong></div>`;
+                            }
+                            return `<div style="font-family:monospace; font-size:0.84rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:4px 8px; margin-bottom:4px; text-align:left;">${line}</div>`;
+                        }).join('');
+                    }
+
+                    return `
+                    <div style="background: rgba(15, 8, 30, 0.95); border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 20px; padding: 18px 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 25px rgba(0,240,255,0.12); font-family: 'Inter', sans-serif; text-align: left;">
+                        <img src="img/streaming_logo.png" alt="Streaming" style="width: 75px; height: 75px; object-fit: contain; display: block; margin: 0 auto 14px auto; border-radius: 14px; filter: drop-shadow(0 4px 12px rgba(157,0,255,0.4));">
+                        
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.84rem; color: #d0d0d0;">
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Tipo de paquete:</span><strong style="color: #fff;">${packType}</strong></div>
+                            ${credsHtml}
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Plan:</span><strong style="color: #fff;">30 días</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Fecha Vencimiento:</span><strong style="color: #00FF94;">${formattedExpireDate}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Nº Control:</span><strong style="color: #00F0FF;">#${order.control_num || order.ref}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Estado:</span><strong style="color: ${order.status === 'approved' ? '#00FF94' : order.status === 'rejected' ? '#FF3D71' : '#FFD93D'};">${statusText}</strong></div>
+                        </div>
+
+                        ${(order.pin && order.status === 'approved') ? `
+                        <div style="margin-top: 10px; text-align: center;">
+                            <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin.replace(/'/g, "\\'").replace(/\n/g, ' | ')}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='📋 Copiar Credenciales', 2000); })" style="background:linear-gradient(135deg,#E50914,#9D00FF); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-weight:800; font-size:0.8rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(229,9,20,0.3);">
+                                📋 Copiar Credenciales
+                            </button>
+                        </div>
+                        ` : ''}
+
+                        <!-- Aviso Importante -->
+                        <div style="margin-top: 14px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px;">
+                            <div style="color: #ff4b2b; font-weight: 800; font-size: 0.78rem; text-align: center; margin-bottom: 6px;"><i class="fa-solid fa-triangle-exclamation"></i> Aviso Importante</div>
+                            <p style="color: rgba(255, 100, 100, 0.85); font-size: 0.68rem; text-align: center; line-height: 1.4; margin: 0; background: rgba(255, 75, 43, 0.08); border: 1px dashed rgba(255, 75, 43, 0.3); padding: 8px 10px; border-radius: 8px;">
+                                No está permitido modificar la cuenta, perfil, PIN, correo o contraseña. Úsalo únicamente en un dispositivo a la vez. El incumplimiento de estas normas conllevará a la pérdida de la garantía del servicio sin previo aviso.
+                            </p>
+                        </div>
+
+                        <div style="text-align: center; font-size: 0.82rem; color: #FFD700; font-weight: 700; letter-spacing: 1px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+                            Comprobante de Pago
+                        </div>
+                    </div>`;
+                })() : `
+                <div style="display: grid; gap: 8px; font-size: 0.82rem; margin-bottom: 14px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">N° Control:</span><strong style="color: #fff;">#${order.control_num || '-'}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Paquete / Recarga:</span><strong style="color: #00F0FF; font-weight: 800;">${order.pack || productText}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Precio / Costo:</span><strong style="color: #00FF94; font-weight: 800;">${order.price || 'N/A'}</strong></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Fecha/Hora:</span><span style="color: #fff;">${dateStr}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Juego:</span><span style="color: #fff; font-weight: 700; text-transform: uppercase;">${juegoName}</span></div>
                     ${!isRoblox ? `<div style="display: flex; justify-content: space-between;"><span style="color: #888;">ID Jugador:</span><span style="color: #fff; font-family: monospace; font-weight: 700;">${order.uid || '-'}${order.name ? ` <span style="color:#aaa; font-size:0.78rem; font-family:inherit; font-weight:400;">(${order.name})</span>` : ''}</span></div>` : ''}
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Método de Pago:</span><span style="color: #fff;">${order.method === 'binance' ? 'Binance Pay' : 'Pago Móvil'}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Referencia:</span><code style="color: var(--secondary); font-weight: 700;">${order.ref}</code></div>
                     <div style="display: flex; justify-content: space-between;"><span style="color: #888;">Estado:</span><span style="color: ${order.status === 'approved' ? '#00FF94' : order.status === 'rejected' ? '#FF3D71' : '#FFD93D'}; font-weight: 900; letter-spacing: 0.5px;">${statusText}</span></div>
-                </div>
-                <div style="background: rgba(157, 0, 255, 0.04); border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: center; border: 1px solid rgba(157, 0, 255, 0.15);">
-                    <span style="font-size: 0.72rem; color: #888; display: block; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600;">Detalle del Producto</span>
-                    <strong style="font-size: 1.2rem; color: #fff; display: block; font-weight: 800;">${productText}</strong>
-                    <span style="font-size: 0.88rem; color: #00FF94; font-weight: 800; margin-top: 6px; display: inline-block;">${order.price || 'N/A'}</span>
-                </div>
-                ${(order.pin && isRoblox) ? `
+                </div>`}
+                ${(!isStreaming && order.pin && isRoblox) ? `
                 <div style="background: rgba(0,240,255,0.08); border: 1px dashed #00f0ff; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 14px;">
                     <span style="font-size: 0.72rem; color: #00f0ff; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.5px;">🔑 PIN DE ROBLOX ADQUIRIDO</span>
                     <code style="font-family: monospace; font-size: 1.1rem; color: #00FF94; font-weight: bold; word-break: break-all; display: block; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; letter-spacing: 1.5px; margin-bottom: 8px;">${order.pin}</code>
@@ -499,21 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
                 ` : ''}
-                ${(order.pin && order.juego === 'streaming' && order.status === 'approved') ? (() => {
-                    const pinLines = order.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
-                    const credHtml = pinLines.length > 0
-                        ? pinLines.map(line => `<div style="font-family:monospace; font-size:0.88rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; margin-bottom:6px;">${line}</div>`).join('')
-                        : `<div style="font-family:monospace; font-size:0.88rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px;">${order.pin}</div>`;
-                    return `
-                    <div style="background: rgba(229,9,20,0.08); border: 1px dashed rgba(229,9,20,0.5); border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 14px;">
-                        <span style="font-size: 0.72rem; color: #E50914; display: block; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;">🍿 CREDENCIALES DE ACCESO</span>
-                        ${credHtml}
-                        <button onclick="const btn=this; navigator.clipboard.writeText('${order.pin.replace(/'/g, "\\'").replace(/\n/g, ' | ')}').then(()=>{ btn.innerText='✓ Copiado!'; setTimeout(()=>btn.innerText='📋 Copiar Credenciales', 2000); })" style="background:linear-gradient(135deg,#E50914,#9D00FF); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-weight:800; font-size:0.8rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-top:8px; box-shadow:0 4px 12px rgba(229,9,20,0.3);">
-                            📋 Copiar Credenciales
-                        </button>
-                        <p style="font-size:0.67rem; color:#888; margin:8px 0 0;">⚠️ No compartas estas credenciales con nadie</p>
-                    </div>`;
-                })() : ''}
                 <div style="margin-top: 14px; text-align: center;">
                     <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(order.ref)}" target="_blank" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px rgba(37,211,102,0.2); border: 1px solid #20ba5a;">
                         <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> Consultar estado por WhatsApp
@@ -662,6 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Ordenar del más reciente al más antiguo
         localOrders.sort((a, b) => (b.time || 0) - (a.time || 0));
+        window._lastHistoryOrders = localOrders;
 
         if (localOrders.length === 0) {
             return Swal.fire({
@@ -697,6 +774,37 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     historyBtn.addEventListener('click', () => window.showMyHistory());
+
+    // Botón Llamativo Mini Influencer (Próximamente)
+    const miniInfBtn = document.getElementById('mini-influencer-btn');
+    if (miniInfBtn) {
+        miniInfBtn.addEventListener('click', () => {
+            Swal.fire({
+                title: '<span style="color:#FFD700; font-family:\'Montserrat\',sans-serif; font-weight:900;"><i class="fa-brands fa-tiktok" style="color:#FF0050;"></i> MINI INFLUENCER</span>',
+                html: `
+                    <div style="text-align:center; padding:10px 5px;">
+                        <div style="font-size:3rem; margin-bottom:12px; filter:drop-shadow(0 0 15px rgba(255,0,80,0.6));">🔥🎥✨</div>
+                        <span style="background:linear-gradient(135deg,#FFD700,#FF8C00); color:#000; font-weight:900; font-size:0.78rem; padding:4px 14px; border-radius:20px; text-transform:uppercase; letter-spacing:1px; box-shadow:0 0 10px rgba(255,215,0,0.5);">✨ ¡PRÓXIMAMENTE!</span>
+                        <p style="color:#e0e0e0; font-size:0.92rem; margin-top:16px; line-height:1.6;">
+                            ¡Muy pronto podrás ganar <strong>saldo en USDT y diamantes gratis</strong> creando videos cortos en TikTok, Shorts o Reels promocionando RecargasNey!
+                        </p>
+                        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(157,0,255,0.3); border-radius:14px; padding:14px; margin-top:16px; text-align:left; font-size:0.84rem; color:#ccc;">
+                            <div style="color:#00F0FF; font-weight:800; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-gift" style="color:#FFD700;"></i> Beneficios para Mini Influencers:
+                            </div>
+                            • 💰 Recompensas acumulables en USDT por vistas.<br>
+                            • 🎟️ Código de descuento exclusivo de 1ra recarga para tus seguidores.<br>
+                            • 💎 Retiro directo a tu saldo o paquete de diamantes.
+                        </div>
+                    </div>
+                `,
+                background: 'rgba(20, 10, 35, 0.98)',
+                color: '#fff',
+                confirmButtonText: '¡Excelente! Me mantendré atento 🔥',
+                confirmButtonColor: '#9D00FF'
+            });
+        });
+    }
 
 
     // Manejar Botón de Precios
@@ -841,6 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBellUI(false);
         }
     }
+    window.subscribeUser = subscribeUser;
 
     async function unsubscribeUser() {
         try {
@@ -881,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (headerPointsVal) headerPointsVal.textContent = '0';
             loadUserPoints(id); // loadUserPoints ya actualiza header-points-val internamente
             checkSubscriptionState().then(() => {
-                if (Notification.permission === 'granted' && !isPushEnabled) {
+                if (Notification.permission === 'granted') {
                     subscribeUser(id);
                 }
             });
@@ -2218,8 +2327,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        Swal.fire({ title: 'Validando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
         // Verificación normal con Garena (sin pedir contraseña para compras)
         Swal.fire({
             title: 'Validando ID...',
@@ -2374,6 +2481,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const buyBtn = document.getElementById('buy-btn');
     let selectedPackage = null;
     let selectedQty = 1;
+    if (typeof selectedGame === 'undefined') window.selectedGame = null;
+    if (typeof selectedPack === 'undefined') window.selectedPack = null;
+    if (typeof selectedPriceUsdt === 'undefined') window.selectedPriceUsdt = null;
 
     const qtyValueDisplay = document.getElementById('qty-value');
     const totalPreviewUsdt = document.getElementById('total-preview-usdt');
@@ -2383,13 +2493,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTotalsPreview() {
         if (!selectedPackage) return;
         const selectedCard = document.querySelector('.package-card.selected');
-        if (!selectedCard) return;
+        let rawPriceUSDT = 0;
+        if (selectedCard && selectedCard.dataset && selectedCard.dataset.price) {
+            rawPriceUSDT = parseFloat(selectedCard.dataset.price) || 0;
+        } else if (selectedPackage && selectedPackage.price) {
+            rawPriceUSDT = parseFloat(selectedPackage.price) || 0;
+        }
+        if (!rawPriceUSDT) return;
         
-        const rawPriceUSDT = parseFloat(selectedCard.dataset.price);
+        const currentRate = (typeof DOLAR_RATE !== 'undefined' && DOLAR_RATE > 0) ? DOLAR_RATE : 635.00;
         const discountMult = window.referralDiscountActive ? 0.97 : 1;
         const priceUSDT = rawPriceUSDT * discountMult;
         const totalUSDT = (priceUSDT * selectedQty).toFixed(2);
-        const totalBs = (priceUSDT * selectedQty * DOLAR_RATE).toFixed(2).replace('.', ',');
+        const totalBs = (priceUSDT * selectedQty * currentRate).toFixed(2).replace('.', ',');
         
         if (window.referralDiscountActive) {
             const originalUSDT = (rawPriceUSDT * selectedQty).toFixed(2);
@@ -2480,7 +2596,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.classList.add('selected');
                 selectedPackage = {
                     amount: card.dataset.amount,
-                    bonus: card.dataset.bonus
+                    bonus: card.dataset.bonus,
+                    price: card.dataset.price
                 };
                 
                 // Resetear cantidad
@@ -2523,11 +2640,16 @@ document.addEventListener('DOMContentLoaded', () => {
             pmCard.click();
         }
 
-        // Scroll suave al final de la tarjeta contenedora para posicionar los métodos de pago sin dejar espacios vacíos
-        const card = document.querySelector('.card');
-        if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
+        // Scroll exacto: compensa la cabecera fija (banner ~36px + barra de acciones ~46px + margen)
+        // para que "MÉTODO DE PAGO" quede visible justo debajo de los botones fijos
+        setTimeout(() => {
+            if (paymentSection) {
+                const FIXED_HEADER_HEIGHT = 90; // px de cabecera fija total
+                const rect = paymentSection.getBoundingClientRect();
+                const absoluteTop = rect.top + window.pageYOffset - FIXED_HEADER_HEIGHT;
+                window.scrollTo({ top: absoluteTop, behavior: 'smooth' });
+            }
+        }, 60);
     }
 
     buyBtn.addEventListener('click', goToPayment);
@@ -2551,24 +2673,41 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar detalles correspondientes
             document.getElementById('details-pagomovil').style.display = selectedMethod === 'pagomovil' ? 'block' : 'none';
             document.getElementById('details-binance').style.display = selectedMethod === 'binance' ? 'block' : 'none';
+            const detailsBanesco = document.getElementById('details-pagomovil_banesco');
+            if (detailsBanesco) detailsBanesco.style.display = selectedMethod === 'pagomovil_banesco' ? 'block' : 'none';
             
             // Llenar montos automáticamente (aplicar descuento del 3% si es referido en primera compra)
-            const rawPricePayment = parseFloat(document.querySelector('.package-card.selected').dataset.price) * selectedQty;
-            const discountMultPayment = window.referralDiscountActive ? 0.97 : 1;
-            const priceUSDT = rawPricePayment * discountMultPayment;
-            const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
-            
-            if(selectedMethod === 'pagomovil') {
-                document.getElementById('amount-pagomovil').value = `${priceBS.replace('.', ',')} Bs`;
-            } else {
-                document.getElementById('amount-binance').value = `${priceUSDT.toFixed(2)} USDT`;
+            const selectedCardPayment = document.querySelector('.package-card.selected');
+            let basePricePayment = 0;
+            if (selectedCardPayment && selectedCardPayment.dataset && selectedCardPayment.dataset.price) {
+                basePricePayment = parseFloat(selectedCardPayment.dataset.price) || 0;
+            } else if (selectedPackage && selectedPackage.price) {
+                basePricePayment = parseFloat(selectedPackage.price) || 0;
+            } else if (typeof selectedPriceUsdt !== 'undefined' && selectedPriceUsdt) {
+                basePricePayment = parseFloat(selectedPriceUsdt) || 0;
             }
+            const rawPricePayment = basePricePayment * (selectedQty || 1);
+            const discountMultPayment = window.referralDiscountActive ? 0.97 : 1;
+            let priceUSDT = rawPricePayment * discountMultPayment;
+            if (window.appliedCoupon && window.appliedCoupon.valid && window.appliedCoupon.final_amount !== undefined) {
+                priceUSDT = window.appliedCoupon.final_amount;
+            }
+            const currentRate = (typeof DOLAR_RATE !== 'undefined' && DOLAR_RATE > 0) ? DOLAR_RATE : 635.00;
+            const priceBS = (priceUSDT * currentRate).toFixed(2);
+            
+            const pmAmt = document.getElementById('amount-pagomovil');
+            if (pmAmt) pmAmt.value = `${priceBS.replace('.', ',')} Bs`;
+            const banescoAmt = document.getElementById('amount-pagomovil_banesco');
+            if (banescoAmt) banescoAmt.value = `${priceBS.replace('.', ',')} Bs`;
+            const binAmt = document.getElementById('amount-binance');
+            if (binAmt) binAmt.value = `${priceUSDT.toFixed(2)} USDT`;
 
             checkFinishButton();
         });
     });
 
     const refPagoMovil = document.getElementById('ref-pagomovil');
+    const refBanesco   = document.getElementById('ref-pagomovil_banesco');
     const refBinance = document.getElementById('ref-binance');
     const whatsappNumber = document.getElementById('whatsapp-number');
     const countryCode = document.getElementById('country-code');
@@ -2588,6 +2727,13 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.value = val;
         checkFinishButton();
     });
+
+    if (refBanesco) {
+        refBanesco.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, ''); // Solo números
+            checkFinishButton();
+        });
+    }
 
     refBinance.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, ''); // Solo números
@@ -2611,6 +2757,80 @@ document.addEventListener('DOMContentLoaded', () => {
         finishBtn.disabled = false;
     }
 
+    // ─── APLICAR CÓDIGO DE DESCUENTO EN CHECKOUT ─────────────────────────────
+    window.appliedCoupon = null;
+
+    window.applyCouponCode = async function() {
+        const input = document.getElementById('coupon-code-input');
+        const msgEl = document.getElementById('coupon-message');
+        if (!input || !msgEl) return;
+
+        const code = input.value.trim().toUpperCase();
+        const uid = localStorage.getItem('ff_user_id') || document.getElementById('player-id')?.value.trim();
+
+        if (!code) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#FF3D71';
+            msgEl.innerHTML = '⚠️ Por favor ingresa un código de descuento.';
+            return;
+        }
+
+        if (!uid) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#FF3D71';
+            msgEl.innerHTML = '⚠️ Debes ingresar o consultar tu ID de jugador primero.';
+            return;
+        }
+
+        const selectedCard = document.querySelector('.package-card.selected');
+        let basePriceUsdt = 0;
+        if (selectedCard && selectedCard.dataset && selectedCard.dataset.price) {
+            basePriceUsdt = parseFloat(selectedCard.dataset.price) || 0;
+        } else if (typeof selectedPriceUsdt !== 'undefined' && selectedPriceUsdt) {
+            basePriceUsdt = parseFloat(selectedPriceUsdt) || 0;
+        } else if (selectedPackage && selectedPackage.price) {
+            basePriceUsdt = parseFloat(selectedPackage.price) || 0;
+        }
+        const totalBaseUsdt = basePriceUsdt * (selectedQty || 1);
+
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#FFD93D';
+        msgEl.innerHTML = '⏳ Validando código de descuento...';
+
+        try {
+            const res = await fetch(`${SERVER_URL}/api/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, uid, amount: totalBaseUsdt })
+            });
+            const data = await res.json();
+
+            if (data.success && data.valid) {
+                window.appliedCoupon = data;
+                msgEl.style.color = '#00FF94';
+                msgEl.innerHTML = `🎉 <strong>¡Código ${data.code} APLICADO!</strong><br>${data.discount_percent}% de descuento en tu 1era recarga (-$${data.savings} USDT ahorro).<br>Nuevo total: <strong style="font-size:0.95rem;color:#00FF94;">$${data.final_amount} USDT</strong>.`;
+
+                // Recalcular montos mostrados en Pago Móvil y Binance Pay
+                const finalBs = (data.final_amount * DOLAR_RATE).toFixed(2);
+                const pmAmt = document.getElementById('amount-pagomovil');
+                if (pmAmt) pmAmt.value = `${finalBs.replace('.', ',')} Bs`;
+                const banescoAmt = document.getElementById('amount-pagomovil_banesco');
+                if (banescoAmt) banescoAmt.value = `${finalBs.replace('.', ',')} Bs`;
+                const binAmt = document.getElementById('amount-binance');
+                if (binAmt) binAmt.value = `${data.final_amount.toFixed(2)} USDT`;
+
+            } else {
+                window.appliedCoupon = null;
+                msgEl.style.color = '#FF3D71';
+                msgEl.innerHTML = data.message || '⚠️ Código no válido.';
+            }
+        } catch(e) {
+            window.appliedCoupon = null;
+            msgEl.style.color = '#FF3D71';
+            msgEl.innerHTML = 'Error al validar el código: ' + e.message;
+        }
+    };
+
     backBtn.addEventListener('click', () => {
         const packagesSection = document.getElementById('packages-section');
         document.getElementById('payment-section').style.display = 'none';
@@ -2630,30 +2850,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    finishBtn.addEventListener('click', async () => {
+    let isSubmittingOrder = false;
+    window.confirmarPagoDirecto = async function() {
+        if (isSubmittingOrder) return;
+        isSubmittingOrder = true;
+        setTimeout(() => { isSubmittingOrder = false; }, 3000);
+
         // Validación detallada
         if (!selectedMethod) {
+            isSubmittingOrder = false;
             return Swal.fire({ icon: 'warning', title: 'Método de pago', text: 'Por favor, selecciona un método de pago (Pago Móvil o Binance) antes de continuar.', confirmButtonColor: '#9D00FF' });
         }
 
-        const waNum = whatsappNumber.value.trim();
-        const refPM = refPagoMovil.value.trim();
-        const refB = refBinance.value.trim();
+        const waInput = document.getElementById('whatsapp-number');
+        const refPMInput = document.getElementById('ref-pagomovil');
+        const refBInput = document.getElementById('ref-binance');
+        const refBanInput = document.getElementById('ref-pagomovil_banesco');
+        const codeSelect = document.getElementById('country-code');
+
+        const waNum = waInput ? waInput.value.trim() : '';
+        const refPM = refPMInput ? refPMInput.value.trim() : '';
+        const refB = refBInput ? refBInput.value.trim() : '';
+        const refBan = refBanInput ? refBanInput.value.trim() : '';
+        const countryVal = codeSelect ? codeSelect.value : '58';
 
         if (selectedMethod === 'pagomovil' && refPM.length < 3) {
+            isSubmittingOrder = false;
             return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 3 dígitos o más de tu referencia de Pago Móvil.', confirmButtonColor: '#9D00FF' });
         }
+        if (selectedMethod === 'pagomovil_banesco' && refBan.length < 3) {
+            isSubmittingOrder = false;
+            return Swal.fire({ icon: 'warning', title: 'Referencia muy corta', text: 'Por favor, ingresa los últimos 3 dígitos o más de tu referencia de Pago Móvil Banesco.', confirmButtonColor: '#9D00FF' });
+        }
         if (selectedMethod === 'binance' && refB.length < 1) {
+            isSubmittingOrder = false;
             return Swal.fire({ icon: 'warning', title: 'Falta ID Binance', text: 'Por favor, ingresa tu ID de transacción de Binance Pay.', confirmButtonColor: '#9D00FF' });
         }
         if (waNum.length < 7) {
+            isSubmittingOrder = false;
             return Swal.fire({ icon: 'warning', title: 'WhatsApp incompleto', text: 'Por favor, ingresa un número de WhatsApp válido (mínimo 7 dígitos) para recibir tu comprobante.', confirmButtonColor: '#9D00FF' });
         }
 
-        const ref = selectedMethod === 'pagomovil' ? refPM : refB;
+        const ref = selectedMethod === 'pagomovil' ? refPM : (selectedMethod === 'pagomovil_banesco' ? refBan : refB);
         // Para Roblox y Streaming usamos identificadores adaptados
+        const selGame = typeof selectedGame !== 'undefined' ? selectedGame : null;
+        const selPack = typeof selectedPack !== 'undefined' ? selectedPack : null;
+        const selPriceUsdt = typeof selectedPriceUsdt !== 'undefined' ? selectedPriceUsdt : null;
+
         const isRobloxOrder = currentJuego === 'roblox';
-        const isStreamingOrder = selectedGame === 'streaming' || currentJuego === 'streaming';
+        const isStreamingOrder = selGame === 'streaming' || currentJuego === 'streaming';
         const rawName = document.getElementById('player-name-display') ? document.getElementById('player-name-display').innerText.trim() : '';
         const name = (isRobloxOrder || isStreamingOrder) ? (rawName || `WA:${waNum}`) : rawName;
         const PAQUETES_ESPECIALES_KEYS = ['basica', 'semanal', 'mensual', 'booyah'];
@@ -2663,26 +2908,41 @@ document.addEventListener('DOMContentLoaded', () => {
         let esEspecialOrder = false;
 
         if (isStreamingOrder) {
-            packText = selectedPack || 'Servicio Streaming';
-            priceUSDT = selectedPriceUsdt || 2.50;
+            packText = selPack || 'Servicio Streaming';
+            priceUSDT = selPriceUsdt || 2.50;
         } else {
             esEspecialOrder = selectedPackage && PAQUETES_ESPECIALES_KEYS.includes((selectedPackage.amount || '').toString().toLowerCase());
-            packText = esEspecialOrder
-                ? selectedPackage.amount
-                : (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus}`);
+            if (esEspecialOrder) {
+                packText = selectedPackage ? selectedPackage.amount : (selPack || 'Especial');
+            } else if (selectedPackage && selectedPackage.amount) {
+                packText = (selectedQty > 1 ? `${selectedPackage.amount} + ${selectedPackage.bonus || 0} (x${selectedQty})` : `${selectedPackage.amount} + ${selectedPackage.bonus || 0}`);
+            } else {
+                packText = selPack || 'Paquete';
+            }
 
             const selectedCard = document.querySelector('.package-card.selected');
-            const rawPriceConfirm = selectedCard ? (parseFloat(selectedCard.dataset.price) * selectedQty) : 0;
+            let basePriceConfirm = 0;
+            if (selectedCard && selectedCard.dataset && selectedCard.dataset.price) {
+                basePriceConfirm = parseFloat(selectedCard.dataset.price) || 0;
+            } else if (selectedPackage && selectedPackage.price) {
+                basePriceConfirm = parseFloat(selectedPackage.price) || 0;
+            } else if (selPriceUsdt) {
+                basePriceConfirm = parseFloat(selPriceUsdt) || 0;
+            }
+            const rawPriceConfirm = basePriceConfirm * (selectedQty || 1);
             const discountMultConfirm = window.referralDiscountActive ? 0.97 : 1;
             priceUSDT = rawPriceConfirm * discountMultConfirm;
-            if (window.referralDiscountActive) {
+            if (window.appliedCoupon && window.appliedCoupon.valid && window.appliedCoupon.final_amount !== undefined) {
+                priceUSDT = window.appliedCoupon.final_amount;
+                console.log(`[CUPON_APLICADO] Aplicando precio con descuento: $${priceUSDT.toFixed(2)} USDT (${window.appliedCoupon.code})`);
+            } else if (window.referralDiscountActive) {
                 console.log(`[DESCUENTO_REFERIDO] Aplicando -3% en primera compra. Original: $${rawPriceConfirm.toFixed(2)} → Con descuento: $${priceUSDT.toFixed(2)} USDT`);
             }
         }
 
-        const priceBS = (priceUSDT * DOLAR_RATE).toFixed(2);
+        const priceBS = (priceUSDT * (typeof DOLAR_RATE !== 'undefined' ? DOLAR_RATE : 1)).toFixed(2);
         let waClean = waNum.replace(/^0+/, ''); // Quitar ceros a la izquierda (ej: 0424 -> 424)
-        const waFull = countryCode.value + waClean;
+        const waFull = countryVal + waClean;
 
         Swal.fire({
             title: 'Procesando pago...',
@@ -2704,14 +2964,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Para Roblox/Streaming: uid = número WA (no hay ID Garena)
             // En modo regalo: uid = jugador receptor, loginUid = tú (quien gana los puntos)
             let effectiveUid;
+            const pInput = document.getElementById('player-id');
             if (giftingMode && giftingTargetUid) {
                 effectiveUid = giftingTargetUid;
             } else {
-                effectiveUid = (isRobloxOrder || isStreamingOrder) ? waFull : playerInput.value;
+                effectiveUid = (isRobloxOrder || isStreamingOrder) ? waFull : (pInput ? pInput.value.trim() : (playerInput ? playerInput.value.trim() : ''));
             }
             const loginUid = localStorage.getItem('ff_user_id') || effectiveUid;
             const juegoParam = isStreamingOrder ? 'streaming' : currentJuego;
-            const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${juegoParam}`;
+            const couponCode = (window.appliedCoupon && window.appliedCoupon.valid && window.appliedCoupon.code) ? encodeURIComponent(window.appliedCoupon.code) : '';
+            const messageParams = `uid=${effectiveUid}&login_uid=${loginUid}&name=${encodeURIComponent(name)}&pack=${encodeURIComponent(packText)}&method=${selectedMethod}&ref=${encodeURIComponent(ref)}&price=${priceUSDT.toFixed(2)}USDT/${priceBS}Bs&wa=${waFull}&juego=${juegoParam}&coupon=${couponCode}`;
             const notifyUrl = `${SERVER_URL}/notificar?${messageParams}`;
             
             const notifyRes = await fetch(notifyUrl);
@@ -2755,54 +3017,113 @@ document.addEventListener('DOMContentLoaded', () => {
             const receiptLogoTitle = isStreamingOrder ? 'STREAMING' : (isRobloxOrder ? 'ROBLOX' : (currentJuego === 'bloodstrike' ? 'BLOODSTRIKE' : (currentJuego === 'mobilelegends' ? 'MOBILE LEGENDS' : 'FREE F<span>I</span>RE')));
             const productTitleVal = isStreamingOrder ? packText : (isRobloxOrder ? `Roblox US ${selectedPackage ? selectedPackage.amount : ''}USD` : (esEspecialOrder ? packText : `${selectedPackage ? selectedPackage.amount : ''} + ${selectedPackage ? selectedPackage.bonus : ''} Bonus`));
 
-            Swal.fire({
-                html: `
-                    <div class="receipt-container">
-                        <div class="receipt-success-icon"><i class="fa-solid fa-check"></i></div>
-                        <h2 class="receipt-title" id="receipt-title">Procesando Pago...</h2>
+            const expireDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const dayE = String(expireDate.getDate()).padStart(2, '0');
+            const monthE = String(expireDate.getMonth() + 1).padStart(2, '0');
+            const yearE = expireDate.getFullYear();
+            const formattedExpireDate = `${dayE}-${monthE}-${yearE}`;
+
+            let packType = packText || 'Perfil';
+            if ((packText || '').toLowerCase().includes('perfil')) packType = 'Perfil';
+            else if ((packText || '').toLowerCase().includes('pantalla')) packType = 'Pantalla';
+            else if ((packText || '').toLowerCase().includes('cuenta')) packType = 'Cuenta Completa';
+
+            const liveModalHtml = isStreamingOrder ? `
+                <div class="receipt-container" style="padding: 4px;">
+                    <div class="receipt-success-icon" style="background: rgba(37,211,102,0.15); border: 2px solid #25D366; color: #25D366; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 10px; box-shadow: 0 0 20px rgba(37,211,102,0.3);">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2 class="receipt-title" id="receipt-title" style="color: #25D366; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.25rem; text-align: center; margin: 0 0 14px 0;">¡Ejecución exitosa!</h2>
+                    
+                    <div class="receipt-card" style="background: rgba(15, 8, 30, 0.95); border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 20px; padding: 18px 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 25px rgba(0,240,255,0.12); font-family: 'Inter', sans-serif; text-align: left;">
+                        <img src="img/streaming_logo.png" alt="Streaming" style="width: 75px; height: 75px; object-fit: contain; display: block; margin: 0 auto 14px auto; border-radius: 14px; filter: drop-shadow(0 4px 12px rgba(157,0,255,0.4));">
                         
-                        <div class="receipt-card">
-                            <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${receiptLogoTitle}</div>
-                            <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">RECARGASNEY.COM</div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.84rem; color: #d0d0d0;">
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Tipo de paquete:</span><strong style="color: #fff;">${packType}</strong></div>
                             
-                            <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
-                                <p><strong>PLAN:</strong> <span class="val">${productTitleVal}</span></p>
-                                ${(!isRobloxOrder && !isStreamingOrder) ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : `<p><strong>ENTREGA POR WHATSAPP:</strong> <span class="val">+${waFull}</span></p>`}
-                                ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
-                                <p><strong>Nº DE APROBACIÓN:</strong> <span class="val" style="color:#00FF94; font-weight:800;">#APROB-${approvalNum}</span> <small style="display:block; font-size:0.65rem; color:#aaa;">(Guarda este código para reclamos o renovaciones)</small></p>
-                                <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
-                                <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
-                                <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
+                            <!-- Credenciales entregadas (Email, Clave, Perfil, Pin) -->
+                            <div id="receipt-streaming-credentials" style="display:none; flex-direction: column; gap: 6px; margin: 4px 0;">
+                                <div id="receipt-streaming-pin-lines" style="display: flex; flex-direction: column; gap: 6px;"></div>
                             </div>
 
-                            <div id="receipt-pin-container" style="display:none; margin-top: 12px; background: rgba(0,240,255,0.08); border: 1px dashed #00f0ff; border-radius: 10px; padding: 12px; text-align: center;">
-                                <span style="font-size: 0.72rem; color: #00f0ff; font-weight: 700; display: block; margin-bottom: 6px; letter-spacing: 1px;">🔑 PIN DE ROBLOX ADQUIRIDO</span>
-                                <code id="receipt-pin-code" style="font-family: monospace; font-size: 1.15rem; color: #00FF94; font-weight: 800; display: block; letter-spacing: 2px; word-break: break-all; margin-bottom: 8px;"></code>
-                                <button id="btn-copy-receipt-pin" onclick="const p=document.getElementById('receipt-pin-code').innerText; if(p){ navigator.clipboard.writeText(p).then(()=>{ this.innerText='✓ PIN Copiado!'; setTimeout(()=>this.innerText='📋 Copiar PIN', 2000); }); }" style="background: #00f0ff; color: #07030D; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,240,255,0.3);">
-                                    📋 Copiar PIN
-                                </button>
-                            </div>
-                            
-                            <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
-                                <i class="fa-solid fa-shield-halved"></i> RECARGASNEY.COM - Transacción Segura
-                            </div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Plan:</span><strong style="color: #fff;">30 días</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Fecha Vencimiento:</span><strong style="color: #00FF94;">${formattedExpireDate}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Nº Control:</span><strong style="color: #00F0FF;">#${controlNum}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span style="color: #aaa;">Estado:</span><strong id="order-status" style="color: #FFC107;">VERIFICANDO...</strong></div>
                         </div>
-                        
-                        <div class="receipt-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
-                            <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
-                                <button class="btn-action btn-share" title="Compartir" style="flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
-                                <button class="btn-action btn-fav" title="Favorito" style="margin: 0;"><i class="fa-solid fa-star"></i></button>
-                            </div>
-                            <button id="receipt-push-btn" class="btn-action" style="background: #9D00FF !important; border: 1px solid #7c00cc !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; margin: 0; box-sizing: border-box;">
-                                <i class="fa-solid fa-bell" style="font-size: 1.1rem;"></i> Recibir Alerta en este Navegador 🔔
-                            </button>
-                            <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}" target="_blank" class="btn-action" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0; text-decoration: none; box-sizing: border-box;">
-                                <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
-                            </a>
-                            <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0;">Continuar</button>
+
+                        <!-- Aviso Importante -->
+                        <div style="margin-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">
+                            <div style="color: #ff4b2b; font-weight: 800; font-size: 0.75rem; text-align: center; margin-bottom: 4px;"><i class="fa-solid fa-triangle-exclamation"></i> Aviso Importante</div>
+                            <p style="color: rgba(255, 100, 100, 0.85); font-size: 0.65rem; text-align: center; line-height: 1.3; margin: 0; background: rgba(255, 75, 43, 0.08); border: 1px dashed rgba(255, 75, 43, 0.3); padding: 6px 8px; border-radius: 8px;">
+                                No está permitido modificar la cuenta, perfil, PIN, correo o contraseña. Úsalo únicamente en un dispositivo a la vez. El incumplimiento de estas normas conllevará a la pérdida de la garantía del servicio sin previo aviso.
+                            </p>
+                        </div>
+
+                        <div style="text-align: center; font-size: 0.78rem; color: #FFD700; font-weight: 700; letter-spacing: 1px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+                            Comprobante de Pago
                         </div>
                     </div>
-                `,
+
+                    <div class="receipt-actions" style="display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 10px;">
+                        <button id="btn-copy-streaming-creds" style="display:none; background: linear-gradient(135deg,#E50914,#9D00FF); color:#fff; border:none; border-radius:10px; padding:10px; font-weight:800; font-size:0.85rem; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(229,9,20,0.3); align-items:center; justify-content:center; gap:6px;">
+                            📋 Copiar Credenciales
+                        </button>
+                        <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}" target="_blank" style="background: #25D366; color: #fff; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; padding: 10px; font-size: 0.85rem; cursor: pointer; text-decoration: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0;">
+                            <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem;"></i> Consultar por WhatsApp
+                        </a>
+                        <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0; background: linear-gradient(135deg, #9D00FF, #00F0FF); color: #fff; font-weight: 800; border: none; border-radius: 10px; padding: 10px; font-size: 0.85rem; cursor: pointer; box-shadow: 0 4px 15px rgba(157,0,255,0.3);">OK</button>
+                    </div>
+                </div>
+            ` : `
+                <div class="receipt-container">
+                    <div class="receipt-success-icon"><i class="fa-solid fa-check"></i></div>
+                    <h2 class="receipt-title" id="receipt-title">Procesando Pago...</h2>
+                    
+                    <div class="receipt-card">
+                        <div class="receipt-logo" style="letter-spacing: 5px; font-weight: 900; background: linear-gradient(to bottom, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${receiptLogoTitle}</div>
+                        <div style="font-size: 0.6rem; color: var(--secondary); margin-top: -10px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 700;">RECARGASNEY.COM</div>
+                        
+                        <div class="receipt-info" style="font-size: 0.8rem; line-height: 1.2;">
+                            <p><strong>PLAN:</strong> <span class="val">${productTitleVal}</span></p>
+                            ${(!isRobloxOrder && !isStreamingOrder) ? `<p><strong>ID / JUGADOR:</strong> <span class="val">${effectiveUid} (${name})</span></p>` : ''}
+                            ${giftingMode ? `<p style="color:#FFD93D; font-size:0.72rem;"><i class="fa-solid fa-gift"></i> <strong>REGALO</strong> — Puntos acreditados a tu ID: <code>${loginUid}</code></p>` : ''}
+                            <p><strong>CONTROL / REF:</strong> <span class="val">${controlNum} / ${ref}</span></p>
+                            <p><strong>FECHA:</strong> <span class="val">${fullDateTime}</span></p>
+                            <p><strong>ESTADO:</strong> <span class="val status-pending" id="order-status">VERIFICANDO...</span></p>
+                        </div>
+
+                        <div id="receipt-pin-container" style="display:none; margin-top: 12px; background: rgba(0,240,255,0.08); border: 1px dashed #00f0ff; border-radius: 10px; padding: 12px; text-align: center;">
+                            <span style="font-size: 0.72rem; color: #00f0ff; font-weight: 700; display: block; margin-bottom: 6px; letter-spacing: 1px;">🔑 PIN DE ROBLOX ADQUIRIDO</span>
+                            <code id="receipt-pin-code" style="font-family: monospace; font-size: 1.15rem; color: #00FF94; font-weight: 800; display: block; letter-spacing: 2px; word-break: break-all; margin-bottom: 8px;"></code>
+                            <button id="btn-copy-receipt-pin" onclick="const p=document.getElementById('receipt-pin-code').innerText; if(p){ navigator.clipboard.writeText(p).then(()=>{ this.innerText='✓ PIN Copiado!'; setTimeout(()=>this.innerText='📋 Copiar PIN', 2000); }); }" style="background: #00f0ff; color: #07030D; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,240,255,0.3);">
+                                📋 Copiar PIN
+                            </button>
+                        </div>
+                        
+                        <div class="receipt-ticket" style="margin-top: 10px; font-size: 0.7rem; opacity: 0.5;">
+                            <i class="fa-solid fa-shield-halved"></i> RECARGASNEY.COM - Transacción Segura
+                        </div>
+                    </div>
+
+                    <div class="receipt-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 15px;">
+                        <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+                            <button class="btn-action btn-share" title="Compartir" style="flex: 1; margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
+                            <button class="btn-action btn-fav" title="Favorito" style="margin: 0;"><i class="fa-solid fa-star"></i></button>
+                        </div>
+                        <button id="receipt-push-btn" class="btn-action" style="background: #9D00FF !important; border: 1px solid #7c00cc !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; margin: 0; box-sizing: border-box;">
+                            <i class="fa-solid fa-bell" style="font-size: 1.1rem;"></i> Recibir Alerta en este Navegador 🔔
+                        </button>
+                        <a href="https://wa.me/${((APP_CONFIG.whatsapp && APP_CONFIG.whatsapp.bot) ? APP_CONFIG.whatsapp.bot : '584123491068').replace(/\D/g, '')}?text=${encodeURIComponent(ref)}" target="_blank" class="btn-action" style="background: #25D366 !important; border: 1px solid #20ba5a !important; color: #fff !important; font-weight: 700; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.25); margin: 0; text-decoration: none; box-sizing: border-box;">
+                            <i class="fa-brands fa-whatsapp" style="font-size: 1.25rem;"></i> Consultar estado por WhatsApp
+                        </a>
+                        <button class="btn-action btn-continue-receipt" onclick="location.reload()" style="width: 100%; margin: 0;">Continuar</button>
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                html: liveModalHtml,
                 showConfirmButton: false,
                 background: 'transparent',
                 width: window.innerWidth < 600 ? '95%' : '450px',
@@ -2814,43 +3135,80 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Lógica para el botón de notificaciones push en el recibo
                     const receiptPushBtn = document.getElementById('receipt-push-btn');
                     const pushSupported = ('serviceWorker' in navigator) && ('PushManager' in window);
+
+                    // Función reutilizable para solicitar permiso y suscribir
+                    const requestAndSubscribePush = async () => {
+                        try {
+                            const permission = await Notification.requestPermission();
+                            if (permission === 'granted') {
+                                await subscribeUser(loginUid);
+                                if (receiptPushBtn) receiptPushBtn.style.display = 'none';
+                            }
+                        } catch (err) {
+                            console.error('[PUSH] Error activando desde recibo:', err);
+                        }
+                    };
+
                     if (receiptPushBtn) {
                         if (!pushSupported) {
                             receiptPushBtn.style.display = 'none';
                         } else {
                             navigator.serviceWorker.ready.then(reg => {
                                 reg.pushManager.getSubscription().then(sub => {
-                                    if (sub) receiptPushBtn.style.display = 'none';
+                                    if (sub) {
+                                        // Ya suscrito: ocultar botón y no pedir nada
+                                        receiptPushBtn.style.display = 'none';
+                                    } else if (Notification.permission !== 'denied') {
+                                        // ═══════════════════════════════════════════════════════
+                                        // AUTO-PROMPT: pedir permiso 1.5s después del recibo
+                                        // El cliente acaba de enviar su pedido → motivación máxima
+                                        // ═══════════════════════════════════════════════════════
+                                        setTimeout(() => {
+                                            Swal.fire({
+                                                title: '🔔 ¿Avísame cuando llegue mi recarga?',
+                                                html: `
+                                                    <div style="text-align:center; font-family:'Inter',sans-serif;">
+                                                        <div style="font-size:2.8rem; margin-bottom:10px;">💎</div>
+                                                        <p style="color:#ddd; font-size:0.9rem; line-height:1.5; margin:0 0 14px 0;">
+                                                            Activa las notificaciones y te avisaremos <strong style="color:#00F0FF;">al instante</strong>
+                                                            en este celular/navegador cuando tu recarga sea
+                                                            <strong style="color:#00FF94;">✅ aprobada</strong> o
+                                                            <strong style="color:#ff4b2b;">❌ rechazada</strong>.
+                                                        </p>
+                                                        <p style="color:#888; font-size:0.75rem; margin:0;">
+                                                            Sin WhatsApp. Sin esperar. Directo en tu pantalla.
+                                                        </p>
+                                                    </div>
+                                                `,
+                                                showCancelButton: true,
+                                                confirmButtonText: '🔔 Sí, avisarme',
+                                                cancelButtonText: 'Ahora no',
+                                                confirmButtonColor: '#9D00FF',
+                                                cancelButtonColor: '#444',
+                                                background: 'rgba(15, 8, 30, 0.98)',
+                                                color: '#fff',
+                                                width: window.innerWidth < 600 ? '92%' : '400px',
+                                                customClass: { popup: 'swal2-push-prompt' }
+                                            }).then(async (pushRes) => {
+                                                if (pushRes.isConfirmed) {
+                                                    await requestAndSubscribePush();
+                                                }
+                                            });
+                                        }, 1500);
+                                    }
                                 });
                             });
-                            
+
+                            // Clic manual en botón (como respaldo)
                             receiptPushBtn.addEventListener('click', async () => {
-                                try {
-                                    const permission = await Notification.requestPermission();
-                                    if (permission === 'granted') {
-                                        receiptPushBtn.disabled = true;
-                                        receiptPushBtn.innerText = 'Activando...';
-                                        await subscribeUser(loginUid);
-                                        receiptPushBtn.style.display = 'none';
-                                    } else {
-                                        Swal.fire({
-                                            icon: 'warning',
-                                            title: 'Permiso Denegado',
-                                            text: 'Debes habilitar los permisos de notificación en tu navegador para usar esta función.',
-                                            background: 'rgba(20, 10, 35, 0.98)',
-                                            color: '#fff',
-                                            confirmButtonColor: '#9D00FF'
-                                        });
-                                    }
-                                } catch (err) {
-                                    console.error('Error al activar push desde recibo:', err);
-                                    receiptPushBtn.disabled = false;
-                                    receiptPushBtn.innerHTML = '<i class="fa-solid fa-bell"></i> Recibir Alerta en este Navegador 🔔';
-                                }
+                                receiptPushBtn.disabled = true;
+                                receiptPushBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Activando...';
+                                await requestAndSubscribePush();
+                                receiptPushBtn.disabled = false;
+                                receiptPushBtn.innerHTML = '<i class="fa-solid fa-bell"></i> Recibir Alerta en este Navegador 🔔';
                             });
                         }
                     }
-
                     const shareBtn = document.querySelector('.btn-share');
                     const favBtn = document.querySelector('.btn-fav');
                     const statusEl = document.getElementById('order-status');
@@ -2894,30 +3252,59 @@ document.addEventListener('DOMContentLoaded', () => {
                                         confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#ffd700', '#00c853', '#ffffff'] }));
                                     }, 250);
 
-                                    // Desplegar PIN en pantalla únicamente si es una orden de Roblox
-                                    if (data.pin && isRobloxOrder) {
-                                        const pinContainer = document.getElementById('receipt-pin-container');
-                                        const pinCode = document.getElementById('receipt-pin-code');
-                                        if (pinContainer && pinCode) {
-                                            pinCode.innerText = data.pin;
-                                            pinContainer.style.display = 'block';
+                                    // Desplegar credenciales en pantalla si es streaming
+                                    if (data.pin && isStreamingOrder) {
+                                        const streamingCreds = document.getElementById('receipt-streaming-credentials');
+                                        const streamingPinLines = document.getElementById('receipt-streaming-pin-lines');
+                                        const copyBtn = document.getElementById('btn-copy-streaming-creds');
+                                        if (streamingCreds && streamingPinLines) {
+                                            const pinLines = data.pin.split(/[\n|]+/).map(l => l.trim()).filter(l => l && l !== 'Manual');
+                                            streamingPinLines.innerHTML = (pinLines.length > 0 ? pinLines : [data.pin])
+                                                .map(line => {
+                                                    if (line.includes(':')) {
+                                                        const idx = line.indexOf(':');
+                                                        const k = line.substring(0, idx).trim();
+                                                        const v = line.substring(idx + 1).trim();
+                                                        return `<div style="display:flex; justify-content:space-between; font-size:0.84rem;"><span style="color:#aaa;">${k}:</span><strong style="color:#00FF94; font-family:monospace; word-break:break-all;">${v}</strong></div>`;
+                                                    }
+                                                    return `<div style="font-family:monospace; font-size:0.84rem; color:#00FF94; font-weight:700; word-break:break-all; background:rgba(0,0,0,0.3); border-radius:6px; padding:4px 8px; margin-bottom:4px; text-align:left;">${line}</div>`;
+                                                })
+                                                .join('');
+                                            streamingCreds.style.display = 'flex';
+                                            if (copyBtn) {
+                                                copyBtn.style.display = 'flex';
+                                                copyBtn.onclick = () => {
+                                                    navigator.clipboard.writeText(data.pin.replace(/[|]/g, ' | ')).then(() => {
+                                                        copyBtn.innerText = '✓ ¡Copiado!';
+                                                        setTimeout(() => { copyBtn.innerHTML = '📋 Copiar Credenciales'; }, 2000);
+                                                    });
+                                                };
+                                            }
                                         }
+                                        // Actualizar en localStorage
+                                        const myOrds = JSON.parse(localStorage.getItem('ff_my_orders') || '[]');
+                                        const oIdx = myOrds.findIndex(o => o.ref === ref);
+                                        if (oIdx !== -1) { myOrds[oIdx].pin = data.pin; myOrds[oIdx].juego = 'streaming'; localStorage.setItem('ff_my_orders', JSON.stringify(myOrds)); }
                                     }
 
                                     const titleEl = document.getElementById('receipt-title');
                                     if (titleEl) {
                                         titleEl.innerHTML = isRobloxOrder
                                             ? '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🎉 ¡PIN ENTREGADO! 🎉</span>'
-                                            : '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>';
+                                            : (isStreamingOrder
+                                                ? '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(229,9,20,0.5);">🍿 ¡STREAMING ENTREGADO! 🍿</span>'
+                                                : '<span style="color:var(--success); font-weight:800; letter-spacing:2px; text-shadow: 0 0 15px rgba(0,255,148,0.5);">🔥 ¡BOOYAH! 🔥</span>');
                                         titleEl.style.animation = 'pulse 1s infinite alternate';
                                     }
 
-                                    // 🎰 RULETA DE LA SUERTE: mostrar después de 3.5s
-                                    setTimeout(() => {
-                                        if (typeof window.showRouletteAfterApproval === 'function') {
-                                            window.showRouletteAfterApproval(loginUid, ref, priceUSDT);
-                                        }
-                                    }, 3500);
+                                    // 🎰 RULETA DE LA SUERTE: mostrar después de 3.5s (solo para recargas de juegos, NO streaming)
+                                    if (selectedGame !== 'streaming') {
+                                        setTimeout(() => {
+                                            if (typeof window.showRouletteAfterApproval === 'function') {
+                                                window.showRouletteAfterApproval(loginUid, ref, priceUSDT);
+                                            }
+                                        }, 3500);
+                                    }
                                 } else {
                                     // Sonido de error (Buzzer corto y limpio)
                                     new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3').play().catch(e => {});
@@ -2992,7 +3379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error enviando notificación:', error);
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo enviar la notificación, pero tu pago fue registrado.' });
         }
-    });
+    };
 
     async function checkPlayerId(uid) {
         const localServerUrl = `${SERVER_URL}/verificar?uid=${uid}&juego=${currentJuego}`;
@@ -3031,6 +3418,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const bancoMatch = pm.banco.match(/\d{4}/);
             const codBanco = bancoMatch ? bancoMatch[0] : pm.banco;
             textToCopy = `${codBanco} ${tel} ${ced} ${amount}`;
+        } else if (method === 'pagomovil_banesco') {
+            const amount = (document.getElementById('amount-pagomovil_banesco') || {}).value || '';
+            const amountClean = amount.replace(' Bs', '').trim();
+            const ban = APP_CONFIG.metodos_pago && APP_CONFIG.metodos_pago.pagomovil_banesco;
+            if (ban) {
+                const tel = (ban.telefono || '').replace(/\D/g, '');
+                const ced = (ban.cedula || '').replace(/\D/g, '');
+                const bancoMatch = (ban.banco || '').match(/\d{4}/);
+                const codBanco = bancoMatch ? bancoMatch[0] : (ban.banco || 'Banesco');
+                textToCopy = `${codBanco} ${tel} ${ced} ${amountClean}`;
+            }
         } else if (method === 'binance') {
             const amount = document.getElementById('amount-binance').value.replace(' USDT', '').trim();
             textToCopy = `${APP_CONFIG.metodos_pago.binance.id} ${amount}`;
@@ -3301,10 +3699,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerPointsEl.dataset.rawPoints = points;
             }
             
+            // Actualizar la Barra de Progreso Gamificada de Recompensas
+            try { updateRewardProgressBar(points); } catch (_) {}
+
             return points;
         } catch (e) {
             console.error('Error cargando puntos:', e);
             return 0;
+        }
+    }
+
+    function updateRewardProgressBar(points) {
+        const card = document.getElementById('reward-progress-container');
+        if (!card) return;
+
+        const currentUsdt = parseFloat((points * 0.003).toFixed(2));
+        const targetUsdt = 0.80; // Meta: Tarjeta Básica / 100 Diamantes ($0.80 USDT)
+        const percent = Math.min(100, Math.floor((currentUsdt / targetUsdt) * 100));
+
+        const fillEl = document.getElementById('reward-bar-fill');
+        const badgeEl = document.getElementById('reward-percent-badge');
+        const statusEl = document.getElementById('reward-status-text');
+        const claimBtn = document.getElementById('reward-claim-btn');
+
+        card.style.display = 'block';
+
+        if (fillEl) fillEl.style.width = `${percent}%`;
+        if (badgeEl) badgeEl.textContent = `${percent}%`;
+
+        if (percent >= 100) {
+            if (badgeEl) {
+                badgeEl.style.background = 'rgba(0,255,148,0.25)';
+                badgeEl.style.color = '#00FF94';
+                badgeEl.textContent = '¡DESBLOQUEADO! 🎉';
+            }
+            if (statusEl) {
+                statusEl.innerHTML = `<strong style="color:#00FF94;">¡Felicidades!</strong> Tienes <strong>$${currentUsdt.toFixed(2)} USDT</strong>. ¡Puedes reclamar tu Tarjeta Básica / 100 Diamantes gratis!`;
+            }
+            if (claimBtn) {
+                claimBtn.style.display = 'inline-block';
+                claimBtn.onclick = () => {
+                    const redeemBtn = document.getElementById('redeem-btn');
+                    if (redeemBtn) redeemBtn.click();
+                };
+            }
+        } else {
+            const neededUsdt = (targetUsdt - currentUsdt).toFixed(2);
+            const neededPts = Math.ceil((targetUsdt - currentUsdt) / 0.003);
+            
+            if (statusEl) {
+                statusEl.innerHTML = `Tienes <strong>$${currentUsdt.toFixed(2)} USDT</strong>. Te faltan <strong style="color:#00F0FF;">$${neededUsdt} USDT (${neededPts} pts)</strong> para tu premio gratis.`;
+            }
+            if (claimBtn) claimBtn.style.display = 'none';
         }
     }
 
@@ -4475,10 +4921,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.enablePushPermissionFromModal = async function() {
+        try {
+            if (!('Notification' in window)) {
+                Swal.fire({ icon: 'error', title: 'No soportado', text: 'Tu navegador no soporta notificaciones push.', background: 'rgba(20, 10, 35, 0.98)', color: '#fff' });
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const uid = localStorage.getItem('ff_user_id') || 'anon_' + Date.now();
+                if (window.subscribeUser) {
+                    await window.subscribeUser(uid);
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Notificaciones Activadas! 🔔',
+                    text: 'Este dispositivo ha sido registrado correctamente.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Permiso Denegado',
+                    text: 'Debes permitir las notificaciones en los ajustes de tu navegador o aplicación.',
+                    background: 'rgba(20, 10, 35, 0.98)',
+                    color: '#fff',
+                    confirmButtonColor: '#9D00FF'
+                });
+            }
+        } catch(e) {
+            console.error('Error activando notificaciones:', e);
+        }
+    };
+
     function openNotificationCenter() {
         const notifs = getNotifications();
         
-        let notifHtml = '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
+        let notifHtml = '';
+
+        if (!('Notification' in window) || Notification.permission !== 'granted') {
+            notifHtml += `
+                <div style="background: linear-gradient(135deg, rgba(157,0,255,0.25), rgba(0,212,255,0.25)); border: 1px solid rgba(157,0,255,0.5); padding: 12px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+                    <div style="font-weight: bold; margin-bottom: 4px; font-size: 0.95rem; color: #fff;">🔔 Notificaciones Push Desactivadas</div>
+                    <div style="font-size: 0.8rem; color: #ccc; margin-bottom: 10px;">Haz clic en el botón de abajo para activar y recibir alertas de recargas y ofertas en tiempo real.</div>
+                    <button onclick="window.enablePushPermissionFromModal()" style="background: linear-gradient(135deg, #9D00FF, #00D4FF); color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; cursor: pointer; box-shadow: 0 4px 12px rgba(157,0,255,0.4);">
+                        <i class="fa-solid fa-bell"></i> Activar Notificaciones Ahora
+                    </button>
+                </div>
+            `;
+        }
+
+        notifHtml += '<div style="max-height:360px; overflow-y:auto; padding-right:4px;">';
         if (notifs.length === 0) {
             notifHtml += '<p style="color:#aaa; text-align:center; padding:30px 10px; font-size:0.9rem;">✨ ¡Estás al día! No tienes notificaciones ni avisos pendientes.</p>';
         } else {
@@ -4581,7 +5076,7 @@ const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
 // Detectar si es dispositivo iOS (iPhone/iPad)
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-// Verificar si el usuario descartó el banner recientemente (7 días)
+// Verificar si el usuario descartó el banner recientemente (24 horas)
 const isBannerDismissed = localStorage.getItem('pwa_banner_dismissed_until');
 const now = Date.now();
 const shouldShowBanner = !isStandalone && (!isBannerDismissed || parseInt(isBannerDismissed) < now);
@@ -4592,16 +5087,104 @@ function showPwaBanner() {
     if (oldInstallBtn) oldInstallBtn.style.display = 'inline-flex';
 }
 
+// ============================================================
+// MODAL AUTO-PROMPT DE COMUNIDAD: INSTALAR APP & CANAL WHATSAPP
+// ============================================================
+function triggerCommunityPopupModal() {
+    if (isStandalone) return;
+    const dismissedUntil = localStorage.getItem('pwa_community_popup_dismissed');
+    if (dismissedUntil && parseInt(dismissedUntil) > Date.now()) return;
+
+    const cfg = window.APP_CONFIG || (typeof APP_CONFIG !== 'undefined' ? APP_CONFIG : null);
+    const waCanalUrl = (cfg && cfg.whatsapp && cfg.whatsapp.canal && cfg.whatsapp.canal.trim() !== '')
+        ? cfg.whatsapp.canal.trim()
+        : '#';
+
+    const popupHtml = `
+        <div style="text-align: center; font-family: 'Inter', sans-serif;">
+            <div style="width: 70px; height: 70px; margin: 0 auto 12px; position: relative;">
+                <img src="/icon-192.png" alt="App Icon" style="width: 100%; height: 100%; border-radius: 18px; box-shadow: 0 6px 20px rgba(157,0,255,0.4); border: 2px solid rgba(0,240,255,0.4);">
+                <div style="position: absolute; bottom: -4px; right: -4px; background: #25D366; color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border: 2px solid #0c0617; box-shadow: 0 2px 8px rgba(37,211,102,0.4);">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </div>
+            </div>
+
+            <h2 style="color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.15rem; margin: 0 0 6px 0;">
+                🚀 ¡Mejora tu experiencia en RecargasNey!
+            </h2>
+            <p style="color: #bbb; font-size: 0.8rem; line-height: 1.4; margin: 0 0 16px 0;">
+                Instala nuestra Aplicación Oficial y únete al Canal de WhatsApp para notificaciones de aprobación instantánea y ofertas exclusivas.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                <!-- Opción 1: Instalar App -->
+                <div style="background: rgba(157,0,255,0.1); border: 1px solid rgba(157,0,255,0.3); border-radius: 12px; padding: 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <div>
+                        <strong style="color: #00F0FF; font-size: 0.85rem; display: block;">📲 App Oficial RecargasNey</strong>
+                        <span style="color: #aaa; font-size: 0.72rem;">Alertas en tu pantalla y recargas en 1-clic</span>
+                    </div>
+                    <button id="modal-btn-install-app" style="background: linear-gradient(135deg, #00F0FF, #9D00FF); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,240,255,0.3);">
+                        <i class="fa-solid fa-download"></i> Instalar
+                    </button>
+                </div>
+
+                <!-- Opción 2: Canal de WhatsApp -->
+                <div style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; padding: 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <div>
+                        <strong style="color: #25D366; font-size: 0.85rem; display: block;">📢 Canal Oficial WhatsApp</strong>
+                        <span style="color: #aaa; font-size: 0.72rem;">Códigos de regalo, sorteos y novedades</span>
+                    </div>
+                    <a href="${waCanalUrl}" target="_blank" onclick="localStorage.setItem('pwa_community_popup_dismissed', (Date.now() + 12*3600*1000).toString())" style="background: #25D366; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.78rem; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; box-shadow: 0 4px 12px rgba(37,211,102,0.3);">
+                        <i class="fa-brands fa-whatsapp"></i> Unirme
+                    </a>
+                </div>
+            </div>
+            
+            <button id="modal-btn-dismiss-community" style="background: transparent; border: none; color: #777; font-size: 0.75rem; cursor: pointer; text-decoration: underline; margin-top: 4px;">
+                Recordar más tarde
+            </button>
+        </div>
+    `;
+
+    Swal.fire({
+        html: popupHtml,
+        showConfirmButton: false,
+        background: 'rgba(15, 8, 30, 0.98)',
+        width: '390px',
+        allowOutsideClick: true,
+        didOpen: () => {
+            const installBtn = document.getElementById('modal-btn-install-app');
+            const dismissBtn = document.getElementById('modal-btn-dismiss-community');
+
+            if (installBtn) {
+                installBtn.addEventListener('click', () => {
+                    Swal.close();
+                    if (pwaActionBtn) pwaActionBtn.click();
+                });
+            }
+
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', () => {
+                    localStorage.setItem('pwa_community_popup_dismissed', (Date.now() + 12 * 3600 * 1000).toString());
+                    Swal.close();
+                });
+            }
+        }
+    });
+}
+
 // Capturar el evento nativo de Android / Chrome
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    setTimeout(showPwaBanner, 2500); // Mostrar banner 2.5s después de cargar
+    setTimeout(showPwaBanner, 2000);
+    setTimeout(triggerCommunityPopupModal, 3500);
 });
 
 // En iOS o cuando el prompt no dispara automáticamente
-if (isIOS && shouldShowBanner) {
-    setTimeout(showPwaBanner, 3000);
+if (shouldShowBanner) {
+    setTimeout(showPwaBanner, 2500);
+    setTimeout(triggerCommunityPopupModal, 4000);
 }
 
 // Manejar clic en "INSTALAR"
@@ -4621,24 +5204,23 @@ if (pwaActionBtn) {
             // Mostrar modal guía para iPhone
             if (iosModal) iosModal.style.display = 'flex';
         } else {
-            // Mensaje alternativo si el navegador no soporta prompt automático
-            alert('Para instalar la app, abre el menú de opciones de tu navegador (...) y selecciona "Agregar a la pantalla de inicio".');
+            alert('Para instalar la app en Android / PC, abre el menú de opciones de tu navegador (...) y selecciona "Agregar a la pantalla de inicio" o "Instalar aplicación".');
         }
     });
 }
 
-// También vincular el botón secundario en la tarjeta
+// Vincular el botón secundario del menú superior
 if (oldInstallBtn) {
     oldInstallBtn.addEventListener('click', (e) => {
         if (pwaActionBtn) pwaActionBtn.click();
     });
 }
 
-// Cerrar banner y recordar preferencia
+// Cerrar banner y recordar preferencia por 24h
 if (pwaCloseBtn) {
     pwaCloseBtn.addEventListener('click', () => {
         if (pwaBanner) pwaBanner.style.display = 'none';
-        localStorage.setItem('pwa_banner_dismissed_until', (Date.now() + (7 * 24 * 60 * 60 * 1000)).toString());
+        localStorage.setItem('pwa_banner_dismissed_until', (Date.now() + (24 * 60 * 60 * 1000)).toString());
     });
 }
 

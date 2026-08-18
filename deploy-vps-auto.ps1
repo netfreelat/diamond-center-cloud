@@ -40,7 +40,8 @@ if (-not (Test-Path $PLINK)) {
 
 # Funcion para ejecutar comandos SSH
 function SSH-Run($cmd) {
-    $output = echo "y" | & $PLINK -hostkey $HOSTKEY -ssh $VPS_IP -l $VPS_USER -pw $VPS_PASS -batch $cmd 2>&1
+    $cleanCmd = $cmd -replace "\r", ""
+    $output = echo "y" | & $PLINK -hostkey $HOSTKEY -ssh $VPS_IP -l $VPS_USER -pw $VPS_PASS -batch $cleanCmd 2>&1
     return $output
 }
 
@@ -114,11 +115,12 @@ $files = @(
     "index.html", "admin.html", "canjear.html", "influencers.html",
     "politica-privacidad.html", "terminos-condiciones.html",
     "manifest.json", "sw.js", "package.json",
-    ".puppeteerrc.cjs", "bdv-service.js", "binance-service.js",
+    ".puppeteerrc.cjs", "bdv-service.js", "banesco-service.js", "binance-service.js",
+
     "email-bot.js", "jadh-service.js", "redeem-service.js",
-    "whatsapp-bot.js", "config.json", "set_webhook.js",
+    "whatsapp-bot.js", "set_webhook.js",
     "icon.svg", "icon-192.png", "icon-512.png",
-    "badge-diamond.png", "fondo.jpg", "settings.json",
+    "badge-diamond.png", "fondo.jpg",
     "influencer_rates.json"
 )
 
@@ -167,11 +169,11 @@ Write-Step "[6/6] Instalando dependencias y arrancando servidor..."
 
 $startCmd = @"
 cd $VPS_PATH
+rm -f settings.json
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install --production
 pm2 delete recargasney 2>/dev/null || true
 pm2 start server.js --name recargasney --max-memory-restart 3G
 pm2 restart recargasney-wa --update-env || pm2 start whatsapp-bot.js --name recargasney-wa --max-memory-restart 2G
-pm2 restart recargasney --update-env
 pm2 save
 pm2 status
 "@
