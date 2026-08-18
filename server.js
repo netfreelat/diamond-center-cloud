@@ -2306,7 +2306,7 @@ async function runAutoApprovalCycle() {
     // ── BANESCO AUTO-APROBACIÓN (solo si el toggle está ON) ──────────────────
     if (banescoAutoApproveEnabled && !banescoAutoApproveRunning) {
         const pendingBanesco = Object.entries(orders).filter(
-            ([, o]) => o.status === 'pending' && o.method === 'pagomovil_banesco'
+            ([, o]) => o.status === 'pending' && (o.method === 'pagomovil_banesco' || (settings.active_pagomovil_bank === 'banesco' && o.method === 'pagomovil'))
         );
 
         if (pendingBanesco.length > 0) {
