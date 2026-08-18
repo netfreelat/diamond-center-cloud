@@ -978,7 +978,11 @@ async function loadFromSupabase() {
                 settings.admin.session_token = settingsData.admin_session_token;
             }
             settings.metodos_pago = settingsData.metodos_pago;
-            if (settingsData.active_pagomovil_bank) settings.active_pagomovil_bank = settingsData.active_pagomovil_bank;
+            if (settingsData.active_pagomovil_bank) {
+                settings.active_pagomovil_bank = settingsData.active_pagomovil_bank;
+            } else if (settingsData.metodos_pago && settingsData.metodos_pago.active_pagomovil_bank) {
+                settings.active_pagomovil_bank = settingsData.metodos_pago.active_pagomovil_bank;
+            }
             settings.whatsapp = settingsData.whatsapp_config;
             settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades && settings.whatsapp.publicidades.length > 0) ? settings.whatsapp.publicidades : (settingsData.publicidades && settingsData.publicidades.length > 0 ? settingsData.publicidades : defaultPublicidades);
             if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
@@ -1045,19 +1049,21 @@ async function loadFromSupabase() {
             // 🔐 Cargar estado y credenciales Banesco desde Supabase
             if (settingsData.banesco_auto_approve !== undefined) {
                 banescoAutoApproveEnabled = !!settingsData.banesco_auto_approve;
+            } else if (settingsData.metodos_pago && settingsData.metodos_pago.banesco_auto_approve !== undefined) {
+                banescoAutoApproveEnabled = !!settingsData.metodos_pago.banesco_auto_approve;
             } else if (settings.metodos_pago && settings.metodos_pago.pagomovil_banesco) {
                 banescoAutoApproveEnabled = !!settings.metodos_pago.pagomovil_banesco.auto_approve_enabled;
             }
 
-            if (settingsData.banesco_credentials) {
-                const creds = settingsData.banesco_credentials;
-                if (creds.user)        process.env.BANESCO_USER        = creds.user;
-                if (creds.pass)        process.env.BANESCO_PASS        = creds.pass;
-                if (creds.sec_perro)   process.env.BANESCO_SEC_PERRO   = creds.sec_perro;
-                if (creds.sec_carro)   process.env.BANESCO_SEC_CARRO   = creds.sec_carro;
-                if (creds.sec_pasatiempo) process.env.BANESCO_SEC_PASATIEMPO = creds.sec_pasatiempo;
-                if (creds.sec_apellido)   process.env.BANESCO_SEC_APELLIDO   = creds.sec_apellido;
-                console.log(`[BANESCO-STARTUP] 🔐 Credenciales Banesco cargadas desde Supabase (usuario: ${creds.user || '?'}).`);
+            const banescoCreds = settingsData.banesco_credentials || (settingsData.metodos_pago && settingsData.metodos_pago.banesco_credentials);
+            if (banescoCreds) {
+                if (banescoCreds.user)        process.env.BANESCO_USER        = banescoCreds.user;
+                if (banescoCreds.pass)        process.env.BANESCO_PASS        = banescoCreds.pass;
+                if (banescoCreds.sec_perro)   process.env.BANESCO_SEC_PERRO   = banescoCreds.sec_perro;
+                if (banescoCreds.sec_carro)   process.env.BANESCO_SEC_CARRO   = banescoCreds.sec_carro;
+                if (banescoCreds.sec_pasatiempo) process.env.BANESCO_SEC_PASATIEMPO = banescoCreds.sec_pasatiempo;
+                if (banescoCreds.sec_apellido)   process.env.BANESCO_SEC_APELLIDO   = banescoCreds.sec_apellido;
+                console.log(`[BANESCO-STARTUP] 🔐 Credenciales Banesco cargadas desde Supabase (usuario: ${banescoCreds.user || '?'}).`);
             }
 
             if (banescoAutoApproveEnabled) {
@@ -3993,12 +3999,18 @@ const server = http.createServer(async (req, res) => {
 
                 banescoAutoApproveEnabled = newEnabled;
 
-                // Persistir en Supabase
+                // Persistir en Supabase dentro de metodos_pago
+                if (!settings.metodos_pago) settings.metodos_pago = {};
+                settings.metodos_pago.banesco_auto_approve = banescoAutoApproveEnabled;
+                if (settings.metodos_pago.pagomovil_banesco) {
+                    settings.metodos_pago.pagomovil_banesco.auto_approve_enabled = banescoAutoApproveEnabled;
+                }
+
                 supabase.from('ff_settings')
-                    .update({ banesco_auto_approve: banescoAutoApproveEnabled })
+                    .update({ metodos_pago: settings.metodos_pago })
                     .eq('id', 1)
                     .then(({ error }) => {
-                        if (error) console.error('[BANESCO-CONFIG] Error al persistir:', error.message);
+                        if (error) console.error('[BANESCO-CONFIG] Error al persistir en Supabase:', error.message);
                         else console.log('[BANESCO-CONFIG] Estado persistido en Supabase.');
                     });
 
@@ -4073,8 +4085,11 @@ const server = http.createServer(async (req, res) => {
                     sec_apellido: newSecApellido || process.env.BANESCO_SEC_APELLIDO || ''
                 };
 
+                if (!settings.metodos_pago) settings.metodos_pago = {};
+                settings.metodos_pago.banesco_credentials = credObj;
+
                 supabase.from('ff_settings')
-                    .update({ banesco_credentials: credObj })
+                    .update({ metodos_pago: settings.metodos_pago })
                     .eq('id', 1)
                     .then(({ error }) => {
                         if (error) console.error('[BANESCO-CREDS] Error al guardar en Supabase:', error.message);
@@ -4128,8 +4143,11 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, error: 'Banco inválido. Usa "bdv" o "banesco".' }));
                 }
                 settings.active_pagomovil_bank = bank;
+                if (!settings.metodos_pago) settings.metodos_pago = {};
+                settings.metodos_pago.active_pagomovil_bank = bank;
+
                 supabase.from('ff_settings')
-                    .update({ active_pagomovil_bank: bank })
+                    .update({ metodos_pago: settings.metodos_pago })
                     .eq('id', 1)
                     .then(({ error }) => {
                         if (error) console.error('[BANK-SELECTOR] Error al guardar en Supabase:', error.message);
