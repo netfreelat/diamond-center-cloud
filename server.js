@@ -759,6 +759,16 @@ function normalizePhone(num) {
     return clean;
 }
 
+function formatSupportPhone(raw) {
+    if (!raw) return '+584125322412';
+    let clean = raw.toString().trim();
+    if (!clean) return '+584125322412';
+    if (clean.startsWith('0')) return '+58' + clean.substring(1);
+    if (clean.startsWith('+')) return clean;
+    if (clean.startsWith('58')) return '+' + clean;
+    return '+58' + clean;
+}
+
 async function saveWaContact(phone, name, uid = null, source = 'web', activityTime = null) {
     const clean = normalizePhone(phone);
     if (!clean) return;
@@ -1263,8 +1273,7 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
                   `Gracias por tu compra.`;
         }
     } else {
-        const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
-        const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+        const supportNum = formatSupportPhone(settings && settings.whatsapp && settings.whatsapp.soporte);
 
         const isCanje = order.method === 'canje';
         if (isCanje) {
@@ -1624,8 +1633,7 @@ function updateOrderStatus(ref, status, pin = null, reason = null) {
                 `¡Hola, *${orderName}*! Te confirmamos que tu pedido de *${orderPack}* fue verificado y procesado con éxito. 💪\n\n` +
                 `¡Gracias por confiar en *RECARGASNEY*! Si necesitas algo más, escríbenos. 🤝`;
         } else {
-            const rawSupport = (settings && settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
-            const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+            const supportNum = formatSupportPhone(settings && settings.whatsapp && settings.whatsapp.soporte);
             watcherMsg =
                 `❌ *AVISO SOBRE TU RECARGA* ❌\n\n` +
                 `Hola *${orderName}*, lamentamos informarte que tu pedido de *${orderPack}* no pudo ser procesado.\n\n` +
@@ -4345,8 +4353,7 @@ const server = http.createServer(async (req, res) => {
                           `Gracias por tu compra.`;
                 }
             } else if (isRejected) {
-                const rawSupport = (settings.whatsapp && settings.whatsapp.soporte) ? settings.whatsapp.soporte.trim() : '';
-                const supportNum = rawSupport ? (rawSupport.startsWith('+') ? rawSupport : '+' + rawSupport) : '+584125322412';
+                const supportNum = formatSupportPhone(settings && settings.whatsapp && settings.whatsapp.soporte);
                 
                 if (isCanje) {
                     msg = `⚠️ *AVISO DE TU CANJE* ⚠️\n\n` +
