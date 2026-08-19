@@ -1031,18 +1031,20 @@ async function loadFromSupabase() {
             }
 
             // 🔐 Cargar credenciales BDV desde Supabase (sobreescribe .env si existen)
-            if (settingsData.bdv_credentials) {
-                const creds = settingsData.bdv_credentials;
-                if (creds.user)  process.env.BDV_USER   = creds.user;
-                if (creds.pass)  process.env.BDV_PASS   = creds.pass;
-                if (creds.cuenta) process.env.BDV_CUENTA = creds.cuenta;
-                console.log(`[BDV-STARTUP] 🔐 Credenciales BDV cargadas desde Supabase (usuario: ${creds.user || '?'}).`);
+            const bdvCreds = settingsData.bdv_credentials || (settingsData.metodos_pago && settingsData.metodos_pago.bdv_credentials);
+            if (bdvCreds) {
+                if (bdvCreds.user)   process.env.BDV_USER   = bdvCreds.user;
+                if (bdvCreds.pass)   process.env.BDV_PASS   = bdvCreds.pass;
+                if (bdvCreds.cuenta) process.env.BDV_CUENTA = bdvCreds.cuenta;
+                console.log(`[BDV-STARTUP] 🔐 Credenciales BDV cargadas desde Supabase (usuario: ${bdvCreds.user || '?'}).`);
             }
 
             if (bdvAutoApproveEnabled) {
                 bdvLogin().then(ok => {
                     if (ok) console.log('[BDV-STARTUP] ✅ Login BDV exitoso.');
-                    else console.error('[BDV-STARTUP] ❌ Login BDV falló.');
+                    else {
+                        console.error('[BDV-STARTUP] ❌ Login BDV falló.');
+                    }
                 }).catch(e => console.error('[BDV-STARTUP] Error en login BDV:', e.message));
             }
 
@@ -3917,14 +3919,17 @@ const server = http.createServer(async (req, res) => {
                 process.env.BDV_PASS   = newPass;
                 if (newCuenta) process.env.BDV_CUENTA = newCuenta;
 
-                // Persistir en Supabase dentro de ff_settings
+                // Persistir en Supabase dentro de ff_settings (en metodos_pago.bdv_credentials)
                 const credObj = { user: newUser, pass: newPass, cuenta: newCuenta || process.env.BDV_CUENTA || '' };
+                if (!settings.metodos_pago) settings.metodos_pago = {};
+                settings.metodos_pago.bdv_credentials = credObj;
+
                 supabase.from('ff_settings')
-                    .update({ bdv_credentials: credObj })
+                    .update({ metodos_pago: settings.metodos_pago })
                     .eq('id', 1)
                     .then(({ error }) => {
                         if (error) console.error('[BDV-CREDS] Error al guardar en Supabase:', error.message);
-                        else console.log('[BDV-CREDS] ✅ Credenciales BDV guardadas en Supabase.');
+                        else console.log('[BDV-CREDS] ✅ Credenciales BDV guardadas en Supabase (metodos_pago.bdv_credentials).');
                     });
 
                 // Re-login BDV si el bot está activo
