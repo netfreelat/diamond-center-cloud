@@ -3181,6 +3181,33 @@ const server = http.createServer(async (req, res) => {
             }));
         }
 
+        // --- 🔒 REGLA DE SEGURIDAD: VERIFICACIÓN DE USO DE CUPÓN DE DESCUENTO ---
+        const couponParam = parsedUrl.searchParams.get('coupon') ? parsedUrl.searchParams.get('coupon').trim().toUpperCase() : null;
+        if (couponParam) {
+            const checkUserUid = (uid || login_uid || '').trim();
+            if (checkUserUid) {
+                const { data: usedCouponDb } = await supabase
+                    .from('ff_orders')
+                    .select('ref, pack')
+                    .or(`uid.eq.${checkUserUid},login_uid.eq.${checkUserUid}`)
+                    .ilike('pack', `%${couponParam}%`);
+
+                const usedInMem = Object.values(orders).some(o => 
+                    (o.uid === checkUserUid || o.login_uid === checkUserUid) && 
+                    ((o.pack || '').toUpperCase().includes(couponParam) || (o.coupon || '').toUpperCase() === couponParam)
+                );
+
+                if ((usedCouponDb && usedCouponDb.length > 0) || usedInMem) {
+                    console.log(`[NOTIFICACIÓN] 🛑 Código de descuento '${couponParam}' ya usado previamente por ID ${checkUserUid}. Rechazando notificación.`);
+                    res.writeHead(200);
+                    return res.end(JSON.stringify({ 
+                        success: false, 
+                        message: `⚠️ Tu ID de usuario (${checkUserUid}) ya utilizó el código de descuento '${couponParam}' en un pedido anterior. Solo se permite 1 uso por ID.` 
+                    }));
+                }
+            }
+        }
+
 
 
         // --- BLOQUEO DE SEGURIDAD: VERIFICAR STOCK DISPONIBLE SI ES STREAMING ---
@@ -7752,11 +7779,43 @@ const server = http.createServer(async (req, res) => {
                         return res.end(JSON.stringify({ success: false, valid: false, message: 'El código de descuento no existe o ha sido desactivado.' }));
                     }
 
-                    // Verificar en Supabase si el UID tiene compras previas aprobadas/completadas
+                    // 🔒 REGLA DE SEGURIDAD 1: 1 SOLO USO POR ID DE JUGADOR/USUARIO
+                    // Verificar si este usuario (uid o login_uid) ya utilizó ESTE CÓDIGO en algún pedido previo en Supabase
+                    const { data: usedCouponOrders } = await supabase
+                        .from('ff_orders')
+                        .select('ref, status, pack')
+                        .or(`uid.eq.${cleanUid},login_uid.eq.${cleanUid}`)
+                        .ilike('pack', `%${cleanCode}%`);
+
+                    if (usedCouponOrders && usedCouponOrders.length > 0) {
+                        res.writeHead(200, corsHeaders);
+                        return res.end(JSON.stringify({
+                            success: false,
+                            valid: false,
+                            message: `⚠️ Tu ID (${cleanUid}) ya utilizó el código de descuento '${cleanCode}' en una compra anterior. Los códigos son de 1 solo uso por ID.`
+                        }));
+                    }
+
+                    // Verificar también en el mapa de pedidos en memoria
+                    const inMemCouponUsed = Object.values(orders).some(o => 
+                        (o.uid === cleanUid || o.login_uid === cleanUid) && 
+                        ((o.pack || '').toUpperCase().includes(cleanCode) || (o.coupon || '').toUpperCase() === cleanCode)
+                    );
+
+                    if (inMemCouponUsed) {
+                        res.writeHead(200, corsHeaders);
+                        return res.end(JSON.stringify({
+                            success: false,
+                            valid: false,
+                            message: `⚠️ Tu ID (${cleanUid}) ya utilizó el código de descuento '${cleanCode}' en una compra anterior. Los códigos son de 1 solo uso por ID.`
+                        }));
+                    }
+
+                    // 🔒 REGLA DE SEGURIDAD 2: Verificar si el cupón es de 1era recarga y el usuario ya tiene recargas aprobadas
                     const { data: previousOrders, error: ordersErr } = await supabase
                         .from('ff_orders')
-                        .select('id, status')
-                        .eq('uid', cleanUid)
+                        .select('ref, status')
+                        .or(`uid.eq.${cleanUid},login_uid.eq.${cleanUid}`)
                         .in('status', ['approved', 'completed']);
 
                     if (ordersErr) {
