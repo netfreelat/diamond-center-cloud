@@ -4729,13 +4729,14 @@ const server = http.createServer(async (req, res) => {
         try {
             const { data: allOrders, error } = await supabase
                 .from('ff_orders')
-                .select('time, pack, method, price, status')
+                .select('ref, control_num, time, pack, method, price, status, juego')
                 .eq('status', 'approved')
                 .order('time', { ascending: false });
 
             if (error) throw error;
 
             const tasa = settings.tasa_del_dia || 1;
+            const ruletaHistory = (settings.juegos && Array.isArray(settings.juegos.ruleta_history)) ? settings.juegos.ruleta_history : [];
 
             const now = new Date();
             const partsVE = getCaracasDateParts(now);
@@ -4754,14 +4755,15 @@ const server = http.createServer(async (req, res) => {
 
             const startOfMonth = new Date(Date.UTC(partsVE.year, partsVE.month, 1, 4, 0, 0, 0));
 
-
-            function calcPeriod(orders, from, to = null) {
-                let revenueUsdt = 0;
-                let revenueBs   = 0;
-                let costUsdt    = 0;
-                let countPM     = 0;
-                let countBin    = 0;
-                let totalOrders = 0;
+            function calcPeriod(orders, ruletaList, from, to = null) {
+                let revenueUsdt    = 0;
+                let revenueBs      = 0;
+                let costUsdt       = 0;
+                let canjesCostUsdt = 0;
+                let ruletaCostUsdt = 0;
+                let countPM        = 0;
+                let countBin       = 0;
+                let totalOrders    = 0;
 
                 const salesList = [];
                 for (const o of orders) {
@@ -4827,15 +4829,21 @@ const server = http.createServer(async (req, res) => {
                     const itemCostUsdt = getItemCost(game, packStr, saleUsdt);
                     costUsdt += itemCostUsdt;
 
-                    const itemProfitUsdt = Math.max(0, saleUsdt - itemCostUsdt);
-                    const itemProfitBs   = Math.max(0, saleBs - (itemCostUsdt * tasa));
+                    const isCanje = (o.method === 'canje' || saleUsdt === 0);
+                    if (isCanje) {
+                        canjesCostUsdt += itemCostUsdt;
+                    }
+
+                    // Ganancia real por item (sin forzar Math.max(0), para que canjes reflejen el costo real)
+                    const itemProfitUsdt = saleUsdt - itemCostUsdt;
+                    const itemProfitBs   = saleBs - (itemCostUsdt * tasa);
 
                     let productName = `${game.toUpperCase()} ${o.pack}`;
                     if (game === 'roblox') productName = `Roblox US 10USD`;
                     else if (game === 'freefire') productName = `Free Fire ${o.pack} 💎`;
                     else if (game === 'bloodstrike') productName = `Bloodstrike ${o.pack} Oro`;
                     else if (game === 'mobilelegends') productName = `Mobile Legends ${o.pack} 💎`;
-                    if (o.method === 'canje') productName = `🎁 Canje Cashback (${o.pack})`;
+                    if (isCanje) productName = `🎁 Canje Cashback (${o.pack})`;
 
                     const timeFormatted = !isNaN(t) ? t.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' }) : '';
 
@@ -4843,10 +4851,41 @@ const server = http.createServer(async (req, res) => {
                         ref: orderRef,
                         product: productName,
                         time: timeFormatted,
+                        timestamp: t.getTime(),
                         profitUsdt: +itemProfitUsdt.toFixed(2),
-                        profitBs: +itemProfitBs.toFixed(2)
+                        profitBs: +itemProfitBs.toFixed(2),
+                        isCanje
                     });
                 }
+
+                // Restar premios entregados en Ruleta de la Suerte durante el período
+                for (const h of ruletaList) {
+                    const ht = new Date(h.timestamp || h.date || h.created_at);
+                    if (isNaN(ht.getTime())) continue;
+                    if (ht < from) continue;
+                    if (to && ht >= to) continue;
+
+                    const prizeUsdt = parseFloat(h.prize_usdt) || 0;
+                    if (prizeUsdt <= 0) continue;
+
+                    ruletaCostUsdt += prizeUsdt;
+                    costUsdt += prizeUsdt;
+
+                    const timeFormatted = ht.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Caracas' });
+
+                    salesList.push({
+                        ref: h.order_ref || 'RULETA',
+                        product: `🎰 Premio Ruleta (${h.name || h.uid || 'Cliente'})`,
+                        time: timeFormatted,
+                        timestamp: ht.getTime(),
+                        profitUsdt: -+prizeUsdt.toFixed(2),
+                        profitBs: -+(prizeUsdt * tasa).toFixed(2),
+                        isRuleta: true
+                    });
+                }
+
+                // Ordenar transacciones de más reciente a más antigua
+                salesList.sort((a, b) => b.timestamp - a.timestamp);
 
                 const profitUsdt = revenueUsdt - costUsdt;
                 const profitBs   = profitUsdt * tasa;
@@ -4854,12 +4893,14 @@ const server = http.createServer(async (req, res) => {
 
                 return {
                     totalOrders,
-                    revenueUsdt: +revenueUsdt.toFixed(2),
-                    revenueBs:   +revenueBs.toFixed(2),
-                    costUsdt:    +costUsdt.toFixed(2),
-                    costBs:      +(costUsdt * tasa).toFixed(2),
-                    profitUsdt:  +profitUsdt.toFixed(2),
-                    profitBs:    +profitBs.toFixed(2),
+                    revenueUsdt:    +revenueUsdt.toFixed(2),
+                    revenueBs:      +revenueBs.toFixed(2),
+                    costUsdt:       +costUsdt.toFixed(2),
+                    costBs:         +(costUsdt * tasa).toFixed(2),
+                    canjesCostUsdt: +canjesCostUsdt.toFixed(2),
+                    ruletaCostUsdt: +ruletaCostUsdt.toFixed(2),
+                    profitUsdt:     +profitUsdt.toFixed(2),
+                    profitBs:       +profitBs.toFixed(2),
                     margin,
                     countPM,
                     countBin,
@@ -4869,10 +4910,10 @@ const server = http.createServer(async (req, res) => {
 
             const summary = {
                 tasa,
-                today:     calcPeriod(allOrders, startOfToday),
-                yesterday: calcPeriod(allOrders, startOfYesterday, startOfToday),
-                week:      calcPeriod(allOrders, startOfWeek),
-                month:     calcPeriod(allOrders, startOfMonth)
+                today:     calcPeriod(allOrders, ruletaHistory, startOfToday),
+                yesterday: calcPeriod(allOrders, ruletaHistory, startOfYesterday, startOfToday),
+                week:      calcPeriod(allOrders, ruletaHistory, startOfWeek),
+                month:     calcPeriod(allOrders, ruletaHistory, startOfMonth)
             };
 
             res.writeHead(200, { 'Content-Type': 'application/json' });

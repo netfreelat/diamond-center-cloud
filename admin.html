@@ -2334,17 +2334,19 @@
                     <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">Tasa: ${tasa} Bs/$</div>
                 </div>
 
-                <!-- Costo Jadh -->
+                <!-- Costo Total (Proveedores + Ruleta + Canjes) -->
                 <div class="stat-card" style="padding:16px; background:linear-gradient(135deg,rgba(255,61,113,0.08),rgba(255,61,113,0.02)); border-color:rgba(255,61,113,0.2);">
-                    <span class="label" style="font-size:0.58rem; color:#FF3D71;">🏪 COSTO JADH</span>
+                    <span class="label" style="font-size:0.58rem; color:#FF3D71;">🏪 COSTOS TOTALES</span>
                     <span class="value" style="font-size:1.6rem; color:#FF3D71;">$${d.costUsdt.toFixed(2)}</span>
-                    <div style="font-size:0.65rem; color:var(--text-gray); margin-top:4px;">${d.costBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs</div>
+                    <div style="font-size:0.62rem; color:var(--text-gray); margin-top:4px;">
+                        ${(d.canjesCostUsdt > 0 || d.ruletaCostUsdt > 0) ? `<span style="color:#FFD93D;">Canjes: -$${d.canjesCostUsdt.toFixed(2)}</span> · <span style="color:#FF3D71;">Ruleta: -$${d.ruletaCostUsdt.toFixed(2)}</span>` : `${d.costBs.toLocaleString('es-VE', {maximumFractionDigits:0})} Bs`}
+                    </div>
                 </div>
 
-                <!-- Ganancia Neta (Botón Interactivo) -->
-                <div class="stat-card" onclick="showSimpleProfitBreakdownModal()" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.14),rgba(0,255,148,0.03)); border:1px solid rgba(0,255,148,0.4); cursor:pointer; position:relative; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,255,148,0.12);" title="Toca para ver la lista de ganancia por producto">
+                <!-- Ganancia Neta Real (Botón Interactivo) -->
+                <div class="stat-card" onclick="showSimpleProfitBreakdownModal()" style="padding:16px; background:linear-gradient(135deg,rgba(0,255,148,0.14),rgba(0,255,148,0.03)); border:1px solid rgba(0,255,148,0.4); cursor:pointer; position:relative; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,255,148,0.12);" title="Toca para ver la lista detallada de ganancia quirúrgica por producto">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA</span>
+                        <span class="label" style="font-size:0.58rem; color:${profitColor};"><i class="fa-solid ${profitIcon}"></i> GANANCIA NETA REAL</span>
                         <span style="font-size:0.62rem; background:rgba(0,255,148,0.25); color:#00FF94; padding:2px 7px; border-radius:4px; font-weight:800; border:1px solid rgba(0,255,148,0.4);"><i class="fa-solid fa-list-ul"></i> Ver Lista</span>
                     </div>
                     <span class="value" style="font-size:1.6rem; color:${profitColor};">$${d.profitUsdt.toFixed(2)}</span>
@@ -2375,8 +2377,8 @@
             if (!periodData || !periodData.sales || periodData.sales.length === 0) {
                 return Swal.fire({
                     icon: 'info',
-                    title: '📊 Sin Ventas Aprobadas',
-                    text: 'No hay ventas aprobadas registradas para el período seleccionado.',
+                    title: '📊 Sin Registros Aprobados',
+                    text: 'No hay ventas ni premios registrados para el período seleccionado.',
                     background: 'rgba(20, 10, 35, 0.98)',
                     color: '#fff',
                     confirmButtonColor: '#9D00FF'
@@ -2387,18 +2389,28 @@
             const periodName = periodNames[_currentFinancialPeriod] || 'Hoy';
 
             let listHtml = `
-                <div style="margin-bottom:12px; font-size:0.8rem; color:#aaa; text-align:left;">
-                    Ganancia Neta Total: <strong style="color:#00FF94; font-size:1.05rem;">$${periodData.profitUsdt.toFixed(2)} USDT</strong>
-                    &nbsp;·&nbsp; ${periodData.totalOrders} venta${periodData.totalOrders !== 1 ? 's' : ''}
+                <div style="margin-bottom:12px; font-size:0.78rem; color:#aaa; text-align:left; background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span>💵 Ventas Brutas: <strong style="color:#FFD93D;">+$${periodData.revenueUsdt.toFixed(2)} USDT</strong></span>
+                        <span>🎁 Canjes: <strong style="color:#FF3D71;">-$${(periodData.canjesCostUsdt || 0).toFixed(2)} USDT</strong></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span>🎰 Ruleta: <strong style="color:#FF3D71;">-$${(periodData.ruletaCostUsdt || 0).toFixed(2)} USDT</strong></span>
+                        <span>📦 Total Ventas: <strong>${periodData.totalOrders}</strong></span>
+                    </div>
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; font-weight:800; font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Ganancia Neta Real:</span>
+                        <strong style="color:${periodData.profitUsdt >= 0 ? '#00FF94' : '#FF3D71'}; font-size:1.1rem;">$${periodData.profitUsdt.toFixed(2)} USDT</strong>
+                    </div>
                 </div>
-                <div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">`;
+                <div style="max-height: 360px; overflow-y: auto; padding-right: 4px;">`;
 
             periodData.sales.forEach(s => {
                 const isPos = s.profitUsdt >= 0;
                 const color = isPos ? '#00FF94' : '#FF3D71';
                 const sign = isPos ? '+' : '-';
                 listHtml += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; margin-bottom:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.07); text-align:left;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; margin-bottom:6px; background:${s.isRuleta ? 'rgba(255,61,113,0.07)' : s.isCanje ? 'rgba(255,217,61,0.07)' : 'rgba(255,255,255,0.03)'}; border-radius:8px; border:1px solid ${s.isRuleta ? 'rgba(255,61,113,0.25)' : s.isCanje ? 'rgba(255,217,61,0.25)' : 'rgba(255,255,255,0.07)'}; text-align:left;">
                         <div>
                             <strong style="color:#fff; font-size:0.88rem; display:block;">${s.product}</strong>
                             <span style="font-size:0.7rem; color:#888;">Ref: <code style="color:var(--secondary);">${s.ref}</code> ${s.time ? `· ${s.time}` : ''}</span>
@@ -2419,7 +2431,7 @@
                 color: '#fff',
                 confirmButtonText: 'Cerrar',
                 confirmButtonColor: '#9D00FF',
-                width: '420px'
+                width: '440px'
             });
         }
         // ────────────────────────────────────────────────────────────────────
@@ -3257,6 +3269,8 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                 row.className = 'ad-admin-row';
                 row.style = 'background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px; position: relative; margin-bottom: 5px;';
                 
+                const imgSrc = (ad.imagen || '').trim();
+                const previewStyle = imgSrc ? 'display: block;' : 'display: none;';
                 row.innerHTML = `
                     <div style="position: absolute; top: 15px; right: 15px;">
                         <button type="button" onclick="removeAdRow(${index})" class="btn-logout-header" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
@@ -3265,7 +3279,11 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                     <div style="display: grid; grid-template-columns: 1fr; gap: 10px; padding-right: 40px; text-align: left;">
                         <div class="form-group" style="margin: 0; padding: 0;">
                             <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">URL de la Imagen:</label>
-                            <input type="text" class="ad-image-input" value="${ad.imagen || ''}" placeholder="Ej: https://imgur.com/anuncio.png o img/tarjeta_semanal.png" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
+                            <input type="text" class="ad-image-input" value="${imgSrc}" placeholder="Ej: https://imgur.com/anuncio.png o img/tarjeta_semanal.png" oninput="updateAdPreview(this)" style="padding: 10px 14px; font-size: 0.85rem; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px;">
+                            <div class="ad-preview-box" style="margin-top: 8px; ${previewStyle}">
+                                <img src="${imgSrc}" class="ad-preview-img" style="max-height: 80px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                                <span class="ad-error-msg" style="display: none; font-size: 0.75rem; color: #ff5252;"><i class="fa-solid fa-triangle-exclamation"></i> No se pudo cargar la imagen (verifica la URL o la ruta en img/).</span>
+                            </div>
                         </div>
                         <div class="form-group" style="margin: 0; padding: 0;">
                             <label style="font-size: 0.75rem; color: var(--text-gray); margin-bottom: 4px; display: block;">Enlace de Redirección (Opcional):</label>
@@ -3283,6 +3301,38 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
             renderAdsAdmin(ads);
         };
 
+        window.cleanAdImagePath = function(rawPath) {
+            if (!rawPath) return '';
+            let val = rawPath.trim();
+            if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).trim();
+            if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1).trim();
+            val = val.replace(/\\/g, '/');
+            const imgIdx = val.toLowerCase().lastIndexOf('/img/');
+            if (imgIdx !== -1) {
+                return val.substring(imgIdx + 1);
+            }
+            return val;
+        };
+
+        window.updateAdPreview = function(inputEl) {
+            let val = inputEl.value;
+            const cleaned = cleanAdImagePath(val);
+            if (cleaned !== val) {
+                inputEl.value = cleaned;
+                val = cleaned;
+            }
+            const parent = inputEl.parentElement;
+            const previewBox = parent ? parent.querySelector('.ad-preview-box') : null;
+            const img = previewBox ? previewBox.querySelector('.ad-preview-img') : null;
+            if (!previewBox || !img) return;
+            if (!val) {
+                previewBox.style.display = 'none';
+                return;
+            }
+            previewBox.style.display = 'block';
+            img.src = val;
+        };
+
         window.removeAdRow = function(index) {
             const ads = getAdsDataFromInputs();
             ads.splice(index, 1);
@@ -3296,11 +3346,8 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                 const imgEl = row.querySelector('.ad-image-input');
                 const linkEl = row.querySelector('.ad-link-input');
                 if (imgEl) {
-                    let imagen = imgEl.value.trim();
+                    let imagen = cleanAdImagePath(imgEl.value);
                     let link = linkEl ? linkEl.value.trim() : '';
-                    if (imagen.startsWith('"') && imagen.endsWith('"')) {
-                        imagen = imagen.slice(1, -1);
-                    }
                     if (link.startsWith('"') && link.endsWith('"')) {
                         link = link.slice(1, -1);
                     }
@@ -5001,6 +5048,14 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                         <input type="number" id="coupon-default-percent" value="10" min="1" max="100" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;width:90px;">
                     </div>
                     <div>
+                        <label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Tipo de Uso</label>
+                        <select id="coupon-type-select" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;min-width:180px;">
+                            <option value="mini_influencer">⭐ Mini Influencer (-3% Desc. + $0.30 USDT Influencer)</option>
+                            <option value="multi_use">🔄 Multiuso (1era Recarga)</option>
+                            <option value="single_use">⚡ UN SOLO USO (1 Uso Total)</option>
+                        </select>
+                    </div>
+                    <div>
                         <label style="font-size:0.75rem;color:#b0a8c0;display:block;margin-bottom:4px;">Código Personalizado (opcional)</label>
                         <input type="text" id="coupon-custom-code" placeholder="Ej: BIENVENIDA10" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;text-transform:uppercase;width:180px;">
                     </div>
@@ -5036,6 +5091,64 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                         <tr><td colspan="7" style="text-align:center;padding:20px;color:#b0a8c0;">Cargando cupones...</td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- HISTORIAL DE USOS Y GANANCIAS POR CÓDIGO DE MINI INFLUENCERS -->
+            <div style="margin-top:36px;background:rgba(255,255,255,0.02);border:1px solid rgba(0,255,148,0.25);border-radius:16px;padding:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                    <h3 style="color:#00FF94;font-size:1.15rem;margin:0;"><i class="fa-solid fa-users-viewfinder"></i> Historial de Usos, Referidos y Ganancias por Código</h3>
+                    <button onclick="loadCouponUsagesAdmin()" class="btn-main" style="width:auto;padding:7px 14px;font-size:0.8rem;background:rgba(0,255,148,0.15);color:#00FF94;border:1px solid rgba(0,255,148,0.3);">
+                        <i class="fa-solid fa-sync-alt"></i> Actualizar Usos
+                    </button>
+                </div>
+
+                <!-- METRICAS RESUMEN -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
+                    <div style="background:rgba(0,0,0,0.35);padding:14px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:0.75rem;color:#b0a8c0;">Total Referidos (Usos)</div>
+                        <div id="kpi-coupon-usages-count" style="font-size:1.4rem;font-weight:800;color:#fff;margin-top:4px;">0</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.35);padding:14px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:0.75rem;color:#b0a8c0;">Ahorro Total Referidos (-3%)</div>
+                        <div id="kpi-coupon-savings-total" style="font-size:1.4rem;font-weight:800;color:#FFD93D;margin-top:4px;">$0.00 USDT</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.35);padding:14px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:0.75rem;color:#b0a8c0;">Ganancias Mini Influencers (+$0.30)</div>
+                        <div id="kpi-coupon-influencer-earnings" style="font-size:1.4rem;font-weight:800;color:#00FF94;margin-top:4px;">$0.00 USDT</div>
+                    </div>
+                </div>
+
+                <!-- FILTROS -->
+                <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+                    <input type="text" id="coupon-usage-search" placeholder="🔍 Buscar por código, influencer o UID referido..." onkeyup="filterCouponUsagesTable()" style="flex:1;min-width:220px;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.85rem;">
+                    <select id="coupon-usage-status-filter" onchange="filterCouponUsagesTable()" style="padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);color:#fff;font-size:0.85rem;min-width:150px;">
+                        <option value="all">Todos los estados</option>
+                        <option value="approved">🟢 Aprobados</option>
+                        <option value="pending">⏳ Pendientes</option>
+                        <option value="rejected">❌ Rechazados</option>
+                    </select>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código Usado</th>
+                                <th>Mini Influencer</th>
+                                <th>Usuario Referido</th>
+                                <th>Pedido / Paquete</th>
+                                <th>Monto Base</th>
+                                <th>Ahorro Referido (-3%)</th>
+                                <th>Ganancia Influencer</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coupon-usages-admin-table-body">
+                            <tr><td colspan="9" style="text-align:center;padding:20px;color:#b0a8c0;">Cargando historial de usos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -5513,6 +5626,7 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                 allCoupons = data.coupons || [];
                 renderCouponsTable();
                 populateInfluencerSelect();
+                loadCouponUsagesAdmin();
             } else {
                 console.error('Error cargando cupones:', data.message);
             }
@@ -5541,13 +5655,21 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
             return;
         }
 
-        tbody.innerHTML = allCoupons.map(c => `
+        tbody.innerHTML = allCoupons.map(c => {
+            const isMini = c.type === 'mini_influencer' || c.is_mini_influencer || !!c.influencer_id;
+            const isSingle = c.type === 'single_use' || c.max_uses === 1;
+            const badgeHtml = isMini
+                ? `<span style="font-size:0.8rem;color:#00FF94;background:rgba(0,255,148,0.12);padding:4px 8px;border-radius:6px;border:1px solid rgba(0,255,148,0.3);font-weight:700;">⭐ Mini Influencer (-3% / +$0.30 USDT)</span>`
+                : (isSingle
+                    ? `<span style="font-size:0.8rem;color:#FF3D71;background:rgba(255,61,113,0.12);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,61,113,0.3);font-weight:700;">⚡ UN SOLO USO (1 Uso Total)</span>`
+                    : `<span style="font-size:0.8rem;color:#FFD93D;background:rgba(255,217,61,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,217,61,0.2);">🔄 Multiuso (1era Recarga)</span>`);
+            return `
             <tr>
                 <td><strong style="color:var(--secondary);font-size:1rem;letter-spacing:1px;"><i class="fa-solid fa-ticket"></i> ${escInf(c.code)}</strong></td>
                 <td><span style="color:#00FF94;font-weight:800;font-size:1.05rem;">${c.discount_percent}% OFF</span></td>
-                <td><span style="font-size:0.8rem;color:#FFD93D;background:rgba(255,217,61,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,217,61,0.2);">🔒 1era Recarga de Usuario</span></td>
+                <td>${badgeHtml}</td>
                 <td><small style="color:#b0a8c0;">${escInf(c.influencer_name || 'General')}</small></td>
-                <td><strong style="color:#fff;">${c.uses_count || 0}</strong> uso(s)</td>
+                <td><strong style="color:#fff;">${c.uses_count || 0}</strong> / ${isSingle ? '1' : '∞'} uso(s)</td>
                 <td>
                     <input type="checkbox" ${c.is_active !== false ? 'checked' : ''} onchange="toggleCouponStatus(${c.id}, this.checked)" style="width:16px;height:16px;cursor:pointer;">
                     ${c.is_active !== false ? '<span style="color:#00FF94;font-weight:700;margin-left:4px;">Activo</span>' : '<span style="color:#FF3D71;font-weight:700;margin-left:4px;">Inactivo</span>'}
@@ -5559,11 +5681,101 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
                     </div>
                 </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    let allCouponUsages = [];
+
+    async function loadCouponUsagesAdmin() {
+        try {
+            const res = await infFetch('/api/admin/coupons/usage-history');
+            const data = await res.json();
+            if (data.success) {
+                allCouponUsages = data.usages || [];
+                renderCouponUsagesTable();
+            }
+        } catch(e) {
+            console.error('Error cargando historial de uso de cupones:', e.message);
+        }
+    }
+
+    function renderCouponUsagesTable() {
+        const tbody = document.getElementById('coupon-usages-admin-table-body');
+        if (!tbody) return;
+
+        const search = (document.getElementById('coupon-usage-search')?.value || '').toLowerCase();
+        const statusFilter = document.getElementById('coupon-usage-status-filter')?.value || 'all';
+
+        const filtered = allCouponUsages.filter(u => {
+            const matchSearch = !search ||
+                (u.coupon_code || '').toLowerCase().includes(search) ||
+                (u.influencer_name || '').toLowerCase().includes(search) ||
+                (u.referred_uid || '').toLowerCase().includes(search) ||
+                (u.referred_name || '').toLowerCase().includes(search);
+            const matchStatus = statusFilter === 'all' || u.status === statusFilter;
+            return matchSearch && matchStatus;
+        });
+
+        const totalApproved = allCouponUsages.filter(u => u.status === 'approved');
+        const totalSavings = totalApproved.reduce((sum, u) => sum + (parseFloat(u.discount_usdt) || 0), 0);
+        const totalEarnings = totalApproved.reduce((sum, u) => sum + (parseFloat(u.influencer_reward_usdt) || 0), 0);
+
+        if (document.getElementById('kpi-coupon-usages-count')) {
+            document.getElementById('kpi-coupon-usages-count').textContent = allCouponUsages.length;
+        }
+        if (document.getElementById('kpi-coupon-savings-total')) {
+            document.getElementById('kpi-coupon-savings-total').textContent = `$${totalSavings.toFixed(2)} USDT`;
+        }
+        if (document.getElementById('kpi-coupon-influencer-earnings')) {
+            document.getElementById('kpi-coupon-influencer-earnings').textContent = `$${totalEarnings.toFixed(2)} USDT`;
+        }
+
+        if (!filtered || filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#b0a8c0;">No se encontraron registros de uso con los filtros seleccionados.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(u => {
+            const statusBadge = u.status === 'approved'
+                ? `<span style="color:#00FF94;background:rgba(0,255,148,0.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(0,255,148,0.3);font-size:0.75rem;font-weight:700;">🟢 Aprobado</span>`
+                : (u.status === 'rejected'
+                    ? `<span style="color:#FF3D71;background:rgba(255,61,113,0.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(255,61,113,0.3);font-size:0.75rem;font-weight:700;">❌ Rechazado</span>`
+                    : `<span style="color:#FFD93D;background:rgba(255,217,61,0.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(255,217,61,0.3);font-size:0.75rem;font-weight:700;">⏳ Pendiente</span>`);
+
+            const formattedDate = u.created_at ? new Date(u.created_at).toLocaleString('es-VE', { dateStyle:'short', timeStyle:'short' }) : 'N/A';
+
+            return `
+            <tr>
+                <td><strong style="color:var(--secondary);letter-spacing:1px;">🎟️ ${escInf(u.coupon_code)}</strong></td>
+                <td><strong style="color:#fff;">${escInf(u.influencer_name || 'General')}</strong></td>
+                <td>
+                    <div><strong style="color:#fff;">${escInf(u.referred_name)}</strong></div>
+                    <small style="color:#00D4FF;">ID: ${escInf(u.referred_uid)}</small>
+                    ${u.referred_wa && u.referred_wa !== 'N/A' ? `<br><small style="color:#b0a8c0;"><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> ${escInf(u.referred_wa)}</small>` : ''}
+                </td>
+                <td>
+                    <div style="font-weight:700;color:#fff;">${escInf(u.pack)}</div>
+                    <small style="color:#b0a8c0;">Ref: ${escInf(u.ref)}</small>
+                </td>
+                <td><span style="color:#fff;">$${(u.base_price_usdt || 0).toFixed(2)} USDT</span></td>
+                <td><span style="color:#FFD93D;font-weight:800;">-$${(u.discount_usdt || 0).toFixed(2)} (${u.discount_percent || 3}%)</span></td>
+                <td><span style="color:#00FF94;font-weight:800;">+$${(u.influencer_reward_usdt || 0.30).toFixed(2)} USDT</span></td>
+                <td>${statusBadge}</td>
+                <td><small style="color:#b0a8c0;">${formattedDate}</small></td>
+            </tr>
+            `;
+        }).join('');
+    }
+
+    function filterCouponUsagesTable() {
+        renderCouponUsagesTable();
     }
 
     async function createCouponAdmin() {
         const percent = parseFloat(document.getElementById('coupon-default-percent').value);
+        const typeSelect = document.getElementById('coupon-type-select');
+        const couponType = typeSelect ? typeSelect.value : 'multi_use';
         const code = document.getElementById('coupon-custom-code').value.trim();
         const infSelect = document.getElementById('coupon-influencer-select');
         const infId = infSelect ? infSelect.value : null;
@@ -5577,13 +5789,14 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
         try {
             const res = await infFetch('/api/admin/coupons/create', {
                 method: 'POST',
-                body: JSON.stringify({ code, discount_percent: percent, influencer_id: infId, influencer_name: infName })
+                body: JSON.stringify({ code, discount_percent: percent, type: couponType, influencer_id: infId, influencer_name: infName })
             });
             const data = await res.json();
             if (data.success) {
                 document.getElementById('coupon-custom-code').value = '';
                 loadCouponsAdmin();
-                Swal.fire({ icon: 'success', title: '¡Código Creado!', text: `Código ${data.coupon.code} (${percent}% OFF) generado con éxito.`, background: '#0d0d1f', color: '#fff', timer: 2000, showConfirmButton: false });
+                const typeLabel = couponType === 'single_use' ? 'UN SOLO USO' : 'MULTIUSO';
+                Swal.fire({ icon: 'success', title: '¡Código Creado!', text: `Código ${data.coupon.code} (${percent}% OFF - ${typeLabel}) generado con éxito.`, background: '#0d0d1f', color: '#fff', timer: 2500, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
             }
@@ -5594,6 +5807,8 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
 
     async function generateAutoCouponAdmin() {
         const percent = parseFloat(document.getElementById('coupon-default-percent').value) || 10;
+        const typeSelect = document.getElementById('coupon-type-select');
+        const couponType = typeSelect ? typeSelect.value : 'multi_use';
         const infSelect = document.getElementById('coupon-influencer-select');
         const infId = infSelect ? infSelect.value : null;
         const infName = infSelect && infSelect.selectedIndex > 0 ? infSelect.options[infSelect.selectedIndex].getAttribute('data-name') : null;
@@ -5601,12 +5816,13 @@ ${order.pin ? `\n🔑 *Credenciales/PIN:*\n${order.pin}` : ''}
         try {
             const res = await infFetch('/api/admin/coupons/create', {
                 method: 'POST',
-                body: JSON.stringify({ discount_percent: percent, influencer_id: infId, influencer_name: infName })
+                body: JSON.stringify({ discount_percent: percent, type: couponType, influencer_id: infId, influencer_name: infName })
             });
             const data = await res.json();
             if (data.success) {
                 loadCouponsAdmin();
-                Swal.fire({ icon: 'success', title: '¡Código Generado!', text: `Se generó el código automático: ${data.coupon.code} (${percent}% OFF).`, background: '#0d0d1f', color: '#fff' });
+                const typeLabel = couponType === 'single_use' ? 'UN SOLO USO' : 'MULTIUSO';
+                Swal.fire({ icon: 'success', title: '¡Código Generado!', text: `Se generó el código automático: ${data.coupon.code} (${percent}% OFF - ${typeLabel}).`, background: '#0d0d1f', color: '#fff' });
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: data.message || data.error, background: '#0d0d1f', color: '#fff' });
             }
