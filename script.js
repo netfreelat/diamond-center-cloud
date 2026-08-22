@@ -2808,7 +2808,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success && data.valid) {
                 window.appliedCoupon = data;
                 msgEl.style.color = '#00FF94';
-                msgEl.innerHTML = `🎉 <strong>¡Código ${data.code} APLICADO!</strong><br>${data.discount_percent}% de descuento en tu 1era recarga (-$${data.savings} USDT ahorro).<br>Nuevo total: <strong style="font-size:0.95rem;color:#00FF94;">$${data.final_amount} USDT</strong>.`;
+                msgEl.innerHTML = `🎉 <strong>¡Código ${data.code} APLICADO!</strong><br>${data.discount_percent}% de descuento (-$${data.savings} USDT ahorro).<br>Nuevo total: <strong style="font-size:0.95rem;color:#00FF94;">$${data.final_amount} USDT</strong>.`;
 
                 // Recalcular montos mostrados en Pago Móvil y Binance Pay
                 const finalBs = (data.final_amount * DOLAR_RATE).toFixed(2);
@@ -4054,6 +4054,10 @@ document.addEventListener('DOMContentLoaded', () => {
             img.src = ad.imagen.trim();
             img.alt = `Publicidad ${index + 1}`;
             img.loading = 'lazy';
+            img.onerror = () => {
+                console.warn(`[ADS] ⚠️ Banner #${index + 1} no pudo cargar: ${ad.imagen}`);
+                slide.style.display = 'none';
+            };
             slide.appendChild(img);
             
             if (ad.link && ad.link.trim() !== '') {

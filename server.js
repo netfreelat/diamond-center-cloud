@@ -51,6 +51,7 @@ const PATH_SUBMISSIONS = path.join(__dirname, 'influencer_submissions.json');
 const PATH_PAYMENTS    = path.join(__dirname, 'influencer_payments.json');
 const PATH_RATES       = path.join(__dirname, 'influencer_rates.json');
 const PATH_COUPONS     = path.join(__dirname, 'coupons.json');
+const PATH_COUPON_USAGES = path.join(__dirname, 'coupon_usages.json');
 
 function readJsonFile(filePath, defaultData = []) {
     try {
@@ -668,12 +669,29 @@ function getOrderProfit(order, tasa) {
         }
     }
 
-    const packKey = (order.pack || '').toString().split(' ')[0].replace(',','').trim();
-    const costUsdt = getItemCost(order.juego, packKey);
+    // Detección precisa del juego si no se registró o es genérico
+    let game = (order.juego || '').toString().toLowerCase().trim();
+    const packStr = (order.pack || '').toString().trim();
+    if (!game || game === 'freefire') {
+        const pLower = packStr.toLowerCase();
+        if (pLower.includes('roblox') || pLower.includes('usd') || packStr === '10 + 0' || packStr === '10') {
+            game = 'roblox';
+        } else if (pLower.includes('blood') || pLower.includes('moneda') || pLower.includes('oro')) {
+            game = 'bloodstrike';
+        } else if (pLower.includes('mobile') || pLower.includes('mlbb') || pLower.includes('legend')) {
+            game = 'mobilelegends';
+        } else if (['netflix','spotify','canva','disney','prime','crunchyroll','max','hbo','vix'].some(s => pLower.includes(s))) {
+            game = 'streaming';
+        } else {
+            game = 'freefire';
+        }
+    }
+
+    const costUsdt = getItemCost(game, packStr, saleUsdt);
     const costBs = costUsdt * tasa;
 
-    const profitUsdt = saleUsdt - costUsdt;
-    const profitBs = saleBs - costBs;
+    const profitUsdt = Math.max(0, parseFloat((saleUsdt - costUsdt).toFixed(2)));
+    const profitBs = Math.max(0, parseFloat((saleBs - costBs).toFixed(2)));
 
     return { saleUsdt, saleBs, costUsdt, costBs, profitUsdt, profitBs };
 }
@@ -837,18 +855,34 @@ const JADH_COSTS = {
     'ml_1515': 28.60   // MLBB 1515+273
 };
 
-function getItemCost(juego, packKey) {
-    const key = (packKey || '').toString().split(' ')[0].replace(',','').trim();
-    if (juego === 'roblox') {
-        return JADH_COSTS['roblox_' + key] || JADH_COSTS[key] || 9.55;
+function getItemCost(juego, packStr, saleUsdt = 0) {
+    const rawStr = (packStr || '').toString().trim();
+    // Extraer la primera palabra y eliminar puntos y comas (ej: "1.000" -> "1000", "5.000" -> "5000")
+    const firstWord = rawStr.split(' ')[0] || '';
+    const key = firstWord.replace(/[\.,]/g, '').trim();
+
+    const cleanJuego = (juego || '').toString().toLowerCase().trim();
+
+    let cost = 0;
+
+    if (cleanJuego === 'roblox') {
+        cost = JADH_COSTS['roblox_' + key] || JADH_COSTS[key] || 9.55;
+    } else if (cleanJuego === 'bloodstrike') {
+        cost = JADH_COSTS['bs_' + key] || JADH_COSTS[key] || 0;
+    } else if (cleanJuego === 'mobilelegends' || cleanJuego === 'mobilelegendsus') {
+        cost = JADH_COSTS['ml_' + key] || JADH_COSTS[key] || 0;
+    } else {
+        cost = JADH_COSTS[key] || JADH_COSTS['bs_' + key] || JADH_COSTS['ml_' + key] || 0;
     }
-    if (juego === 'bloodstrike') {
-        return JADH_COSTS['bs_' + key] || JADH_COSTS[key] || 0;
+
+    // Si aún no se encontró costo específico en JADH_COSTS y el monto de venta es positivo (> 0),
+    // se calcula el costo del proveedor estimado en ~88% del precio de venta (margen ~12%)
+    // para evitar que compras de otros juegos o servicios registren el 100% como ganancia neta.
+    if (cost <= 0 && saleUsdt > 0) {
+        cost = parseFloat((saleUsdt * 0.88).toFixed(2));
     }
-    if (juego === 'mobilelegends' || juego === 'mobilelegendsus') {
-        return JADH_COSTS['ml_' + key] || JADH_COSTS[key] || 0;
-    }
-    return JADH_COSTS[key] || 0;
+
+    return cost;
 }
 
 const defaultPublicidades = [
@@ -994,7 +1028,13 @@ async function loadFromSupabase() {
                 settings.active_pagomovil_bank = settingsData.metodos_pago.active_pagomovil_bank;
             }
             settings.whatsapp = settingsData.whatsapp_config;
-            settings.publicidades = (settings.whatsapp && settings.whatsapp.publicidades && settings.whatsapp.publicidades.length > 0) ? settings.whatsapp.publicidades : (settingsData.publicidades && settingsData.publicidades.length > 0 ? settingsData.publicidades : defaultPublicidades);
+            settings.publicidades = (settingsData.publicidades && Array.isArray(settingsData.publicidades) && settingsData.publicidades.length > 0) 
+                ? settingsData.publicidades 
+                : ((settingsData.juegos && settingsData.juegos.publicidades && Array.isArray(settingsData.juegos.publicidades) && settingsData.juegos.publicidades.length > 0)
+                    ? settingsData.juegos.publicidades
+                    : ((settings.publicidades && Array.isArray(settings.publicidades) && settings.publicidades.length > 0)
+                        ? settings.publicidades
+                        : defaultPublicidades));
             if (settingsData.precios && Object.keys(settingsData.precios).length > 0) {
                 settings.precios = settingsData.precios;
             }
@@ -1590,11 +1630,85 @@ function saveRecent(name, pack, type = 'recarga') {
         .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando reciente:', error.message); });
 }
 
+function processCouponUsageReward(ref, status) {
+    try {
+        if (!ref) return;
+        const usages = readJsonFile(PATH_COUPON_USAGES, []);
+        let usage = usages.find(u => u.ref === ref);
+
+        if (!usage && orders[ref] && orders[ref].coupon) {
+            const couponCode = orders[ref].coupon;
+            const couponsList = readJsonFile(PATH_COUPONS, []);
+            const cMatch = couponsList.find(c => (c.code || '').toUpperCase() === couponCode.toUpperCase());
+            if (cMatch) {
+                const basePriceUsdt = parseFloat((orders[ref].price || '').toString().split('USDT')[0]) || 0;
+                const isMiniInf = cMatch.type === 'mini_influencer' || cMatch.is_mini_influencer || !!cMatch.influencer_id;
+                const discountPercent = parseFloat(cMatch.discount_percent) || (isMiniInf ? 3 : 10);
+                const discountUsdt = parseFloat((basePriceUsdt * (discountPercent / 100)).toFixed(2));
+                const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.30) : 0;
+
+                usage = {
+                    id: usages.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1,
+                    ref: ref,
+                    coupon_code: cMatch.code,
+                    influencer_id: cMatch.influencer_id || null,
+                    influencer_name: cMatch.influencer_name || 'General',
+                    referred_uid: orders[ref].uid || orders[ref].login_uid || 'N/A',
+                    referred_name: orders[ref].name || 'Cliente',
+                    referred_wa: orders[ref].wa || 'N/A',
+                    pack: orders[ref].pack || 'N/A',
+                    base_price_usdt: basePriceUsdt,
+                    discount_percent: discountPercent,
+                    discount_usdt: discountUsdt,
+                    influencer_reward_usdt: infRewardUsdt,
+                    status: status,
+                    reward_credited: false,
+                    created_at: orders[ref].time || getVEISO()
+                };
+                usages.push(usage);
+            }
+        }
+
+        if (!usage) return;
+
+        usage.status = status;
+
+        if (status === 'approved' && !usage.reward_credited && usage.influencer_id) {
+            const rewardAmount = parseFloat(usage.influencer_reward_usdt) || 0.30;
+            if (rewardAmount > 0) {
+                const influencers = readJsonFile(PATH_INFLUENCERS, []);
+                const inf = influencers.find(i => i.id === usage.influencer_id);
+
+                if (inf) {
+                    inf.dollars_balance = parseFloat(((inf.dollars_balance || 0) + rewardAmount).toFixed(2));
+                    inf.total_dollars_earned = parseFloat(((inf.total_dollars_earned || 0) + rewardAmount).toFixed(2));
+                    inf.diamonds_balance = inf.dollars_balance; // Legacy compat
+                    writeJsonFile(PATH_INFLUENCERS, influencers);
+
+                    usage.reward_credited = true;
+                    usage.credited_at = getVEISO();
+
+                    console.log(`[MINI-INFLUENCER-REWARD] 💰 $${rewardAmount} USDT acreditados a @${inf.tiktok_handle || inf.username} (ID: ${inf.id}) por cupón '${usage.coupon_code}' en pedido aprobado ${ref}`);
+
+                    if (inf.ff_uid) {
+                        sendPushToUser(inf.ff_uid, '💰 Comisiones por Referido!', `¡Ganaste $${rewardAmount.toFixed(2)} USDT por una recarga referida con tu código '${usage.coupon_code}'!`, '/icon-192.png', '/');
+                    }
+                }
+            }
+        }
+
+        writeJsonFile(PATH_COUPON_USAGES, usages);
+    } catch (e) {
+        console.error('[MINI-INFLUENCER-REWARD] Error procesando recompensa de cupón:', e.message);
+    }
+}
+
 function updateOrderStatus(ref, status, pin = null, reason = null) {
     if (!orders[ref]) {
         orders[ref] = { ref, status };
     }
     orders[ref].status = status;
+    processCouponUsageReward(ref, status);
     if (pin) orders[ref].pin = pin;
     orders[ref].reason = reason;
 
@@ -2272,7 +2386,26 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
-                        console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} sin pago BDV detectado aún. Se mantiene PENDIENTE.`);
+                        const orderAgeMin = (now - new Date(order.time).getTime()) / (1000 * 60);
+                        if (orderAgeMin >= 3) {
+                            console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras ${orderAgeMin.toFixed(1)} min. Auto-rechazando...`);
+                            orders[ref].status = 'rejected';
+                            const reason = 'Pago no encontrado en movimientos bancarios BDV tras 3 minutos. Verifica la referencia o intenta de nuevo.';
+                            orders[ref].reason = reason;
+                            updateOrderStatus(ref, 'rejected', null, reason);
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Auto-Rechazo (Sin pago en 3 min)');
+                            sendPushToUser(
+                                orders[ref].login_uid || orders[ref].uid, 
+                                'Pago Rechazado ❌', 
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 3 minutos.`, 
+                                '/icon-192.png', 
+                                '/historial'
+                            );
+                            updateTelegramStatus(ref);
+                        } else {
+                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} sin pago BDV detectado aún (${orderAgeMin.toFixed(1)}/3 min). Se mantiene PENDIENTE.`);
+                        }
                     }
                 }
             } catch (bdvCycleErr) {
@@ -2406,7 +2539,25 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
-                        console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} sin pago Banesco detectado aún. Se mantiene PENDIENTE.`);
+                        const orderAgeMin = (now - new Date(order.time).getTime()) / (1000 * 60);
+                        if (orderAgeMin >= 3) {
+                            console.log(`[BANESCO-AUTO] ❌ Pedido ${ref} sin pago Banesco tras ${orderAgeMin.toFixed(1)} min. Auto-rechazando...`);
+                            orders[ref].status = 'rejected';
+                            const reason = 'Pago no encontrado en movimientos bancarios Banesco tras 3 minutos. Verifica la referencia o intenta de nuevo.';
+                            orders[ref].reason = reason;
+                            updateOrderStatus(ref, 'rejected', null, reason);
+                            queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Auto-Rechazo (Sin pago en 3 min)');
+                            sendPushToUser(
+                                orders[ref].login_uid || orders[ref].uid,
+                                'Pago Rechazado ❌',
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 3 minutos.`,
+                                '/icon-192.png', '/historial'
+                            );
+                            updateTelegramStatus(ref);
+                        } else {
+                            console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} sin pago Banesco detectado aún (${orderAgeMin.toFixed(1)}/3 min). Se mantiene PENDIENTE.`);
+                        }
                     }
                 }
             } catch (banescoCycleErr) {
@@ -2555,6 +2706,42 @@ async function runAutoApprovalCycle() {
                 binanceAutoApproveRunning = false;
             }
         }
+    }
+
+    // ── BARREDURA GENERAL: AUTO-RECHAZAR PEDIDOS PENDIENTES SIN PAGO TRAS 3 MINUTOS ──
+    try {
+        const currentMs = Date.now();
+        const pendingSweep = Object.entries(orders).filter(
+            ([, o]) => o.status === 'pending' && o.method !== 'canje'
+        );
+
+        for (const [ref, order] of pendingSweep) {
+            if (order.status !== 'pending') continue;
+            const orderTimeMs = new Date(order.time).getTime();
+            if (isNaN(orderTimeMs)) continue;
+
+            const ageMinutes = (currentMs - orderTimeMs) / (1000 * 60);
+            if (ageMinutes >= 3) {
+                console.log(`[AUTO-TIMEOUT-3MIN] ❌ Pedido ${ref} (${order.method}) pendiente por ${ageMinutes.toFixed(1)} min sin confirmación de pago. Auto-rechazando...`);
+                orders[ref].status = 'rejected';
+                const reason = 'Pago no encontrado en los movimientos bancarios tras 3 minutos. Verifica la referencia o intenta de nuevo.';
+                orders[ref].reason = reason;
+
+                updateOrderStatus(ref, 'rejected', null, reason);
+                queueWhatsAppMessage({ ...orders[ref], ref }, false);
+                notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Auto-Rechazo (Sin pago en 3 min)');
+                sendPushToUser(
+                    orders[ref].login_uid || orders[ref].uid,
+                    'Pago Rechazado ❌',
+                    `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se verificó la referencia en los movimientos tras 3 minutos.`,
+                    '/icon-192.png',
+                    '/historial'
+                );
+                updateTelegramStatus(ref);
+            }
+        }
+    } catch (sweepErr) {
+        console.error('[AUTO-TIMEOUT-3MIN] Error en barredura de timeouts:', sweepErr.message);
     }
     // ─────────────────────────────────────────────────────────────────────────
 }
@@ -3257,15 +3444,50 @@ const server = http.createServer(async (req, res) => {
 
         orders[ref] = { uid, login_uid, name, pack, method, price, status: 'pending', time: currentTime, wa: wa, control_num, ip_address, juego, coupon: couponCode || null };
         
-        // Incrementar contador de usos del cupón si se aplicó
+        // Incrementar contador de usos del cupón si se aplicó y auto-desactivar si es de UN SOLO USO
         if (couponCode) {
             try {
                 const couponsList = readJsonFile(PATH_COUPONS, []);
                 const cMatch = couponsList.find(c => (c.code || '').toUpperCase() === couponCode.toUpperCase());
                 if (cMatch) {
                     cMatch.uses_count = (cMatch.uses_count || 0) + 1;
+                    const isSingleUse = cMatch.type === 'single_use' || cMatch.max_uses === 1;
+                    if (isSingleUse && cMatch.uses_count >= (cMatch.max_uses || 1)) {
+                        cMatch.is_active = false;
+                        console.log(`[CUPON-USOS] ⚡ Cupón de un solo uso '${cMatch.code}' agotado (1 uso alcanzado). Desactivado automáticamente.`);
+                    }
                     writeJsonFile(PATH_COUPONS, couponsList);
-                    console.log(`[CUPON-USOS] 🎟️ Cupón '${couponCode.toUpperCase()}' usado en pedido ${ref}. Total usos: ${cMatch.uses_count}`);
+                    console.log(`[CUPON-USOS] 🎟️ Cupón '${couponCode.toUpperCase()}' usado en pedido ${ref}. Total usos: ${cMatch.uses_count} (Tipo: ${isSingleUse ? 'UN SOLO USO' : 'Multiuso'})`);
+
+                    // Guardar registro de uso detallado para mini influencers y tabla admin
+                    const basePriceUsdt = parseFloat((price || '').toString().split('USDT')[0]) || 0;
+                    const isMiniInf = cMatch.type === 'mini_influencer' || cMatch.is_mini_influencer || !!cMatch.influencer_id;
+                    const discountPercent = parseFloat(cMatch.discount_percent) || (isMiniInf ? 3 : 10);
+                    const discountUsdt = parseFloat((basePriceUsdt * (discountPercent / 100)).toFixed(2));
+                    const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.30) : 0;
+
+                    const usages = readJsonFile(PATH_COUPON_USAGES, []);
+                    if (!usages.some(u => u.ref === ref)) {
+                        usages.push({
+                            id: usages.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1,
+                            ref: ref,
+                            coupon_code: cMatch.code,
+                            influencer_id: cMatch.influencer_id || null,
+                            influencer_name: cMatch.influencer_name || 'General',
+                            referred_uid: uid || login_uid || 'N/A',
+                            referred_name: name || 'Cliente',
+                            referred_wa: wa || 'N/A',
+                            pack: pack,
+                            base_price_usdt: basePriceUsdt,
+                            discount_percent: discountPercent,
+                            discount_usdt: discountUsdt,
+                            influencer_reward_usdt: infRewardUsdt,
+                            status: 'pending',
+                            reward_credited: false,
+                            created_at: currentTime
+                        });
+                        writeJsonFile(PATH_COUPON_USAGES, usages);
+                    }
                 }
             } catch (cErr) {
                 console.error('[CUPON-USOS] Error incrementando contador de cupón:', cErr.message);
@@ -4586,21 +4808,27 @@ const server = http.createServer(async (req, res) => {
                     // Costo Jadh y detección de juego
                     const orderRef = o.ref || o.control_num || 'N/A';
                     const packStr  = (o.pack || '').toString().trim();
-                    let game       = o.juego || '';
+                    let game       = (o.juego || '').toString().toLowerCase().trim();
                     if (!game || game === 'freefire') {
-                        if (packStr === '10 + 0' || packStr.toLowerCase().includes('usd') || packStr === '10') {
+                        const pLower = packStr.toLowerCase();
+                        if (pLower.includes('roblox') || pLower.includes('usd') || packStr === '10 + 0' || packStr === '10') {
                             game = 'roblox';
+                        } else if (pLower.includes('blood') || pLower.includes('moneda') || pLower.includes('oro')) {
+                            game = 'bloodstrike';
+                        } else if (pLower.includes('mobile') || pLower.includes('mlbb') || pLower.includes('legend')) {
+                            game = 'mobilelegends';
+                        } else if (['netflix','spotify','canva','disney','prime','crunchyroll','max','hbo','vix'].some(s => pLower.includes(s))) {
+                            game = 'streaming';
                         } else {
                             game = 'freefire';
                         }
                     }
 
-                    const packKey = packStr.split(' ')[0].replace(',','').trim();
-                    const itemCostUsdt = getItemCost(game, packKey);
+                    const itemCostUsdt = getItemCost(game, packStr, saleUsdt);
                     costUsdt += itemCostUsdt;
 
-                    const itemProfitUsdt = saleUsdt - itemCostUsdt;
-                    const itemProfitBs   = saleBs - (itemCostUsdt * tasa);
+                    const itemProfitUsdt = Math.max(0, saleUsdt - itemCostUsdt);
+                    const itemProfitBs   = Math.max(0, saleBs - (itemCostUsdt * tasa));
 
                     let productName = `${game.toUpperCase()} ${o.pack}`;
                     if (game === 'roblox') productName = `Roblox US 10USD`;
@@ -4707,7 +4935,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ success: false, message: 'Error interno en el simulador de pagos.' }));
             }
         });
-    } else if (parsedUrl.pathname === '/admin/aprobar' && req.method === 'POST') {
+    } else if ((parsedUrl.pathname === '/admin/aprobar' || parsedUrl.pathname === '/admin/retry-recharge') && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
@@ -4743,7 +4971,6 @@ const server = http.createServer(async (req, res) => {
                     const { data: dbOrders } = await supabase
                         .from('ff_orders')
                         .select('*')
-                        .eq('status', 'pending')
                         .ilike('ref', `%${targetRef}%`);
 
                     let matchedDbOrder = null;
@@ -4759,21 +4986,21 @@ const server = http.createServer(async (req, res) => {
 
                     if (matchedDbOrder) {
                         targetRef = matchedDbOrder.ref;
-                        // Restaurar pedido pending en memoria
+                        // Restaurar pedido en memoria
                         orders[targetRef] = { ...matchedDbOrder };
                         order = orders[targetRef];
                         console.log(`[ADMIN-APPROVE] Pedido ${targetRef} restaurado desde Supabase.`);
                     }
                 }
 
-                // --- SEGURIDAD: NO APROBAR DOS VECES (permitir pending y rejected) ---
-                if (order && order.status !== 'pending' && order.status !== 'rejected') {
+                // --- SEGURIDAD: NO APROBAR DOS VECES (permitir pending, rejected o reintento con force: true) ---
+                if (order && order.status !== 'pending' && order.status !== 'rejected' && !force) {
                     console.log(`[ALMACEN] ⚠️ Bloqueado re-procesamiento de pedido: ${targetRef} (status actual: ${order.status})`);
                     res.writeHead(200);
                     return res.end(JSON.stringify({ success: false, message: `🚫 Este pedido ya fue procesado o aprobado (${order.status}).` }));
                 }
 
-                if (order && (order.status === 'pending' || order.status === 'rejected')) {
+                if (order && (order.status === 'pending' || order.status === 'rejected' || force)) {
                     // --- SEGURIDAD: PREVENCIÓN DE DUPLICADOS EN PAGOS VALIDADOS ---
                     if (targetRef && !force) {
                         const cleanRef = targetRef.trim();
@@ -5971,10 +6198,9 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const { uid, password } = JSON.parse(body);
-                if (users[uid]) {
-                    // Solo permitimos setear si no tenía o si la petición viene con el uid correcto
-                    // En una app real usaríamos JWT, aquí confiamos en la lógica del frontend por ahora
-                    users[uid].password = password;
+                const user = await ensureUserLoaded(uid);
+                if (user) {
+                    user.password = password;
                     await saveUser(uid);
                     res.writeHead(200);
                     res.end(JSON.stringify({ success: true }));
@@ -6093,18 +6319,30 @@ const server = http.createServer(async (req, res) => {
                     };
                     settings.metodos_pago = dbUpdate.metodos_pago;
                 }
+                if (newSettings.publicidades !== undefined) {
+                    settings.publicidades = newSettings.publicidades;
+                    if (!newSettings.juegos) newSettings.juegos = settings.juegos || {};
+                    newSettings.juegos.publicidades = newSettings.publicidades;
+                }
                 if (newSettings.whatsapp !== undefined) {
                     dbUpdate.whatsapp_config = newSettings.whatsapp;
-                    settings.publicidades = newSettings.whatsapp.publicidades || [];
+                    if (newSettings.whatsapp.publicidades) {
+                        settings.publicidades = newSettings.whatsapp.publicidades;
+                        if (!newSettings.juegos) newSettings.juegos = settings.juegos || {};
+                        newSettings.juegos.publicidades = newSettings.whatsapp.publicidades;
+                    }
                 }
                 if (newSettings.precios !== undefined) dbUpdate.precios = newSettings.precios;
                 if (newSettings.juegos !== undefined) {
                     newSettings.juegos.freefire_provider_option = settings.freefire_provider_option;
+                    newSettings.juegos.publicidades = settings.publicidades || [];
                     dbUpdate.juegos = newSettings.juegos;
                     if (newSettings.juegos.freefire && newSettings.juegos.freefire.paquetes) {
                         dbUpdate.precios = newSettings.juegos.freefire.paquetes;
                         settings.precios = newSettings.juegos.freefire.paquetes;
                     }
+                } else if (newSettings.publicidades !== undefined) {
+                    dbUpdate.juegos = { ...(settings.juegos || {}), publicidades: settings.publicidades };
                 }
                 
                 let passwordChanged = false;
@@ -6329,7 +6567,7 @@ const server = http.createServer(async (req, res) => {
             try {
                 const data = JSON.parse(body);
                 const { uid, pack, password } = data;
-                const user = users[uid];
+                const user = await ensureUserLoaded(uid);
 
                 if (!user) {
                     res.writeHead(404);
@@ -7642,13 +7880,55 @@ const server = http.createServer(async (req, res) => {
             });
 
         // ─── RUTAS DE CUPONES DE DESCUENTO (1era Recarga) ────────────────────────
-        // GET /api/admin/coupons — Listar cupones
+        // GET /api/admin/coupons — Obtener lista de todos los cupones/tickets para admin
         } else if (parsedUrl.pathname === '/api/admin/coupons' && req.method === 'GET') {
             if (!checkAdminAuth(req, res)) return;
             try {
                 const coupons = readJsonFile(PATH_COUPONS, []);
                 res.writeHead(200, corsHeaders);
                 res.end(JSON.stringify({ success: true, coupons }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // GET /api/admin/coupons/usage-history — Historial de uso de cupones para tabla admin
+        } else if (parsedUrl.pathname === '/api/admin/coupons/usage-history' && req.method === 'GET') {
+            if (!checkAdminAuth(req, res)) return;
+            try {
+                const usages = readJsonFile(PATH_COUPON_USAGES, []);
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({ success: true, usages }));
+            } catch(e) {
+                res.writeHead(500, corsHeaders);
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+
+        // GET /api/influencers/coupons — Cupones y comisiones por referido del influencer
+        } else if (parsedUrl.pathname === '/api/influencers/coupons' && req.method === 'GET') {
+            try {
+                const infId = parseInt(parsedUrl.searchParams.get('id'));
+                if (!infId) {
+                    res.writeHead(400, corsHeaders);
+                    return res.end(JSON.stringify({ success: false, message: 'ID de influencer requerido' }));
+                }
+                const coupons = readJsonFile(PATH_COUPONS, []);
+                const usages = readJsonFile(PATH_COUPON_USAGES, []);
+                const infCoupons = coupons.filter(c => c.influencer_id === infId);
+                const infUsages = usages.filter(u => u.influencer_id === infId);
+
+                const totalEarnedFromCoupons = infUsages
+                    .filter(u => u.status === 'approved' && u.reward_credited)
+                    .reduce((sum, u) => sum + (parseFloat(u.influencer_reward_usdt) || 0.30), 0);
+
+                res.writeHead(200, corsHeaders);
+                res.end(JSON.stringify({
+                    success: true,
+                    coupons: infCoupons,
+                    usages_count: infUsages.length,
+                    approved_usages: infUsages.filter(u => u.status === 'approved').length,
+                    coupon_earnings_usdt: parseFloat(totalEarnedFromCoupons.toFixed(2))
+                }));
             } catch(e) {
                 res.writeHead(500, corsHeaders);
                 res.end(JSON.stringify({ success: false, error: e.message }));
@@ -7661,8 +7941,9 @@ const server = http.createServer(async (req, res) => {
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { code, discount_percent, influencer_id, influencer_name } = JSON.parse(body);
-                    const percent = parseFloat(discount_percent);
+                    const { code, discount_percent, type, max_uses, influencer_id, influencer_name, is_mini_influencer, influencer_reward_usdt } = JSON.parse(body);
+                    const isMiniInf = type === 'mini_influencer' || !!is_mini_influencer || !!influencer_id;
+                    const percent = parseFloat(discount_percent) || (isMiniInf ? 3 : 10);
                     if (isNaN(percent) || percent <= 0 || percent > 100) {
                         res.writeHead(400, corsHeaders);
                         return res.end(JSON.stringify({ success: false, message: 'El porcentaje de descuento debe ser entre 1% y 100%.' }));
@@ -7673,8 +7954,9 @@ const server = http.createServer(async (req, res) => {
                     
                     // Si no se proporcionó código, generar automático
                     if (!finalCode) {
-                        const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-                        finalCode = `NEYS-${randomSuffix}`;
+                        const prefix = influencer_name ? influencer_name.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0, 6) : 'NEYS';
+                        const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+                        finalCode = `${prefix}-${randomSuffix}`;
                     }
 
                     // Verificar duplicado
@@ -7683,11 +7965,16 @@ const server = http.createServer(async (req, res) => {
                         return res.end(JSON.stringify({ success: false, message: `El código "${finalCode}" ya existe.` }));
                     }
 
+                    const couponType = type === 'mini_influencer' ? 'mini_influencer' : ((type === 'single_use' || parseInt(max_uses) === 1) ? 'single_use' : 'multi_use');
                     const nextId = coupons.reduce((max, c) => Math.max(max, c.id || 0), 0) + 1;
                     const newCoupon = {
                         id: nextId,
                         code: finalCode,
                         discount_percent: percent,
+                        type: couponType,
+                        is_mini_influencer: isMiniInf,
+                        influencer_reward_usdt: isMiniInf ? (parseFloat(influencer_reward_usdt) || 0.30) : 0,
+                        max_uses: couponType === 'single_use' ? 1 : null,
                         influencer_id: influencer_id ? parseInt(influencer_id) : null,
                         influencer_name: influencer_name ? influencer_name.trim() : null,
                         is_active: true,
@@ -7791,6 +8078,17 @@ const server = http.createServer(async (req, res) => {
                         return res.end(JSON.stringify({ success: false, valid: false, message: 'El código de descuento no existe o ha sido desactivado.' }));
                     }
 
+                    // 🔒 REGLA DE UN SOLO USO: Si es tipo 'single_use' o max_uses=1, verificar si ya fue usado 1 vez
+                    const isSingleUse = coupon.type === 'single_use' || coupon.max_uses === 1;
+                    if (isSingleUse && (coupon.uses_count || 0) >= (coupon.max_uses || 1)) {
+                        res.writeHead(200, corsHeaders);
+                        return res.end(JSON.stringify({
+                            success: false,
+                            valid: false,
+                            message: `⚠️ El código de descuento '${cleanCode}' era de UN SOLO USO y ya ha sido utilizado.`
+                        }));
+                    }
+
                     // 🔒 REGLA DE SEGURIDAD 1: 1 SOLO USO POR ID DE JUGADOR/USUARIO
                     // Verificar si este usuario (uid o login_uid) ya utilizó ESTE CÓDIGO en algún pedido previo en Supabase
                     const { data: usedCouponOrders } = await supabase
@@ -7823,28 +8121,33 @@ const server = http.createServer(async (req, res) => {
                         }));
                     }
 
-                    // 🔒 REGLA DE SEGURIDAD 2: Verificar si el cupón es de 1era recarga y el usuario ya tiene recargas aprobadas
-                    const { data: previousOrders, error: ordersErr } = await supabase
-                        .from('ff_orders')
-                        .select('ref, status')
-                        .or(`uid.eq.${cleanUid},login_uid.eq.${cleanUid}`)
-                        .in('status', ['approved', 'completed']);
+                    // 🔒 REGLA DE SEGURIDAD 2: Verificar si el cupón es explícitamente de 1era recarga y el usuario ya tiene recargas aprobadas
+                    const isFirstRechargeOnly = coupon.first_recharge_only === true || coupon.only_first_recharge === true || coupon.type === 'first_recharge';
+                    if (isFirstRechargeOnly) {
+                        const { data: previousOrders, error: ordersErr } = await supabase
+                            .from('ff_orders')
+                            .select('ref, status')
+                            .or(`uid.eq.${cleanUid},login_uid.eq.${cleanUid}`)
+                            .in('status', ['approved', 'completed']);
 
-                    if (ordersErr) {
-                        console.error('[COUPON-VALIDATE] Error al consultar historial del usuario:', ordersErr.message);
-                    }
+                        if (ordersErr) {
+                            console.error('[COUPON-VALIDATE] Error al consultar historial del usuario:', ordersErr.message);
+                        }
 
-                    if (previousOrders && previousOrders.length > 0) {
-                        res.writeHead(200, corsHeaders);
-                        return res.end(JSON.stringify({
-                            success: false,
-                            valid: false,
-                            message: '⚠️ Este código de descuento es válido únicamente para tu PRIMERA recarga.'
-                        }));
+                        if (previousOrders && previousOrders.length > 0) {
+                            res.writeHead(200, corsHeaders);
+                            return res.end(JSON.stringify({
+                                success: false,
+                                valid: false,
+                                message: '⚠️ Este código de descuento es válido únicamente para tu PRIMERA recarga.'
+                            }));
+                        }
                     }
 
                     // Calcular monto con descuento
-                    const discountPercent = parseFloat(coupon.discount_percent) || 0;
+                    const isMiniInf = coupon.type === 'mini_influencer' || coupon.is_mini_influencer || !!coupon.influencer_id;
+                    const discountPercent = parseFloat(coupon.discount_percent) || (isMiniInf ? 3 : 0);
+                    const rewardUsdt = isMiniInf ? (parseFloat(coupon.influencer_reward_usdt) || 0.30) : 0;
                     const savings = parseFloat((baseAmount * (discountPercent / 100)).toFixed(2));
                     const finalAmount = Math.max(0, parseFloat((baseAmount - savings).toFixed(2)));
 
@@ -7858,7 +8161,9 @@ const server = http.createServer(async (req, res) => {
                         savings: savings,
                         final_amount: finalAmount,
                         influencer_id: coupon.influencer_id || null,
-                        influencer_name: coupon.influencer_name || null
+                        influencer_name: coupon.influencer_name || null,
+                        is_mini_influencer: isMiniInf,
+                        influencer_reward_usdt: rewardUsdt
                     }));
                 } catch(e) {
                     res.writeHead(500, corsHeaders);
