@@ -102,6 +102,8 @@ cd $VPS_PATH
 [ ! -f influencers.json ] && echo '[]' > influencers.json
 [ ! -f influencer_submissions.json ] && echo '[]' > influencer_submissions.json
 [ ! -f influencer_payments.json ] && echo '[]' > influencer_payments.json
+[ ! -f coupons.json ] && echo '[]' > coupons.json
+[ ! -f coupon_usages.json ] && echo '[]' > coupon_usages.json
 [ ! -f influencer_rates.json ] && echo '[{"id":1,"label":"Basico","min_views":1000,"max_views":4999,"diamonds_reward":50,"is_active":true},{"id":2,"label":"Intermedio","min_views":5000,"max_views":9999,"diamonds_reward":150,"is_active":true},{"id":3,"label":"Popular","min_views":10000,"max_views":49999,"diamonds_reward":400,"is_active":true},{"id":4,"label":"Viral","min_views":50000,"max_views":99999,"diamonds_reward":1000,"is_active":true},{"id":5,"label":"Mega Viral","min_views":100000,"max_views":null,"diamonds_reward":2500,"is_active":true}]' > influencer_rates.json
 echo 'Directorios OK'
 "@
@@ -120,7 +122,6 @@ $files = @(
     "email-bot.js", "jadh-service.js", "redeem-service.js",
     "whatsapp-bot.js", "set_webhook.js",
     "icon.svg", "icon-192.png", "icon-512.png",
-    "badge-diamond.png", "fondo.jpg",
     "influencer_rates.json"
 )
 
@@ -169,7 +170,6 @@ Write-Step "[6/6] Instalando dependencias y arrancando servidor..."
 
 $startCmd = @"
 cd $VPS_PATH
-rm -f settings.json
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install --production
 pm2 delete recargasney 2>/dev/null || true
 pm2 start server.js --name recargasney --max-memory-restart 3G
