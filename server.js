@@ -2994,6 +2994,13 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ success: false, message: 'Parámetros inválidos.' }));
                 }
 
+                // 🔒 SEGURIDAD: Limitar el premio máximo reclamable en ruleta (máx. $0.25 USDT)
+                if (prize_usdt > 0.25) {
+                    console.warn(`[RULETA-SEGURIDAD] Intento de cobro de premio exótico ($${prize_usdt}) por UID ${uid}`);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ success: false, message: 'Monto de premio no permitido.' }));
+                }
+
                 // ⚠️ SEGURIDAD: Validar que cada referencia de recarga solo pueda girar y cobrar la ruleta 1 SOLA VEZ
                 if (order_ref) {
                     if (!global.claimedRouletteRefs) global.claimedRouletteRefs = new Set();
