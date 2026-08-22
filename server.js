@@ -2386,25 +2386,33 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
+                        // 🛡️ REGLA DE SEGURIDAD BDV:
+                        // Si la consulta al banco falló por caída del sitio web, login o error de red (checked === false),
+                        // NUNCA auto-rechazar el pedido. Mantenerlo en PENDIENTE para cuando el banco vuelva a estar en línea.
+                        if (bdvResult.checked === false) {
+                            console.log(`[BDV-AUTO] ⏳ El banco BDV estuvo inaccesible/caído para el pedido ${ref}. Se MANTIENE PENDIENTE para el próximo intento.`);
+                            continue;
+                        }
+
                         const orderAgeMin = (now - new Date(order.time).getTime()) / (1000 * 60);
-                        if (orderAgeMin >= 3) {
-                            console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras ${orderAgeMin.toFixed(1)} min. Auto-rechazando...`);
+                        if (orderAgeMin >= 15) {
+                            console.log(`[BDV-AUTO] ❌ Pedido ${ref} sin pago BDV tras ${orderAgeMin.toFixed(1)} min de revisiones bancarias activas. Auto-rechazando...`);
                             orders[ref].status = 'rejected';
-                            const reason = 'Pago no encontrado en movimientos bancarios BDV tras 3 minutos. Verifica la referencia o intenta de nuevo.';
+                            const reason = 'Pago no encontrado en movimientos bancarios BDV tras 15 minutos. Verifica la referencia o intenta de nuevo.';
                             orders[ref].reason = reason;
                             updateOrderStatus(ref, 'rejected', null, reason);
                             queueWhatsAppMessage({ ...orders[ref], ref }, false);
-                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Auto-Rechazo (Sin pago en 3 min)');
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'BDV Auto-Rechazo (Sin pago en 15 min)');
                             sendPushToUser(
                                 orders[ref].login_uid || orders[ref].uid, 
                                 'Pago Rechazado ❌', 
-                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 3 minutos.`, 
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 15 minutos.`, 
                                 '/icon-192.png', 
                                 '/historial'
                             );
                             updateTelegramStatus(ref);
                         } else {
-                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} sin pago BDV detectado aún (${orderAgeMin.toFixed(1)}/3 min). Se mantiene PENDIENTE.`);
+                            console.log(`[BDV-AUTO] ⚠️ Pedido ${ref} sin pago BDV detectado aún en el banco (${orderAgeMin.toFixed(1)}/15 min). Se mantiene PENDIENTE.`);
                         }
                     }
                 }
@@ -2539,24 +2547,32 @@ async function runAutoApprovalCycle() {
                             updateTelegramStatus(ref);
                         }
                     } else {
+                        // 🛡️ REGLA DE SEGURIDAD BANESCO:
+                        // Si la consulta al banco falló por caída del sitio web, login o error de red (checked === false),
+                        // NUNCA auto-rechazar el pedido. Mantenerlo en PENDIENTE para cuando el banco vuelva a estar en línea.
+                        if (banescoResult.checked === false) {
+                            console.log(`[BANESCO-AUTO] ⏳ El banco Banesco estuvo inaccesible/caído para el pedido ${ref}. Se MANTIENE PENDIENTE para el próximo intento.`);
+                            continue;
+                        }
+
                         const orderAgeMin = (now - new Date(order.time).getTime()) / (1000 * 60);
-                        if (orderAgeMin >= 3) {
-                            console.log(`[BANESCO-AUTO] ❌ Pedido ${ref} sin pago Banesco tras ${orderAgeMin.toFixed(1)} min. Auto-rechazando...`);
+                        if (orderAgeMin >= 15) {
+                            console.log(`[BANESCO-AUTO] ❌ Pedido ${ref} sin pago Banesco tras ${orderAgeMin.toFixed(1)} min de revisiones bancarias activas. Auto-rechazando...`);
                             orders[ref].status = 'rejected';
-                            const reason = 'Pago no encontrado en movimientos bancarios Banesco tras 3 minutos. Verifica la referencia o intenta de nuevo.';
+                            const reason = 'Pago no encontrado en movimientos bancarios Banesco tras 15 minutos. Verifica la referencia o intenta de nuevo.';
                             orders[ref].reason = reason;
                             updateOrderStatus(ref, 'rejected', null, reason);
                             queueWhatsAppMessage({ ...orders[ref], ref }, false);
-                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Auto-Rechazo (Sin pago en 3 min)');
+                            notifyAdminsOrderStatus({ ...orders[ref], ref }, false, 'Banesco Auto-Rechazo (Sin pago en 15 min)');
                             sendPushToUser(
                                 orders[ref].login_uid || orders[ref].uid,
                                 'Pago Rechazado ❌',
-                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 3 minutos.`,
+                                `Tu pago para el pedido de ${orders[ref].pack} fue rechazado porque no se encontró la referencia en los movimientos bancarios tras 15 minutos.`,
                                 '/icon-192.png', '/historial'
                             );
                             updateTelegramStatus(ref);
                         } else {
-                            console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} sin pago Banesco detectado aún (${orderAgeMin.toFixed(1)}/3 min). Se mantiene PENDIENTE.`);
+                            console.log(`[BANESCO-AUTO] ⚠️ Pedido ${ref} sin pago Banesco detectado aún en el banco (${orderAgeMin.toFixed(1)}/15 min). Se mantiene PENDIENTE.`);
                         }
                     }
                 }
@@ -2711,8 +2727,14 @@ async function runAutoApprovalCycle() {
     // ── BARREDURA GENERAL: AUTO-RECHAZAR PEDIDOS PENDIENTES SIN PAGO TRAS 3 MINUTOS ──
     try {
         const currentMs = Date.now();
+        // Excluir métodos bancarios automáticos (bdv, banesco, pagomovil) de la barredura ciega de 3 minutos,
+        // para que si el banco está caído o lento, los pedidos permanezcan PENDIENTES hasta que el bot los verifique.
         const pendingSweep = Object.entries(orders).filter(
-            ([, o]) => o.status === 'pending' && o.method !== 'canje'
+            ([, o]) => o.status === 'pending' && 
+                       o.method !== 'canje' && 
+                       o.method !== 'bdv' && 
+                       o.method !== 'banesco' && 
+                       o.method !== 'pagomovil'
         );
 
         for (const [ref, order] of pendingSweep) {
