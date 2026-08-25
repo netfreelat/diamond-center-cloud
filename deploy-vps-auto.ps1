@@ -121,8 +121,7 @@ $files = @(
 
     "email-bot.js", "jadh-service.js", "redeem-service.js",
     "whatsapp-bot.js", "set_webhook.js",
-    "icon.svg", "icon-192.png", "icon-512.png",
-    "influencer_rates.json", "coupons.json"
+    "icon.svg", "icon-192.png", "icon-512.png"
 )
 
 foreach ($file in $files) {

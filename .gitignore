@@ -13,6 +13,9 @@ pagos_recibidos.json
 influencers.json
 influencer_submissions.json
 influencer_payments.json
+coupons.json
+coupon_usages.json
+influencer_rates.json
 .wwebjs_auth/
 .wwebjs_cache/
 scratch/
