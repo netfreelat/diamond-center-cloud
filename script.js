@@ -2898,6 +2898,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selPriceUsdt = typeof selectedPriceUsdt !== 'undefined' ? selectedPriceUsdt : null;
 
         const isRobloxOrder = currentJuego === 'roblox';
+        const isStreamingOrder = selGame === 'streaming' || currentJuego === 'streaming';
         let rawName = document.getElementById('player-name-display') ? document.getElementById('player-name-display').innerText.trim() : '';
         const genericNamesFrontend = ['nombre del jugador', 'cargando...', 'cliente', 'jugador', 'player', '—', '-'];
         if (genericNamesFrontend.includes(rawName.toLowerCase())) {
