@@ -2898,8 +2898,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const selPriceUsdt = typeof selectedPriceUsdt !== 'undefined' ? selectedPriceUsdt : null;
 
         const isRobloxOrder = currentJuego === 'roblox';
-        const isStreamingOrder = selGame === 'streaming' || currentJuego === 'streaming';
-        const rawName = document.getElementById('player-name-display') ? document.getElementById('player-name-display').innerText.trim() : '';
+        let rawName = document.getElementById('player-name-display') ? document.getElementById('player-name-display').innerText.trim() : '';
+        const genericNamesFrontend = ['nombre del jugador', 'cargando...', 'cliente', 'jugador', 'player', '—', '-'];
+        if (genericNamesFrontend.includes(rawName.toLowerCase())) {
+            rawName = '';
+        }
         const name = (isRobloxOrder || isStreamingOrder) ? (rawName || `WA:${waNum}`) : rawName;
         const PAQUETES_ESPECIALES_KEYS = ['basica', 'semanal', 'mensual', 'booyah'];
 

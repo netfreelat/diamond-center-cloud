@@ -292,12 +292,14 @@ async function sendBroadcastPush(title, body, urlPath = '/') {
 }
 
 let lastAutoPushKey = '';
+let lastReferralPushDate = '';
+
 async function checkAndSendAutoPush() {
     try {
         const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: 'America/Caracas',
             weekday: 'short',
-            year: 'numeric', month: 'numeric', day: 'numeric',
+            year: 'numeric', month: '2-digit', day: '2-digit',
             hour: 'numeric', minute: 'numeric',
             hour12: false
         });
@@ -306,9 +308,13 @@ async function checkAndSendAutoPush() {
         parts.forEach(p => map[p.type] = p.value);
 
         const weekday = map.weekday;
-        const day = parseInt(map.day);
+        const year = map.year;
+        const month = map.month;
+        const dayStr = map.day;
+        const day = parseInt(dayStr);
         const hour = parseInt(map.hour);
         const minute = parseInt(map.minute);
+        const todayDate = `${year}-${month}-${dayStr}`;
 
         const pushKey = `${weekday}_${day}_${hour}_${Math.floor(minute / 15)}`;
         if (lastAutoPushKey === pushKey) return;
@@ -336,6 +342,26 @@ async function checkAndSendAutoPush() {
         else if ((day === 15 || day === 30) && hour === 11 && minute < 15) {
             title = '💰 ¡Llegó la Quincena a RECARGASNEY.COM!';
             body = 'Aprovecha y recarga tus diamantes o membresía al mejor precio. Entrega automática 24/7. 💎🚀';
+        }
+        // 5. NOTIFICACIÓN DIARIA DE REFERIDOS EN HORARIOS ROTATIVOS DIVERSOS (1 vez por día)
+        else if (lastReferralPushDate !== todayDate) {
+            const referralSchedule = [
+                { hour: 10, minuteStart: 0,  minuteEnd: 15, title: '🎁 ¡Gana Diamantes y Cashback Compartiendo tu Link!', body: 'Comparte tu link de invitación con amigos: ¡Gana $0.05 USDT por su primera compra + 1% de cashback en sus recargas! Tu referido también recibe beneficios. 💎🚀' },
+                { hour: 14, minuteStart: 30, minuteEnd: 45, title: '💰 ¡Tus amigos recargan y TÚ ganas cashback!', body: 'Invita a tus amigos con tu link personal. ¡Gana $0.05 USDT directo + 1% de cashback de todas sus recargas para siempre! ⚡💎' },
+                { hour: 17, minuteStart: 45, minuteEnd: 59, title: '🔗 ¡Comparte tu Link de Invitación y acumula saldo!', body: '¿Sabías que puedes recargar gratis invitando amigos? Comparte tu link y acumula cashback con cada compra de tus referidos. 🚀💎' },
+                { hour: 11, minuteStart: 15, minuteEnd: 30, title: '✨ ¡Beneficios Exclusivos para Ti y tus Referidos!', body: 'Regala beneficios a tus amigos y gana dinero por cada recarga que realicen. ¡Copia tu link de referido ahora! 🏆💎' },
+                { hour: 19, minuteStart: 20, minuteEnd: 35, title: '🚀 ¡Multiplica tus Diamantes Invitando Amigos!', body: 'Comparte tu link personal en tus redes o WhatsApp. Recibe $0.05 USDT por su 1ra compra y 1% de comisión continua. 💎⚡' },
+                { hour: 13, minuteStart: 10, minuteEnd: 25, title: '🎁 ¡Recompensas por Referidos Activas!', body: 'Cada amigo que recargue con tu link suma cashback a tu cuenta de RECARGASNEY.COM. ¡Aprovecha y compártelo hoy! 💰✨' },
+                { hour: 16, minuteStart: 25, minuteEnd: 40, title: '💎 ¡Gana Cashback Gratis con tu Link de Invitado!', body: 'Comparte tu enlace único. Tus amigos obtienen los mejores precios y tú recibes comisiones automáticas en saldo. 🚀⚡' }
+            ];
+
+            const todaySlot = referralSchedule[day % referralSchedule.length];
+            if (hour === todaySlot.hour && minute >= todaySlot.minuteStart && minute <= todaySlot.minuteEnd) {
+                title = todaySlot.title;
+                body = todaySlot.body;
+                urlPath = '/#referral';
+                lastReferralPushDate = todayDate;
+            }
         }
 
         if (title && body) {
@@ -1015,6 +1041,9 @@ async function loadFromSupabase() {
             settings.tasa_del_dia = parseFloat(settingsData.tasa_del_dia);
             settings.barra_informativa = settingsData.barra_informativa;
             settings.freefire_provider_option = (settingsData.juegos && settingsData.juegos.freefire_provider_option) || settingsData.freefire_provider_option || settings.freefire_provider_option || 'directas';
+            if (!settings.juegos) settings.juegos = {};
+            settings.juegos.freefire_provider_option = settings.freefire_provider_option;
+            global.settings = settings;
             if (!settings.admin) settings.admin = { username: 'admin', password: 'Sneyder12345*#' };
             settings.admin.username = settingsData.admin_username || settings.admin.username || 'admin';
             settings.admin.password = settingsData.admin_password || settings.admin.password || 'Sneyder12345*#';
@@ -1248,8 +1277,95 @@ function saveWaQueue() {
     // La cola WA se maneja individualmente al agregar/marcar como enviado
 }
 
-function queueWhatsAppMessage(order, isAccepted, pin = null) {
-    if (!order.wa || order.wa === 'No provisto') return;
+// ============================================================
+// 👤 HELPER: RESOLVER NOMBRE REAL DEL JUGADOR
+// ============================================================
+const GENERIC_PLAYER_NAMES = [
+    'cliente', 'nombre del jugador', 'jugador', 'player', 
+    '—', '-', '--', '', 'null', 'undefined', 'n/a', 'wa:', 'cliente wa'
+];
+
+function isGenericPlayerName(n) {
+    if (!n || typeof n !== 'string') return true;
+    const clean = n.trim().toLowerCase();
+    if (GENERIC_PLAYER_NAMES.includes(clean)) return true;
+    if (clean.startsWith('wa:')) return true;
+    return false;
+}
+
+async function resolveOrderPlayerName(order) {
+    if (!order) return 'Jugador';
+
+    // 1. Si order.name es válido y no genérico, usarlo directamente
+    if (!isGenericPlayerName(order.name)) return order.name.trim();
+
+    // 2. Buscar en memoria orders[ref]
+    if (order.ref && orders[order.ref] && !isGenericPlayerName(orders[order.ref].name)) {
+        return orders[order.ref].name.trim();
+    }
+
+    // 3. Buscar por login_uid o uid en memoria (users)
+    const targetUid = order.uid || order.login_uid;
+    if (targetUid && users[targetUid] && !isGenericPlayerName(users[targetUid].name)) {
+        return users[targetUid].name.trim();
+    }
+    if (order.login_uid && users[order.login_uid] && !isGenericPlayerName(users[order.login_uid].name)) {
+        return users[order.login_uid].name.trim();
+    }
+
+    // 4. Consultar Supabase ff_users
+    if (targetUid) {
+        try {
+            const { data: uData } = await supabase.from('ff_users').select('name').eq('uid', targetUid).single();
+            if (uData && !isGenericPlayerName(uData.name)) return uData.name.trim();
+        } catch (_) {}
+    }
+
+    // 5. Consultar Supabase ff_orders por este pedido o pedidos anteriores del usuario
+    if (order.ref) {
+        try {
+            const { data: oData } = await supabase.from('ff_orders').select('name').eq('ref', order.ref).limit(1);
+            if (oData && oData[0] && !isGenericPlayerName(oData[0].name)) return oData[0].name.trim();
+        } catch (_) {}
+    }
+    if (targetUid) {
+        try {
+            const { data: pastOrders } = await supabase.from('ff_orders')
+                .select('name')
+                .eq('uid', targetUid)
+                .not('name', 'is', null)
+                .order('time', { ascending: false })
+                .limit(5);
+            if (pastOrders && pastOrders.length > 0) {
+                for (const po of pastOrders) {
+                    if (po.name && !isGenericPlayerName(po.name)) return po.name.trim();
+                }
+            }
+        } catch (_) {}
+    }
+
+    // 6. Si es un ID de Free Fire (numérico de 5 a 15 dígitos), intentar consultar Garena API
+    const ffUidCandidate = (order.uid && /^\d{5,15}$/.test(order.uid.trim())) ? order.uid.trim() :
+                           (order.login_uid && /^\d{5,15}$/.test(order.login_uid.trim())) ? order.login_uid.trim() : null;
+    if (ffUidCandidate) {
+        try {
+            const garenaNick = await fetchGarenaNickname(ffUidCandidate);
+            if (garenaNick && !isGenericPlayerName(garenaNick)) {
+                const cleanNick = garenaNick.trim();
+                order.name = cleanNick;
+                if (order.ref && orders[order.ref]) orders[order.ref].name = cleanNick;
+                if (users[ffUidCandidate]) users[ffUidCandidate].name = cleanNick;
+                if (order.ref) supabase.from('ff_orders').update({ name: cleanNick }).eq('ref', order.ref).then(() => {});
+                return cleanNick;
+            }
+        } catch (_) {}
+    }
+
+    return 'Jugador';
+}
+
+async function queueWhatsAppMessage(order, isAccepted, pin = null) {
+    if (!order || !order.wa || order.wa === 'No provisto') return;
 
     // 🔒 MODO SEGURO: Evitar envío automático de notificaciones a clientes
     const waModo = (settings.whatsapp && settings.whatsapp.modo) ? settings.whatsapp.modo : 'activo';
@@ -1270,22 +1386,23 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
         console.log(`[WA-QUEUE] ⚠️ Duplicado ignorado para ref ${orderRef}`);
         return;
     }
+
+    const name = await resolveOrderPlayerName(order);
     
     let msg = '';
     if (isAccepted) {
         const isCanje = order.method === 'canje';
         if (isCanje) {
             msg = `💎 *¡CANJE DE CASHBACK EXITOSO!* 💎\n\n` +
-                  `¡Hola, *${order.name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
+                  `¡Hola, *${name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
                   `━━━━━━━━━━━━━━━\n` +
-                  `👤 *Jugador:* ${order.name}\n` +
+                  `👤 *Jugador:* ${name}\n` +
                   `🆔 *ID Garena:* ${order.uid}\n` +
                   `💎 *Paquete:* ${order.pack}\n` +
                   `━━━━━━━━━━━━━━━\n\n` +
                   `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
                   `¡Gracias por usar *RECARGASNEY.COM*! 🎯🛡️`;
         } else {
-            const name = (order.name && order.name !== '—' && order.name !== '-') ? order.name : 'Cliente';
             const packRaw = (order.pack || '').trim();
             const hasType = /diamante|robux|oro|tarjeta|pase|booyah/i.test(packRaw);
             const packDisplay = hasType ? packRaw : `${packRaw} diamantes`;
@@ -1318,13 +1435,13 @@ function queueWhatsAppMessage(order, isAccepted, pin = null) {
         const isCanje = order.method === 'canje';
         if (isCanje) {
             msg = `⚠️ *AVISO DE TU CANJE* ⚠️\n\n` +
-                  `Hola *${order.name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
+                  `Hola *${name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
                   `❌ *Motivo:* Tu canje fue rechazado por el administrador y tus puntos fueron devueltos a tu cuenta.\n\n` +
                   `Si tienes dudas, contáctanos a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
                   `¡Estamos aquí para ayudarte! 🤝`;
         } else {
             msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
-                  `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
+                  `Hola *${name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
                   `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
                   `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
                   `¡Estamos aquí para ayudarte! 🤝`;
@@ -1645,7 +1762,7 @@ function processCouponUsageReward(ref, status) {
                 const isMiniInf = cMatch.type === 'mini_influencer' || cMatch.is_mini_influencer || !!cMatch.influencer_id;
                 const discountPercent = parseFloat(cMatch.discount_percent) || (isMiniInf ? 3 : 10);
                 const discountUsdt = parseFloat((basePriceUsdt * (discountPercent / 100)).toFixed(2));
-                const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.30) : 0;
+                const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.10) : 0;
 
                 usage = {
                     id: usages.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1,
@@ -1674,7 +1791,7 @@ function processCouponUsageReward(ref, status) {
         usage.status = status;
 
         if (status === 'approved' && !usage.reward_credited && usage.influencer_id) {
-            const rewardAmount = parseFloat(usage.influencer_reward_usdt) || 0.30;
+            const rewardAmount = parseFloat(usage.influencer_reward_usdt) || 0.10;
             if (rewardAmount > 0) {
                 const influencers = readJsonFile(PATH_INFLUENCERS, []);
                 const inf = influencers.find(i => i.id === usage.influencer_id);
@@ -1703,9 +1820,23 @@ function processCouponUsageReward(ref, status) {
     }
 }
 
-function updateOrderStatus(ref, status, pin = null, reason = null) {
-    if (!orders[ref]) {
-        orders[ref] = { ref, status };
+async function updateOrderStatus(ref, status, pin = null, reason = null) {
+    if (!orders[ref] || isGenericPlayerName(orders[ref].name) || !orders[ref].wa) {
+        try {
+            const { data: dbOrder } = await supabase.from('ff_orders').select('*').eq('ref', ref).single();
+            if (dbOrder) {
+                orders[ref] = { ...dbOrder, ...(orders[ref] || {}), status };
+            } else {
+                const { data: partialOrders } = await supabase.from('ff_orders').select('*').ilike('ref', `%${ref}%`).limit(1);
+                if (partialOrders && partialOrders.length > 0) {
+                    orders[ref] = { ...partialOrders[0], ...(orders[ref] || {}), status };
+                } else if (!orders[ref]) {
+                    orders[ref] = { ref, status };
+                }
+            }
+        } catch (_) {
+            if (!orders[ref]) orders[ref] = { ref, status };
+        }
     }
     orders[ref].status = status;
     processCouponUsageReward(ref, status);
@@ -1737,7 +1868,7 @@ function updateOrderStatus(ref, status, pin = null, reason = null) {
     if ((status === 'approved' || status === 'rejected') && watcherNumber) {
         if (hasWatcher) waWatchers.delete(ref); // limpiar si estaba en memoria
 
-        const orderName = (order && order.name) ? order.name : 'Cliente';
+        const orderName = await resolveOrderPlayerName(order);
         const orderPack = (order && order.pack) ? order.pack : 'tu recarga';
 
         let watcherMsg = '';
@@ -1765,41 +1896,43 @@ function updateOrderStatus(ref, status, pin = null, reason = null) {
         whatsappQueue.push(watcherWaItem);
         supabase.from('ff_wa_queue').insert(watcherWaItem).then(({ error: wErr }) => {
             if (wErr) console.error(`[WA-WATCHER] Error encolando para ${watcherNumber}:`, wErr.message);
-            else console.log(`[WA-WATCHER] ✅ Notificación encolada para ${watcherNumber} (ref: ${ref}, estado: ${status})`);
+            else console.log(`[WA-WATCHER] ✅ Notificación encolada para ${watcherNumber} (ref: ${ref}, estado: ${status}, jugador: ${orderName})`);
         });
     }
 
     const update = { status, reason };
     if (pin) update.pin = pin;
+    if (order && order.name && !isGenericPlayerName(order.name)) update.name = order.name;
         
-        supabase.from('ff_orders').update(update).eq('ref', ref)
-            .then(({ error }) => {
-                if (error) {
-                    console.error('[SUPABASE] Error actualizando pedido:', error.message);
-                    // Si el error indica que la columna 'reason' no existe, reintentar sin ella
-                    if (error.message.includes('reason') && error.message.includes('column')) {
-                        console.log('[SUPABASE] ⚠️ Columna "reason" ausente en DB. Reintentando actualización sin "reason"...');
-                        const fallbackUpdate = { status };
-                        if (pin) fallbackUpdate.pin = pin;
-                        supabase.from('ff_orders').update(fallbackUpdate).eq('ref', ref)
-                            .then(({ error: fallbackErr }) => {
-                                if (fallbackErr) {
-                                    console.error('[SUPABASE] ❌ Error en reintento de actualización:', fallbackErr.message);
-                                } else {
-                                    console.log('[SUPABASE] ✅ Pedido actualizado correctamente (sin guardar motivo en DB).');
-                                    if (status === 'approved') {
-                                        sendAdminProfitNotification(orders[ref]);
-                                    }
+    supabase.from('ff_orders').update(update).eq('ref', ref)
+        .then(({ error }) => {
+            if (error) {
+                console.error('[SUPABASE] Error actualizando pedido:', error.message);
+                // Si el error indica que la columna 'reason' no existe, reintentar sin ella
+                if (error.message.includes('reason') && error.message.includes('column')) {
+                    console.log('[SUPABASE] ⚠️ Columna "reason" ausente en DB. Reintentando actualización sin "reason"...');
+                    const fallbackUpdate = { status };
+                    if (pin) fallbackUpdate.pin = pin;
+                    if (order && order.name && !isGenericPlayerName(order.name)) fallbackUpdate.name = order.name;
+                    supabase.from('ff_orders').update(fallbackUpdate).eq('ref', ref)
+                        .then(({ error: fallbackErr }) => {
+                            if (fallbackErr) {
+                                console.error('[SUPABASE] ❌ Error en reintento de actualización:', fallbackErr.message);
+                            } else {
+                                console.log('[SUPABASE] ✅ Pedido actualizado correctamente (sin guardar motivo en DB).');
+                                if (status === 'approved') {
+                                    sendAdminProfitNotification(orders[ref]);
                                 }
-                            });
-                    }
-                } else {
-                    console.log('[SUPABASE] ✅ Pedido actualizado correctamente.');
-                    if (status === 'approved') {
-                        sendAdminProfitNotification(orders[ref]);
-                    }
+                            }
+                        });
                 }
-            });
+            } else {
+                console.log('[SUPABASE] ✅ Pedido actualizado correctamente.');
+                if (status === 'approved') {
+                    sendAdminProfitNotification(orders[ref]);
+                }
+            }
+        });
 }
 
 function markPaymentAsUsed(method, ref) {
@@ -2157,7 +2290,7 @@ async function processPendingOrder(inputFullRef, inputShortRef) {
                         console.log(`[AUTO-APPROVE] Ejecutando recarga ${i+1}/${qty} en Jadh.shop...`);
                         const result = isPaqueteEspecial(amountKey)
                             ? await rechargeViaJadhPaquetes(order.uid, amountKey)
-                            : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire');
+                            : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire', settings.freefire_provider_option);
                         lastResult = result;
                         if (result.success) {
                             // Solo actualizar el nick si Jadh devuelve un nombre real (no '—', '-' ni vacío)
@@ -3297,7 +3430,7 @@ const server = http.createServer(async (req, res) => {
         console.log('[DEBUG] Entrando en /notificar...');
         const uid = parsedUrl.searchParams.get('uid');
         const login_uid = parsedUrl.searchParams.get('login_uid') || uid;
-        const name = parsedUrl.searchParams.get('name');
+        let name = (parsedUrl.searchParams.get('name') || '').trim();
         const pack = parsedUrl.searchParams.get('pack');
         const method = parsedUrl.searchParams.get('method');
         const ref = parsedUrl.searchParams.get('ref');
@@ -3305,6 +3438,27 @@ const server = http.createServer(async (req, res) => {
         const wa = parsedUrl.searchParams.get('wa') || 'No provisto';
         const juego = parsedUrl.searchParams.get('juego') || 'freefire';
         const couponCode = (parsedUrl.searchParams.get('coupon') || '').trim();
+
+        // 🔍 Si el nombre es genérico ("Cliente", "Nombre del Jugador", etc.), intentar resolverlo desde Garena o usuarios
+        if (isGenericPlayerName(name)) {
+            name = '';
+        }
+        if (!name && uid && /^\d{5,15}$/.test(uid.trim())) {
+            try {
+                const garenaNick = await fetchGarenaNickname(uid.trim());
+                if (garenaNick && !isGenericPlayerName(garenaNick)) {
+                    name = garenaNick.trim();
+                    console.log(`[NOTIFICAR] 🔍 Nombre obtenido de Garena para ID ${uid}: ${name}`);
+                }
+            } catch (_) {}
+        }
+        if (!name && (users[uid] || users[login_uid])) {
+            const uObj = users[uid] || users[login_uid];
+            if (uObj && !isGenericPlayerName(uObj.name)) {
+                name = uObj.name.trim();
+            }
+        }
+        if (!name) name = 'Jugador';
 
         console.log(`[DEBUG] Datos: name=${name}, ref=${ref}, wa=${wa}, coupon=${couponCode || 'N/A'}`);
 
@@ -3493,7 +3647,7 @@ const server = http.createServer(async (req, res) => {
                     const isMiniInf = cMatch.type === 'mini_influencer' || cMatch.is_mini_influencer || !!cMatch.influencer_id;
                     const discountPercent = parseFloat(cMatch.discount_percent) || (isMiniInf ? 3 : 10);
                     const discountUsdt = parseFloat((basePriceUsdt * (discountPercent / 100)).toFixed(2));
-                    const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.30) : 0;
+                    const infRewardUsdt = isMiniInf ? (parseFloat(cMatch.influencer_reward_usdt) || 0.10) : 0;
 
                     const usages = readJsonFile(PATH_COUPON_USAGES, []);
                     if (!usages.some(u => u.ref === ref)) {
@@ -3923,7 +4077,7 @@ const server = http.createServer(async (req, res) => {
                             for (let i = 0; i < qty; i++) {
                                 const result = isPaqueteEspecial(amountKey)
                                     ? await rechargeViaJadhPaquetes(order.uid, amountKey)
-                                    : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire');
+                                    : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire', settings.freefire_provider_option);
                                 if (result.success) {
                                     const jadhNick = (result.nickname || '').trim();
                                     if (jadhNick && jadhNick !== '—' && jadhNick !== '-' && jadhNick !== '--') nick = jadhNick;
@@ -4517,12 +4671,12 @@ const server = http.createServer(async (req, res) => {
                         pagosValidados[ref] = { amount, time: new Date().toISOString(), used: false };
                         savePagos();
                     }
-                    // processPendingOrder(ref, null); // Desactivado por seguridad
                 }
             } catch (e) {
                 console.error('[DEBUG-WEBHOOK] ❌ Error:', e.message);
             }
         });
+
     } else if (parsedUrl.pathname === '/api/wa_order_status') {
         const ref = parsedUrl.searchParams.get('ref');
         if (!ref) {
@@ -4540,7 +4694,6 @@ const server = http.createServer(async (req, res) => {
             if (directOrders && directOrders.length > 0) {
                 dbOrders = directOrders;
             } else {
-                // Si no hay coincidencia directa, buscar por coincidencia parcial en Supabase
                 const { data: partialOrders } = await supabase
                     .from('ff_orders')
                     .select('*')
@@ -4564,20 +4717,21 @@ const server = http.createServer(async (req, res) => {
             const isRejected = order.status === 'rejected';
             const isCanje = order.method === 'canje';
             
+            const name = await resolveOrderPlayerName(order);
+
             let msg = '';
             if (isApproved) {
                 if (isCanje) {
                     msg = `💎 *¡CANJE DE CASHBACK EXITOSO!* 💎\n\n` +
-                          `¡Hola, *${order.name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
+                          `¡Hola, *${name}*! Tu canje ha sido aprobado y procesado con éxito. 🚀\n\n` +
                           `━━━━━━━━━━━━━━━\n` +
-                          `👤 *Jugador:* ${order.name}\n` +
+                          `👤 *Jugador:* ${name}\n` +
                           `🆔 *ID Garena:* ${order.uid}\n` +
                           `💎 *Paquete:* ${order.pack}\n` +
                           `━━━━━━━━━━━━━━━\n\n` +
                           `✅ *Estado:* ¡Recarga Completada! ✨\n\n` +
                           `¡Gracias por tu preferencia! ✨`;
                 } else {
-                    const name = (order.name && order.name !== '—' && order.name !== '-') ? order.name : 'Cliente';
                     const packRaw = (order.pack || '').trim();
                     const hasType = /diamante|robux|oro|tarjeta|pase|booyah/i.test(packRaw);
                     const packDisplay = hasType ? packRaw : `${packRaw} diamantes`;
@@ -4608,20 +4762,20 @@ const server = http.createServer(async (req, res) => {
                 
                 if (isCanje) {
                     msg = `⚠️ *AVISO DE TU CANJE* ⚠️\n\n` +
-                          `Hola *${order.name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
+                          `Hola *${name}*, no pudimos procesar tu canje de puntos por *${order.pack}*.\n\n` +
                           `❌ *Motivo:* Tu canje fue rechazado por el administrador y tus puntos fueron devueltos a tu cuenta.\n\n` +
                           `Si tienes dudas, contáctanos a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
                           `¡Estamos aquí para ayudarte! 🤝`;
                 } else {
                     msg = `⚠️ *AVISO DE TU RECARGA* ⚠️\n\n` +
-                          `Hola *${order.name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
+                          `Hola *${name}*, no pudimos procesar tu recarga de *${order.pack}*.\n\n` +
                           `❌ *Motivo:* Error en la verificacion de su pago, favor chequea el monto y la referencia.\n\n` +
                           `Envía captura de tu pago a soporte al *${supportNum}*. 🛠️\n🆔 *ID:* ${order.uid}\n\n` +
                           `¡Estamos aquí para ayudarte! 🤝`;
                 }
             } else {
                 msg = `⏳ *TU RECARGA SE ESTÁ CHEQUEANDO* ⏳\n\n` +
-                      `¡Hola, *${order.name}*! Tu pedido de *${order.pack}* con la referencia \`${ref}\` está en verificación. 🔍\n\n` +
+                      `¡Hola, *${name}*! Tu pedido de *${order.pack}* con la referencia \`${ref}\` está en verificación. 🔍\n\n` +
                       `Si todo está correcto recibirás tu recarga en un instante. 🚀\n\n` +
                       `_• Te avisaremos por aquí mismo cuando tengamos novedades._`;
 
@@ -5153,7 +5307,7 @@ const server = http.createServer(async (req, res) => {
                     for (let i = 0; i < qty; i++) {
                         const result = isPaqueteEspecial(amountKey)
                             ? await rechargeViaJadhPaquetes(order.uid, amountKey)
-                            : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire');
+                            : await rechargeViaJadh(order.uid, amountKey, order.juego || 'freefire', settings.freefire_provider_option);
                         if (result.success) {
                             // Solo actualizar el nick si Jadh devuelve un nombre real (no '—', '-' ni vacío)
                             const jadhNick = (result.nickname || '').trim();
@@ -5265,7 +5419,7 @@ const server = http.createServer(async (req, res) => {
                 for (let i = 0; i < qty; i++) {
                     const result = isPaqueteEspecial(amountKey)
                         ? await rechargeViaJadhPaquetes(order.uid, amountKey)
-                        : await rechargeViaJadh(order.uid, amountKey, juego);
+                        : await rechargeViaJadh(order.uid, amountKey, juego, settings.freefire_provider_option);
                     if (result.success) {
                         // Solo actualizar el nick si Jadh devuelve un nombre real (no '—', '-' ni vacío)
                         const jadhNick = (result.nickname || '').trim();
@@ -6431,7 +6585,8 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
                 
-                settings = { ...settings, ...newSettings };
+                Object.assign(settings, newSettings);
+                global.settings = settings;
                 
                 supabase.from('ff_settings').update(dbUpdate).eq('id', 1)
                     .then(({ error }) => { if (error) console.error('[SUPABASE] Error guardando settings:', error.message); });
@@ -7989,7 +8144,7 @@ const server = http.createServer(async (req, res) => {
 
                 const totalEarnedFromCoupons = infUsages
                     .filter(u => u.status === 'approved' && u.reward_credited)
-                    .reduce((sum, u) => sum + (parseFloat(u.influencer_reward_usdt) || 0.30), 0);
+                    .reduce((sum, u) => sum + (parseFloat(u.influencer_reward_usdt) || 0.10), 0);
 
                 res.writeHead(200, corsHeaders);
                 res.end(JSON.stringify({
@@ -8012,7 +8167,8 @@ const server = http.createServer(async (req, res) => {
             req.on('end', async () => {
                 try {
                     const { code, discount_percent, type, max_uses, influencer_id, influencer_name, is_mini_influencer, influencer_reward_usdt } = JSON.parse(body);
-                    const isMiniInf = type === 'mini_influencer' || !!is_mini_influencer || !!influencer_id;
+                    const isRealInf = !!influencer_id && (influencer_name && influencer_name.trim().toLowerCase() !== 'general');
+                    const isMiniInf = isRealInf && (type === 'mini_influencer' || !!is_mini_influencer || !!influencer_id);
                     const percent = parseFloat(discount_percent) || (isMiniInf ? 3 : 10);
                     if (isNaN(percent) || percent <= 0 || percent > 100) {
                         res.writeHead(400, corsHeaders);
@@ -8043,7 +8199,7 @@ const server = http.createServer(async (req, res) => {
                         discount_percent: percent,
                         type: couponType,
                         is_mini_influencer: isMiniInf,
-                        influencer_reward_usdt: isMiniInf ? (parseFloat(influencer_reward_usdt) || 0.30) : 0,
+                        influencer_reward_usdt: isMiniInf ? (parseFloat(influencer_reward_usdt) || 0.10) : 0,
                         max_uses: couponType === 'single_use' ? 1 : null,
                         influencer_id: influencer_id ? parseInt(influencer_id) : null,
                         influencer_name: influencer_name ? influencer_name.trim() : null,
@@ -8217,7 +8373,7 @@ const server = http.createServer(async (req, res) => {
                     // Calcular monto con descuento
                     const isMiniInf = coupon.type === 'mini_influencer' || coupon.is_mini_influencer || !!coupon.influencer_id;
                     const discountPercent = parseFloat(coupon.discount_percent) || (isMiniInf ? 3 : 0);
-                    const rewardUsdt = isMiniInf ? (parseFloat(coupon.influencer_reward_usdt) || 0.30) : 0;
+                    const rewardUsdt = isMiniInf ? (parseFloat(coupon.influencer_reward_usdt) || 0.10) : 0;
                     const savings = parseFloat((baseAmount * (discountPercent / 100)).toFixed(2));
                     const finalAmount = Math.max(0, parseFloat((baseAmount - savings).toFixed(2)));
 
